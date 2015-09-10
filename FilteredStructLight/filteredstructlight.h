@@ -16,7 +16,8 @@ public:
 	void setupUi();
 
 protected:
-	void FilteredStructLight::keyReleaseEvent(QKeyEvent* e);
+	void keyReleaseEvent(QKeyEvent* e);
+	void onClose(QKeyEvent* e);
 
 private:
 	CamThread* cam_thread_;

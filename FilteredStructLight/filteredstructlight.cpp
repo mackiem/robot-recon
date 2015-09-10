@@ -87,3 +87,16 @@ void FilteredStructLight::keyReleaseEvent(QKeyEvent* e) {
 	}
 }
 
+void FilteredStructLight::onClose(QKeyEvent* event) {
+	 QMessageBox::StandardButton resBtn = QMessageBox::question( this, "FilteredStructLight",
+                                                                tr("Are you sure?\n"),
+                                                                QMessageBox::Cancel | QMessageBox::No | QMessageBox::Yes,
+                                                                QMessageBox::Yes);
+    if (resBtn != QMessageBox::Yes) {
+        event->ignore();
+    } else {
+		// Quit the application
+		shutdown_cam_thread();
+        event->accept();
+    }
+}
