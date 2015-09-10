@@ -10,8 +10,11 @@ FilteredStructLight::FilteredStructLight(QWidget *parent)
 
 FilteredStructLight::~FilteredStructLight()
 {
+}
 
-
+void FilteredStructLight::shutdown_cam_thread() {
+	cam_thread_->shutdown();
+	cam_thread_->wait();
 }
 
 void FilteredStructLight::setupUi() {
@@ -44,10 +47,9 @@ void FilteredStructLight::setupUi() {
 
 	main_layout->addWidget(right_panel_);
 	
-	central_widget_->adjustSize();
 
 	// start cam thread
-	CamThread* cam_thread = new CamThread(this);
+	cam_thread_ = new CamThread(this);
 
 	// Specify an OpenGL 3.3 format using the Core profile.
 	// That is, no old-school fixed pipeline functionality
@@ -56,18 +58,32 @@ void FilteredStructLight::setupUi() {
 	glFormat.setProfile(QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
 	glFormat.setSampleBuffers(true);
 
-	opengl_widget_ = new GLWidget(cam_thread->get_no_of_cams(), glFormat, this);
-	opengl_widget_->setBaseSize(200, 200);
+	opengl_widget_ = new GLWidget(cam_thread_->get_no_of_cams(), glFormat, this);
+	//opengl_widget_->setBaseSize(200, 200);
 
 	vbox_layout2->addWidget(opengl_widget_);
 
-	connect(cam_thread, &CamThread::image_ready, opengl_widget_, &GLWidget::display_image);
+	connect(cam_thread_, &CamThread::image_ready, opengl_widget_, &GLWidget::display_image);
 
-	cam_thread->start();
+	cam_thread_->start();
+	central_widget_->adjustSize();
 
 
 
 
 }
 
+void FilteredStructLight::keyReleaseEvent(QKeyEvent* e) {
+	switch (e->key()) {
+	case Qt::Key_Escape:
+		// Quit the application
+		shutdown_cam_thread();
+		QApplication::quit();
+		break;
+	default:
+		// Propagate unhandled events
+		QWidget::keyReleaseEvent(e);
+		break;
+	}
+}
 

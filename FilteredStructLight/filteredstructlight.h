@@ -3,7 +3,6 @@
 
 #include "cameradisplaywidget.h"
 #include <QtWidgets/QMainWindow>
-#include "ui_filteredstructlight.h"
 #include <QtWidgets>
 #include "camthread.h"
 
@@ -16,8 +15,12 @@ public:
 	~FilteredStructLight();
 	void setupUi();
 
+protected:
+	void FilteredStructLight::keyReleaseEvent(QKeyEvent* e);
+
 private:
-	Ui::FilteredStructLightClass ui;
+	CamThread* cam_thread_;
+
 	QWidget* central_widget_;
 
 	QWidget* left_panel_;
@@ -26,6 +29,7 @@ private:
 	QWidget* right_panel_;
 	GLWidget* opengl_widget_;
 	
+	void shutdown_cam_thread();
 
 };
 

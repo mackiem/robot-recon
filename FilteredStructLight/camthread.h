@@ -17,6 +17,10 @@ class CamThread : public QThread
 	Q_OBJECT
 
 private:
+
+	bool is_shutting_down_;
+
+	QMutex thread_lock;
 	// Maximum cameras on the bus. (Maximum devices allowed on a 1394 bus is 64).
 	const static int ciMaxCameras = 64;
 
@@ -64,6 +68,7 @@ public:
 	int init();
 	void run();
 	void cleanup();
+	void shutdown();
 	CamThread(QObject* parent = NULL);
 	~CamThread();
 

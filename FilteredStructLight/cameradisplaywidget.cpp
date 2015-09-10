@@ -6,6 +6,7 @@
 #include <glm/mat4x4.hpp> // glm::mat4
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
 
 GLWidget::GLWidget(const int no_of_cams, const QGLFormat& format, QWidget* parent)
 	: no_of_cams_(no_of_cams), QGLWidget(format, parent),
@@ -154,10 +155,15 @@ void GLWidget::paintGL()
 		glBindTexture(GL_TEXTURE_2D, tex[i]);
 
 		GLuint model_loc = m_shader.uniformLocation("model");
-		float translate_amount = 1.0f;
-		float translate_x = (i % 2 == 0) ? translate_amount : -translate_amount;
-		float translate_y = (i < no_of_cams_ / 2) ? translate_amount : -translate_amount;
-		glm::mat4 model = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5, 0.5, 1.f)), glm::vec3(translate_x, translate_y, 0.f));
+		float translate_amount = 1.f;
+		float translate_x = (i % 2 == 0) ? translate_amount : -1.f * translate_amount;
+		float translate_y = (i < (no_of_cams_ / 2)) ? translate_amount : -1.f * translate_amount;
+		//float translate_x = translate_amount;
+		//float translate_y = translate_amount;
+		
+		//std::cout << translate_x << " " << translate_y << std::endl;
+
+		glm::mat4 model = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f, 0.5f, 1.f)), glm::vec3(translate_x, translate_y, 0.f));
 
 		glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
 

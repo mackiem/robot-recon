@@ -13,7 +13,7 @@ CamThread::CamThread(QObject* parent)
 
 CamThread::~CamThread()
 {
-	cleanup();
+	//cleanup();
 }
 
 void CamThread::cleanup() {
@@ -92,6 +92,7 @@ int CamThread::init()
 	iImageSize = 0;
 
 	PrintBuildInfo();
+
 
 	error = busMgr.GetNumOfCameras(&no_of_cams_);
 	if (error != PGRERROR_OK)
@@ -277,12 +278,17 @@ int CamThread::init()
 	return 0;
 }
 
+void CamThread::shutdown() {
+	is_shutting_down_ = true;
+}
+
 void CamThread::run() {
 	std::cout << "Grabbing ...";
 
 	// grabbing all images
 
 	long long iImages = 0;
+	is_shutting_down_ = false;
 	while (true) {
 		//for (int iImages = 0; iImages < k_numImages; iImages++)
 			//{
@@ -340,11 +346,19 @@ void CamThread::run() {
 
 					//iFrameNumberPrev[uiCamera] = imFrameCount[uiCamera].embeddedFrameCounter;
 				}
+					if (is_shutting_down_) {
+						break;
+					}
+					iImages++;
+					//if (iImages > 500) {
+					//	break;
+					//}
 			//}
 
 		//std::cout << endl;
 
 		//std::cout << "We missed " << iCountMissedIm << " images!" << endl << endl;
 	}
+	cleanup();
 
 }
