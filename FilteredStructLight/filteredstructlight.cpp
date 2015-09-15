@@ -31,6 +31,17 @@ void FilteredStructLight::setupUi() {
 	QVBoxLayout* vbox_layout = new QVBoxLayout();
 	vbox_layout->addWidget(view_cameras_);
 
+	threshold_slider_ = new QSlider(Qt::Horizontal, left_panel_);
+	threshold_slider_->setRange(0, 1000);
+	threshold_slider_->setSliderPosition(50);
+
+	vbox_layout->addWidget(threshold_slider_);
+
+	threshold_toggle_checkbox_ = new QCheckBox(QString("Toggle Thresholding"), left_panel_);
+	threshold_toggle_checkbox_->setChecked(true);
+
+	vbox_layout->addWidget(threshold_toggle_checkbox_);
+
 	left_panel_->setLayout(vbox_layout);
 	left_panel_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
@@ -59,11 +70,13 @@ void FilteredStructLight::setupUi() {
 	glFormat.setSampleBuffers(true);
 
 	opengl_widget_ = new GLWidget(cam_thread_->get_no_of_cams(), glFormat, this);
-	opengl_widget_->setBaseSize(200, 200);
+	//opengl_widget_->setBaseSize(200, 200);
 
 	vbox_layout2->addWidget(opengl_widget_);
 
 	connect(cam_thread_, &CamThread::image_ready, opengl_widget_, &GLWidget::display_image);
+	connect(threshold_slider_, &QSlider::valueChanged, opengl_widget_, &GLWidget::set_threshold);
+	connect(threshold_toggle_checkbox_, &QCheckBox::stateChanged, opengl_widget_, &GLWidget::toggle_thresholding);
 
 	cam_thread_->start();
 	central_widget_->adjustSize();

@@ -29,6 +29,9 @@ private:
 
 	QWidget* right_panel_;
 	GLWidget* opengl_widget_;
+
+	QSlider* threshold_slider_;
+	QCheckBox* threshold_toggle_checkbox_;
 	
 	void shutdown_cam_thread();
 

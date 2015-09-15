@@ -33,9 +33,13 @@ private:
 	GLuint vao;
 
 	int no_of_cams_;
+	float threshold_;
+	int is_thresholding_on_;
 
 public slots:
 void display_image(FlyCapture2::Image img, int cam_no);
+void set_threshold(int value);
+void toggle_thresholding(int value);
 
 public:
 	GLWidget(const int no_of_cams, const QGLFormat& format, QWidget* parent = 0);

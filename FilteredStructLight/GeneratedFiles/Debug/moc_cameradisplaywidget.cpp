@@ -19,8 +19,8 @@
 
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_GLWidget_t {
-    QByteArrayData data[6];
-    char stringdata[54];
+    QByteArrayData data[9];
+    char stringdata[94];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -34,10 +34,14 @@ QT_MOC_LITERAL(1, 9, 13),
 QT_MOC_LITERAL(2, 23, 0),
 QT_MOC_LITERAL(3, 24, 18),
 QT_MOC_LITERAL(4, 43, 3),
-QT_MOC_LITERAL(5, 47, 6)
+QT_MOC_LITERAL(5, 47, 6),
+QT_MOC_LITERAL(6, 54, 13),
+QT_MOC_LITERAL(7, 68, 5),
+QT_MOC_LITERAL(8, 74, 19)
     },
     "GLWidget\0display_image\0\0FlyCapture2::Image\0"
-    "img\0cam_no"
+    "img\0cam_no\0set_threshold\0value\0"
+    "toggle_thresholding"
 };
 #undef QT_MOC_LITERAL
 
@@ -47,7 +51,7 @@ static const uint qt_meta_data_GLWidget[] = {
        7,       // revision
        0,       // classname
        0,    0, // classinfo
-       1,   14, // methods
+       3,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -55,10 +59,14 @@ static const uint qt_meta_data_GLWidget[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    2,   19,    2, 0x0a /* Public */,
+       1,    2,   29,    2, 0x0a /* Public */,
+       6,    1,   34,    2, 0x0a /* Public */,
+       8,    1,   37,    2, 0x0a /* Public */,
 
  // slots: parameters
     QMetaType::Void, 0x80000000 | 3, QMetaType::Int,    4,    5,
+    QMetaType::Void, QMetaType::Int,    7,
+    QMetaType::Void, QMetaType::Int,    7,
 
        0        // eod
 };
@@ -69,6 +77,8 @@ void GLWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, vo
         GLWidget *_t = static_cast<GLWidget *>(_o);
         switch (_id) {
         case 0: _t->display_image((*reinterpret_cast< FlyCapture2::Image(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
+        case 1: _t->set_threshold((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 2: _t->toggle_thresholding((*reinterpret_cast< int(*)>(_a[1]))); break;
         default: ;
         }
     }
@@ -99,13 +109,13 @@ int GLWidget::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 1)
+        if (_id < 3)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 1;
+        _id -= 3;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 1)
+        if (_id < 3)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 1;
+        _id -= 3;
     }
     return _id;
 }

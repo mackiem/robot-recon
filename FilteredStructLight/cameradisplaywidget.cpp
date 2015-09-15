@@ -7,10 +7,11 @@
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <opencv2/opencv.hpp>
 
 GLWidget::GLWidget(const int no_of_cams, const QGLFormat& format, QWidget* parent)
 	: no_of_cams_(no_of_cams), QGLWidget(format, parent),
-	m_vertexBuffer(QGLBuffer::VertexBuffer)
+	m_vertexBuffer(QGLBuffer::VertexBuffer), threshold_(0.075), is_thresholding_on_(1)
 {
 }
 
@@ -83,7 +84,7 @@ void GLWidget::initializeGL()
 	for (int i = 0; i < no_of_cams_; ++i) {
 		glBindTexture(GL_TEXTURE_2D, tex[i]);
 		//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 1, 1, 0, GL_RGBA, GL_FLOAT, NULL); 
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glBindTexture(GL_TEXTURE_2D, NULL);
 	}
@@ -165,7 +166,15 @@ void GLWidget::paintGL()
 
 		glm::mat4 model = glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f, 0.5f, 1.f)), glm::vec3(translate_x, translate_y, 0.f));
 
+		GLuint threshold_location = m_shader.uniformLocation("threshold");
+
+		GLuint toggle_threshold_location = m_shader.uniformLocation("toggle_threshold");
+
 		glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
+
+		glUniform1i(toggle_threshold_location, is_thresholding_on_);
+
+		glUniform1f(threshold_location, threshold_);
 
 		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
@@ -185,6 +194,8 @@ void GLWidget::set_no_of_cams(int no_of_cams) {
 }
 
 void GLWidget::display_image(Image image, int cam_no) {
+
+	makeCurrent();
 	// Set stride for unpacking pixels
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, image.GetStride());
 	// Replace current texture with new image
@@ -194,8 +205,23 @@ void GLWidget::display_image(Image image, int cam_no) {
 	FlyCapture2::PixelFormat format = image.GetPixelFormat();
 	glBindTexture(GL_TEXTURE_2D, NULL);
 
+	//cv::Mat test(image.GetRows(), image.GetCols(), CV_8UC1, image.GetData(), image.GetStride());
+
+	//std::string img_filename = std::string("test_") + std::to_string(cam_no) + std::string(".png");
+	//cv::imwrite(img_filename, test);
+	
+
 	if (cam_no == no_of_cams_ - 1) {
+		//glViewport(0, 0, width(), qMax(height(), 1));
 		updateGL();
 	}
 
+}
+
+void GLWidget::set_threshold(int value) {
+	threshold_ = (float)(value) / (float)(1000);
+}
+
+void GLWidget::toggle_thresholding(int value) {
+	is_thresholding_on_ = (value == 0) ? 0 : 1;
 }
