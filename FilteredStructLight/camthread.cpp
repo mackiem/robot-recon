@@ -170,14 +170,16 @@ int CamThread::init()
 
 		// Setup image format
 		Format7ImageSettings fmt7settings;
-		fmt7settings.mode = MODE_0;
-		fmt7settings.offsetX = 0;
-		fmt7settings.offsetY = 0;
+		fmt7settings.mode = MODE_1;
+		/*fmt7settings.offsetX = 0;
+		fmt7settings.offsetY = 0;*/
+		fmt7settings.offsetX = 96;
+		fmt7settings.offsetY = 52;
 		/*fmt7settings.width = fmt7info.maxWidth;
 		fmt7settings.height = fmt7info.maxHeight;*/
 		fmt7settings.width = 320;
 		fmt7settings.height = 280;
-		fmt7settings.pixelFormat = PIXEL_FORMAT_RAW8;
+		fmt7settings.pixelFormat = PIXEL_FORMAT_MONO8;
 
 		// Validate format
 		bool fmt7valid;

@@ -59,7 +59,7 @@ void FilteredStructLight::setupUi() {
 	glFormat.setSampleBuffers(true);
 
 	opengl_widget_ = new GLWidget(cam_thread_->get_no_of_cams(), glFormat, this);
-	//opengl_widget_->setBaseSize(200, 200);
+	opengl_widget_->setBaseSize(200, 200);
 
 	vbox_layout2->addWidget(opengl_widget_);
 

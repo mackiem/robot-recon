@@ -19,13 +19,13 @@ int main(int argc, char *argv[])
 	QQuickView view;
 	view.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
 	view.showFullScreen();
-	view.setPosition(QPoint(-7680, 0));
+	view.setPosition(QPoint(2880, 0));
 	//view.show();
 
-	QQuickView view_2;
+	/*QQuickView view_2;
 	view_2.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
 	view_2.showFullScreen();
-	view_2.setPosition(QPoint(-6400, 0));
+	view_2.setPosition(QPoint(-6400, 0));*/
 	//view.show();
 
 	return a.exec();

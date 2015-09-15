@@ -10,13 +10,18 @@ Rectangle {
 
 	Rectangle {
 		id : moving_stripe
-	property int start_pos : Math.floor(Math.random() * background.width);
-	property int end_pos : ((Math.random() - 0.5) > 0) ? 0 : background.width;
+	//property int start_pos : Math.floor(Math.random() * background.width);
+	//property int end_pos : ((Math.random() - 0.5) > 0) ? 0 : background.width;
+	property int start_pos : parent.width/2;
+	property int end_pos : parent.width/2;
 		anchors.top : background.top
 		anchors.bottom : background.bottom
+		anchors.horizontalCenter : background.horizontalCenter
+		
 		width : 10
 		color : "white"
 
+		/*
 		NumberAnimation on x {
 			id : stripe_animation
 			from : moving_stripe.start_pos
@@ -28,13 +33,16 @@ Rectangle {
 				console.log("Value of " + Math.abs(moving_stripe.start_pos - moving_stripe.end_pos) / background.speed + "\n");
 				console.log("duration : " + stripe_animation.duration + "\n");
 				if (!stripe_animation.running) {
-	moving_stripe.start_pos = Math.floor(Math.random() * background.width);
-	moving_stripe.end_pos = ((Math.random() - 0.5) > 0) ? 0 : background.width;
+	//moving_stripe.start_pos = Math.floor(Math.random() * background.width);
+	//moving_stripe.end_pos = ((Math.random() - 0.5) > 0) ? 0 : background.width;
+	moving_stripe.start_pos = background.width/2;
+	moving_stripe.end_pos = background.width/2;
 	stripe_animation.duration = Math.round(Math.abs(moving_stripe.start_pos - moving_stripe.end_pos) / background.speed);
 	stripe_animation.start();
 				}
 			}
 		}
+		*/
 	}
 
 }
