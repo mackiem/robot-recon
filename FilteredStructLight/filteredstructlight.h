@@ -5,7 +5,9 @@
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets>
 #include "camthread.h"
+#include "reconstruct.h"
 
+#define CAM_CALIB_PAIRS 6
 class FilteredStructLight : public QMainWindow
 {
 	Q_OBJECT
@@ -21,6 +23,7 @@ protected:
 
 private:
 	CamThread* cam_thread_;
+	Reconstruct3D* reconstructor_;
 
 	QWidget* central_widget_;
 
@@ -32,7 +35,19 @@ private:
 
 	QSlider* threshold_slider_;
 	QCheckBox* threshold_toggle_checkbox_;
-	
+
+	QGroupBox* camera_pairs_group_;
+	QSpinBox* camera_pair_[CAM_CALIB_PAIRS];
+
+	QGroupBox* calibration_group_;
+	QPushButton* start_calibration_video_;
+	QPushButton* end_calibration_video_;
+
+	QGroupBox* reconstruction_group_;
+	QPushButton* start_reconstruction_video_;
+	QPushButton* end_reconstruction_video_;
+
+
 	void shutdown_cam_thread();
 
 };

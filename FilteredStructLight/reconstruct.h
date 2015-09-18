@@ -9,6 +9,8 @@ using namespace std;
 using namespace cv;
 
 typedef std::unordered_map<int, std::vector<cv::Mat>> CameraImgMap;
+typedef std::vector<std::pair<int, int>> CameraPairs;
+typedef std::unordered_map<CameraPairs, cv::Mat> CameraPairMatrix;
 
 class Reconstruct3D : public QObject
 {
@@ -25,12 +27,16 @@ private:
 	CameraImgMap camera_img_map_;
 
 public:
-	
-	void collect_calibration_imgs();
+	void clear_camera_img_map();
+
+	void run_calibration(std::vector<std::pair<int, int>> camera_pairs);
+
 	void stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam, Size boardSize, bool useCalibrated);
-	Reconstruct3D(int no_of_cams);
+	
+	Reconstruct3D(int no_of_cams, QObject* parent);
 	~Reconstruct3D();
 
-
+public slots:
+	void collect_images(FlyCapture2::Image img, int cam_no);
 };
 

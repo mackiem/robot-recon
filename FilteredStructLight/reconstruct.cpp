@@ -2,8 +2,8 @@
 
 
 
-Reconstruct3D::Reconstruct3D(int no_of_cams) 
-	: no_of_cams_(no_of_cams)
+Reconstruct3D::Reconstruct3D(int no_of_cams, QObject* parent) 
+	: no_of_cams_(no_of_cams), QObject(parent)
 {
 
 }
@@ -11,6 +11,25 @@ Reconstruct3D::Reconstruct3D(int no_of_cams)
 
 Reconstruct3D::~Reconstruct3D()
 {
+}
+
+void Reconstruct3D::collect_images(FlyCapture2::Image img, int cam_no)
+{
+	cv::Mat test(img.GetRows(), img.GetCols(), CV_8UC1, img.GetData(), img.GetStride());
+	camera_img_map_[cam_no].push_back(test.clone());
+}
+
+void Reconstruct3D::clear_camera_img_map()
+{
+	camera_img_map_.clear();
+}
+
+void Reconstruct3D::run_calibration(std::vector<std::pair<int, int>> camera_pairs)
+{
+	for (auto& camera_pair_ : camera_pairs)
+	{
+		stereo_calibrate(camera_img_map_, camera_pair_.first, camera_pair_.second, cv::Size(9, 6), true); 
+	}
 }
 
 void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam, Size boardSize, bool useCalibrated) {
@@ -23,8 +42,6 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 	assert(left_cam < no_of_cams_);
 	assert(right_cam < no_of_cams_);
 	assert(camera_img_map.size() == no_of_cams_);
-
-
 
 	cv::Size imageSize;
 	bool displayCorners = false;//true;
@@ -127,72 +144,76 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 
 	cout << "Running stereo calibration ...\n";
 
-	//cameraMatrix[0] = Mat::eye(3, 3, CV_64F);
-	//cameraMatrix[1] = Mat::eye(3, 3, CV_64F);
+	cv::Mat cameraMatrix[2];
+	cv::Mat distCoeffs[2];
+	cv::Mat R, T, E, F;
 
-	//double rms = stereoCalibrate(objectPoints, imagePoints[0], imagePoints[1],
-	//	cameraMatrix[0], distCoeffs[0],
-	//	cameraMatrix[1], distCoeffs[1],
-	//	imageSize, R, T, E, F,
-	//	TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 100, 1e-5),
-	//	CV_CALIB_FIX_ASPECT_RATIO +
-	//	CV_CALIB_ZERO_TANGENT_DIST +
-	//	//CV_CALIB_SAME_FOCAL_LENGTH +
-	//	CV_CALIB_RATIONAL_MODEL +
-	//	CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + CV_CALIB_FIX_K5);
-	//cout << "done with RMS error=" << rms << endl;
+	cameraMatrix[0] = Mat::eye(3, 3, CV_64F);
+	cameraMatrix[1] = Mat::eye(3, 3, CV_64F);
 
-	//// CALIBRATION QUALITY CHECK
-	//// because the output fundamental matrix implicitly
-	//// includes all the output information,
-	//// we can check the quality of calibration using the
-	//// epipolar geometry constraint: m2^t*F*m1=0
-	//double err = 0;
-	//int npoints = 0;
-	//vector<Vec3f> lines[2];
-	//for (i = 0; i < nimages; i++)
-	//{
-	//	int npt = (int)imagePoints[0][i].size();
-	//	Mat imgpt[2];
-	//	for (k = 0; k < 2; k++)
-	//	{
-	//		imgpt[k] = Mat(imagePoints[k][i]);
-	//		undistortPoints(imgpt[k], imgpt[k], cameraMatrix[k], distCoeffs[k], Mat(), cameraMatrix[k]);
-	//		computeCorrespondEpilines(imgpt[k], k + 1, F, lines[k]);
-	//	}
-	//	for (j = 0; j < npt; j++)
-	//	{
-	//		double errij = fabs(imagePoints[0][i][j].x*lines[1][j][0] +
-	//			imagePoints[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
-	//			fabs(imagePoints[1][i][j].x*lines[0][j][0] +
-	//			imagePoints[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
-	//		err += errij;
-	//	}
-	//	npoints += npt;
-	//}
-	//cout << "average reprojection err = " << err / npoints << endl;
+	double rms = stereoCalibrate(objectPoints, imagePoints[0], imagePoints[1],
+		cameraMatrix[0], distCoeffs[0],
+		cameraMatrix[1], distCoeffs[1],
+		imageSize, R, T, E, F,
+		TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 100, 1e-5),
+		CV_CALIB_FIX_ASPECT_RATIO +
+		CV_CALIB_ZERO_TANGENT_DIST +
+		//CV_CALIB_SAME_FOCAL_LENGTH +
+		CV_CALIB_RATIONAL_MODEL +
+		CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + CV_CALIB_FIX_K5);
+	cout << "done with RMS error=" << rms << endl;
 
-	//// save intrinsic parameters
-	//FileStorage fs("intrinsics.yml", CV_STORAGE_WRITE);
-	//if (fs.isOpened())
-	//{
-	//	fs << "M1" << cameraMatrix[0] << "D1" << distCoeffs[0] <<
-	//		"M2" << cameraMatrix[1] << "D2" << distCoeffs[1];
-	//	fs.release();
-	//}
-	//else {
-	//	cout << "Error: can not save the intrinsic parameters\n";
-	//}
+	// CALIBRATION QUALITY CHECK
+	// because the output fundamental matrix implicitly
+	// includes all the output information,
+	// we can check the quality of calibration using the
+	// epipolar geometry constraint: m2^t*F*m1=0
+	double err = 0;
+	int npoints = 0;
+	vector<Vec3f> lines[2];
+	for (i = 0; i < nimages; i++)
+	{
+		int npt = (int)imagePoints[0][i].size();
+		Mat imgpt[2];
+		for (k = 0; k < 2; k++)
+		{
+			imgpt[k] = Mat(imagePoints[k][i]);
+			undistortPoints(imgpt[k], imgpt[k], cameraMatrix[k], distCoeffs[k], Mat(), cameraMatrix[k]);
+			computeCorrespondEpilines(imgpt[k], k + 1, F, lines[k]);
+		}
+		for (j = 0; j < npt; j++)
+		{
+			double errij = fabs(imagePoints[0][i][j].x*lines[1][j][0] +
+				imagePoints[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
+				fabs(imagePoints[1][i][j].x*lines[0][j][0] +
+				imagePoints[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
+			err += errij;
+		}
+		npoints += npt;
+	}
+	cout << "average reprojection err = " << err / npoints << endl;
+
+	// save intrinsic parameters
+	FileStorage fs("intrinsics.yml", CV_STORAGE_WRITE);
+	if (fs.isOpened())
+	{
+		fs << "M1" << cameraMatrix[0] << "D1" << distCoeffs[0] <<
+			"M2" << cameraMatrix[1] << "D2" << distCoeffs[1];
+		fs.release();
+	}
+	else {
+		cout << "Error: can not save the intrinsic parameters\n";
+	}
 
 
 
-	//fs.open("extrinsics.yml", CV_STORAGE_WRITE);
-	//if (fs.isOpened())
-	//{
-	//	fs << "R" << R << "T" << T << "imageSize" << imageSize;
-	//	fs.release();
-	//}
-	//else {
-	//	cout << "Error: can not save the intrinsic parameters\n";
-	//}
+	fs.open("extrinsics.yml", CV_STORAGE_WRITE);
+	if (fs.isOpened())
+	{
+		fs << "R" << R << "T" << T << "imageSize" << imageSize;
+		fs.release();
+	}
+	else {
+		cout << "Error: can not save the intrinsic parameters\n";
+	}
 }

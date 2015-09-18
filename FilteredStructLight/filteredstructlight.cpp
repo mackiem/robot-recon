@@ -74,6 +74,57 @@ void FilteredStructLight::setupUi() {
 
 	vbox_layout2->addWidget(opengl_widget_);
 
+	camera_pairs_group_ = new QGroupBox("Camera Calibration Pairs", left_panel_);
+
+	QGridLayout* pair_grid_layout = new QGridLayout(left_panel_);
+	
+	for (int i = 0; i < CAM_CALIB_PAIRS; ++i)
+	{
+		camera_pair_[i] = new QSpinBox(left_panel_);
+		camera_pair_[i]->setMaximum(CAM_CALIB_PAIRS);
+		camera_pair_[i]->setMinimum(0);
+		pair_grid_layout->addWidget(camera_pair_[i], i / 2, i % 2);
+	}
+
+	camera_pairs_group_->setLayout(pair_grid_layout);
+	vbox_layout->addWidget(camera_pairs_group_);
+
+	calibration_group_ = new QGroupBox("Calibration", left_panel_);
+	
+
+	start_calibration_video_ = new QPushButton("Start Calibration", calibration_group_);
+	
+	reconstructor_ = new Reconstruct3D(cam_thread_->get_no_of_cams(), this);
+
+	connect(start_calibration_video_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		reconstructor_->clear_camera_img_map();
+		connect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
+	});
+
+	end_calibration_video_ = new QPushButton("End Calibration", calibration_group_);
+	connect(end_calibration_video_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
+		CameraPairs pairs;
+		for (int i = 0; i < CAM_CALIB_PAIRS / 2; ++i)
+		{
+			pairs.push_back(std::pair<int, int>(camera_pair_[2*i]->value(), 
+				camera_pair_[2*i + 1]->value()));
+		}
+		reconstructor_->run_calibration(pairs);
+	});
+
+	QHBoxLayout* calib_group_layout = new QHBoxLayout(left_panel_);
+	calib_group_layout->addWidget(start_calibration_video_);
+	calib_group_layout->addWidget(end_calibration_video_);
+
+	calibration_group_->setLayout(calib_group_layout);
+
+	vbox_layout->addWidget(calibration_group_);
+
 	connect(cam_thread_, &CamThread::image_ready, opengl_widget_, &GLWidget::display_image);
 	connect(threshold_slider_, &QSlider::valueChanged, opengl_widget_, &GLWidget::set_threshold);
 	connect(threshold_toggle_checkbox_, &QCheckBox::stateChanged, opengl_widget_, &GLWidget::toggle_thresholding);

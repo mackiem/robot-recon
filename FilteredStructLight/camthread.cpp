@@ -179,7 +179,7 @@ int CamThread::init()
 		//fmt7settings.height = fmt7info.maxHeight;
 		//fmt7settings.pixelFormat = PIXEL_FORMAT_RAW8;
 		fmt7settings.width = 200;
-		fmt7settings.height = 150;
+		fmt7settings.height = 200;
 		fmt7settings.pixelFormat = PIXEL_FORMAT_MONO8;
 
 		// Validate format
