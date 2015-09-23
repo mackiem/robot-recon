@@ -74,8 +74,8 @@ void FilteredStructLight::setupUi() {
 
 	vbox_layout2->addWidget(opengl_widget_);
 
+	// camera pairs
 	camera_pairs_group_ = new QGroupBox("Camera Calibration Pairs", left_panel_);
-
 	QGridLayout* pair_grid_layout = new QGridLayout(left_panel_);
 	
 	for (int i = 0; i < CAM_CALIB_PAIRS; ++i)
@@ -83,15 +83,19 @@ void FilteredStructLight::setupUi() {
 		camera_pair_[i] = new QSpinBox(left_panel_);
 		camera_pair_[i]->setMaximum(CAM_CALIB_PAIRS);
 		camera_pair_[i]->setMinimum(0);
+		camera_pair_[i]->setValue(i);
 		pair_grid_layout->addWidget(camera_pair_[i], i / 2, i % 2);
 	}
+
+	camera_pair_[0]->setValue(0);
+	camera_pair_[1]->setValue(3);
 
 	camera_pairs_group_->setLayout(pair_grid_layout);
 	vbox_layout->addWidget(camera_pairs_group_);
 
-	calibration_group_ = new QGroupBox("Calibration", left_panel_);
-	
 
+	// calibration
+	calibration_group_ = new QGroupBox("Calibration", left_panel_);
 	start_calibration_video_ = new QPushButton("Start Calibration", calibration_group_);
 	
 	reconstructor_ = new Reconstruct3D(cam_thread_->get_no_of_cams(), this);
@@ -117,13 +121,59 @@ void FilteredStructLight::setupUi() {
 		reconstructor_->run_calibration(pairs);
 	});
 
-	QHBoxLayout* calib_group_layout = new QHBoxLayout(left_panel_);
-	calib_group_layout->addWidget(start_calibration_video_);
-	calib_group_layout->addWidget(end_calibration_video_);
+	QVBoxLayout* calibration_group_layout = new QVBoxLayout(left_panel_);
+	calibration_group_layout->addWidget(start_calibration_video_);
+	calibration_group_layout->addWidget(end_calibration_video_);
 
-	calibration_group_->setLayout(calib_group_layout);
+	calibration_group_->setLayout(calibration_group_layout);
 
 	vbox_layout->addWidget(calibration_group_);
+
+	// reconstruction
+	reconstruction_group_ = new QGroupBox("reconstruction", left_panel_);
+	
+	load_camera_calibration_ = new QPushButton("Load calibration", reconstruction_group_);
+
+
+	connect(load_camera_calibration_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		reconstructor_->load_calibration();
+	});
+
+	start_reconstruction_video_ = new QPushButton("Start reconstruction", reconstruction_group_);
+	
+	connect(start_reconstruction_video_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		reconstructor_->clear_camera_img_map();
+		connect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
+	});
+
+	end_reconstruction_video_ = new QPushButton("End reconstruction", reconstruction_group_);
+	connect(end_reconstruction_video_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
+		CameraPairs pairs;
+		for (int i = 0; i < CAM_CALIB_PAIRS / 2; ++i)
+		{
+			pairs.push_back(std::pair<int, int>(camera_pair_[2*i]->value(), 
+				camera_pair_[2*i + 1]->value()));
+		}
+		reconstructor_->run_reconstruction(pairs);
+	});
+
+	QVBoxLayout* reconstruction_group_layout = new QVBoxLayout(left_panel_);
+	reconstruction_group_layout->addWidget(load_camera_calibration_);
+	reconstruction_group_layout->addWidget(start_reconstruction_video_);
+	reconstruction_group_layout->addWidget(end_reconstruction_video_);
+
+	reconstruction_group_->setLayout(reconstruction_group_layout);
+
+	vbox_layout->addWidget(reconstruction_group_);
+
+
 
 	connect(cam_thread_, &CamThread::image_ready, opengl_widget_, &GLWidget::display_image);
 	connect(threshold_slider_, &QSlider::valueChanged, opengl_widget_, &GLWidget::set_threshold);

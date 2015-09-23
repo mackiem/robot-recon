@@ -4,6 +4,7 @@
 #include "FlyCapture2.h"
 #include <unordered_map>
 #include "cameradisplaywidget.h"
+#include <chrono>
 
 using namespace FlyCapture2;
 using namespace std;
@@ -29,6 +30,7 @@ class Reconstruct3D : public QObject
 private:
 	int no_of_cams_;
 	bool calibration_loaded_;
+	bool started_capture_;
 
 	struct ImageSet {
 		int cam_no;
@@ -45,7 +47,7 @@ private:
 	cv::Mat rmap[2][2]; 
 	cv::Rect validRoi[2];
 	cv::Mat R1, R2, P1, P2, Q;
-
+	std::chrono::high_resolution_clock::time_point last_updated_;
 public:
 	void clear_camera_img_map();
 

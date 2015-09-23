@@ -7,12 +7,13 @@
 #include <chrono>
 #include <cmath>
 #include "gl_core_3_3.h"
-
+typedef std::chrono::high_resolution_clock Clock;
+typedef std::chrono::milliseconds milliseconds;
 
 Reconstruct3D::Reconstruct3D(int no_of_cams, QObject* parent) 
-	: no_of_cams_(no_of_cams), QObject(parent)
+	: no_of_cams_(no_of_cams), QObject(parent), started_capture_(true)
 {
-
+	last_updated_ = Clock::now();
 }
 
 
@@ -22,8 +23,24 @@ Reconstruct3D::~Reconstruct3D()
 
 void Reconstruct3D::collect_images(FlyCapture2::Image img, int cam_no)
 {
+	std::chrono::high_resolution_clock::time_point now = Clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( now - last_updated_ ).count();
+	
+	if (cam_no == 0 && duration > 1000)
+	{
+		started_capture_ = true;
+	}
+
+	if (started_capture_) {
 	cv::Mat test(img.GetRows(), img.GetCols(), CV_8UC1, img.GetData(), img.GetStride());
 	camera_img_map_[cam_no].push_back(test.clone());
+	}
+
+	if ((cam_no == no_of_cams_ - 1) && started_capture_)
+	{
+		last_updated_ = Clock::now();
+		started_capture_ = false;
+	}
 }
 
 void Reconstruct3D::compute_correspondence(FlyCapture2::Image img, int cam_no)
@@ -37,14 +54,33 @@ void Reconstruct3D::clear_camera_img_map()
 
 void Reconstruct3D::run_calibration(std::vector<std::pair<int, int>> camera_pairs)
 {
-	for (auto& camera_pair_ : camera_pairs)
+	/*for (auto& camera_pair_ : camera_pairs)
 	{
 		stereo_calibrate(camera_img_map_, camera_pair_.first, camera_pair_.second, cv::Size(9, 6), true); 
+	}*/
+	
+	// test for now
+	for (auto i = 0u; i < camera_img_map_.size();++i)
+	{
+		camera_img_map_[i].resize(20);
 	}
+	stereo_calibrate(camera_img_map_, camera_pairs[0].first, camera_pairs[0].second, cv::Size(9, 6), true); 
+	
 }
 
 void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_pairs)
 {
+
+	try {
+		// test for now
+	for (auto i = 0u; i < camera_img_map_.size();++i)
+	{
+		camera_img_map_[i].resize(1);
+	}
+
+	load_calibration();
+	create_rectification_map();
+
 	IPts img_pts1;
 	IPts img_pts2;
 	WPts world_pts;
@@ -52,6 +88,10 @@ void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_p
 	compute_correlation(img_pts1, img_pts2, camera_img_map_, camera_pairs);
 
 	recon_obj(img_pts1, img_pts2, world_pts);
+	} catch (std::exception &e)
+	{
+		std::cout << e.what() << std::endl;
+	}
 }
 
 void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam, Size boardSize, bool useCalibrated) {
@@ -66,26 +106,28 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 	assert(camera_img_map.size() == no_of_cams_);
 
 	
-	bool displayCorners = false;//true;
+	bool displayCorners = true;//true;
 	const int maxScale = 2;
 	const float squareSize = 11.f;  // Set this to your actual square size
+	
 	// ARRAY AND VECTOR STORAGE:
-
 	vector<vector<Point2f> > imagePoints[2];
 	vector<vector<Point3f> > objectPoints;
 
-	int i, j, k, nimages = (int)camera_img_map[0].size() / 2;
+	int i, j, k, nimages = (int)camera_img_map[0].size();
 
 	imagePoints[0].resize(nimages);
 	imagePoints[1].resize(nimages);
 	//vector<string> goodImageList;
-
+	int good_images_found = 0;
 	for (i = j = 0; i < nimages; i++)
 	{
 		for (k = 0; k < 2; k++)
 		{
 			int image_index = (k == 0) ? left_cam : right_cam;
 			Mat& img = camera_img_map[image_index][i];
+			std::string img_name = (k == 0) ? "left0" : "right0";
+			imwrite(img_name + std::to_string(i+1) + std::string(".jpg"), img);
 
 			if (img.empty())
 				break;
@@ -106,7 +148,8 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 				else
 					resize(img, timg, Size(), scale, scale);
 				found = findChessboardCorners(timg, boardSize, corners,
-					CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE);
+					CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE
+					| CV_CALIB_CB_FILTER_QUADS);
 				if (found)
 				{
 					if (scale > 1)
@@ -132,21 +175,33 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 			}
 			else
 				putchar('.');
+			
+			
+				
 			if (!found)
 				break;
 			cornerSubPix(img, corners, Size(11, 11), Size(-1, -1),
 				TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS,
 				30, 0.01));
+			good_images_found++;
+			
 		}
 		if (k == 2)
 		{
-			//goodImageList.push_back(camera_img_map[left_cam][i]);
-			//goodImageList.push_back(camera_img_map[right_cam][i]);
-			j++;
+			j++;	
 		}
+		
+		/*if (good_images_found > 20)
+		{
+			break;
+		}*/
+		
 	}
 	cout << j << " pairs have been successfully detected.\n";
+	
 	nimages = j;
+	//nimages = (j < 10) ? j : 10;
+	//cout << " only using 10 of them... \n";
 	if (nimages < 2)
 	{
 		cout << "Error: too little pairs to run the calibration\n";
@@ -177,10 +232,10 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		imageSize, R, T, E, F,
 		TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 100, 1e-5),
 		CV_CALIB_FIX_ASPECT_RATIO +
-		CV_CALIB_ZERO_TANGENT_DIST +
+		//CV_CALIB_ZERO_TANGENT_DIST +
 		//CV_CALIB_SAME_FOCAL_LENGTH +
 		CV_CALIB_RATIONAL_MODEL +
-		CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + CV_CALIB_FIX_K5);
+		CV_CALIB_FIX_K5);
 	cout << "done with RMS error=" << rms << endl;
 
 	// CALIBRATION QUALITY CHECK
@@ -331,14 +386,15 @@ void Reconstruct3D::init_imgs(CameraImgMap& camera_img_map, int cam, bool is_rig
 	assert(camera_img_map.find(cam) != camera_img_map.end());
 
 	auto& camera_imgs = camera_img_map[cam];
-
+	std::string img_name = "remap_" + std::to_string(cam);
 	for (int i = 0; i < camera_imgs.size(); i++) {
 		cv::Mat& img = camera_imgs[i];
 		cv::Mat thresholded;
-		cv::threshold(img, thresholded, 100, 255, CV_THRESH_BINARY);
+		cv::threshold(img, thresholded, 30, 255, CV_THRESH_BINARY);
 		cv::Mat rImg;
 		remap(thresholded, rImg, rmap[is_right][0], rmap[is_right][1], CV_INTER_LINEAR);
 		camera_imgs[i] = rImg;
+		imshow(img_name, rImg);
 	}
 }
 
@@ -370,10 +426,11 @@ void Reconstruct3D::get_unique_edges(CameraImgMap& camera_img_map, int cam, std:
 
 	int color_threshold = 20;
 	
-	typedef std::chrono::high_resolution_clock Clock;
-	typedef std::chrono::milliseconds milliseconds;
+	
+	
 
   	auto& camera_imgs = camera_img_map[cam];
+	unique_colors_all_images.resize(camera_imgs.size());
 
 	for (int i = 0; i < camera_imgs.size(); i++) {    
 		cv::Mat& img = camera_imgs[i];
@@ -394,7 +451,7 @@ void Reconstruct3D::get_unique_edges(CameraImgMap& camera_img_map, int cam, std:
 					unsigned char post_color = img.at<unsigned char>(row, col);
 					
 
-					if (cv::norm(pre_color, post_color) > color_threshold) {
+					if (std::abs(pre_color - post_color) > color_threshold) {
 						auto color_pair = std::make_pair(pre_color, post_color);
 						unique_edges_in_row.push_back(col);
 
@@ -494,7 +551,7 @@ void Reconstruct3D::compute_correlation_per_image(std::vector<UniqueEdges>& uniq
 				auto& row_edges_vec_left = row_edges_left.second;
 
 				if (row_edges_vec_right.size() != row_edges_vec_left.size()
-					&& row_edges_vec_right.size() != 2)
+					|| row_edges_vec_right.size() != 2)
 				{
 					continue;	
 				}

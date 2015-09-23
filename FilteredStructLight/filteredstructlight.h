@@ -44,6 +44,7 @@ private:
 	QPushButton* end_calibration_video_;
 
 	QGroupBox* reconstruction_group_;
+	QPushButton* load_camera_calibration_;
 	QPushButton* start_reconstruction_video_;
 	QPushButton* end_reconstruction_video_;
 

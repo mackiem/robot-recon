@@ -157,7 +157,7 @@ void GLWidget::paintGL()
 
 		GLuint model_loc = m_shader.uniformLocation("model");
 		float translate_amount = 1.f;
-		float translate_x = (i % 2 == 0) ? translate_amount : -1.f * translate_amount;
+		float translate_x = (i % 2 == 0) ? -1.f * translate_amount : translate_amount;
 		float translate_y = (i < (no_of_cams_ / 2)) ? translate_amount : -1.f * translate_amount;
 		//float translate_x = translate_amount;
 		//float translate_y = translate_amount;
