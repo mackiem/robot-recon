@@ -2,6 +2,7 @@
 
 #include <QThread>
 #include "assert.h"
+#include <QMutex>
 
 #include <string>
 #include <vector>

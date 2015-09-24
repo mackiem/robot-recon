@@ -47,10 +47,10 @@ private:
 	QPushButton* load_camera_calibration_;
 	QPushButton* start_reconstruction_video_;
 	QPushButton* end_reconstruction_video_;
-
+	QPushButton* recalibrate_button;
 
 	void shutdown_cam_thread();
-
+	void create_camera_pairs(CameraPairs& pairs);
 };
 
 #endif // FILTEREDSTRUCTLIGHT_H

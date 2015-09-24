@@ -17,6 +17,15 @@ void FilteredStructLight::shutdown_cam_thread() {
 	cam_thread_->wait();
 }
 
+void FilteredStructLight::create_camera_pairs(CameraPairs& pairs)
+{
+	for (int i = 0; i < CAM_CALIB_PAIRS / 2; ++i)
+	{
+		pairs.push_back(std::pair<int, int>(camera_pair_[2*i]->value(), 
+		                                    camera_pair_[2*i + 1]->value()));
+	}
+}
+
 void FilteredStructLight::setupUi() {
 	central_widget_ = new QWidget(this);
 	setCentralWidget(central_widget_);
@@ -38,7 +47,7 @@ void FilteredStructLight::setupUi() {
 	vbox_layout->addWidget(threshold_slider_);
 
 	threshold_toggle_checkbox_ = new QCheckBox(QString("Toggle Thresholding"), left_panel_);
-	threshold_toggle_checkbox_->setChecked(true);
+	threshold_toggle_checkbox_->setChecked(false);
 
 	vbox_layout->addWidget(threshold_toggle_checkbox_);
 
@@ -87,18 +96,33 @@ void FilteredStructLight::setupUi() {
 		pair_grid_layout->addWidget(camera_pair_[i], i / 2, i % 2);
 	}
 
-	camera_pair_[0]->setValue(0);
+	camera_pair_[0]->setValue(2);
 	camera_pair_[1]->setValue(3);
 
 	camera_pairs_group_->setLayout(pair_grid_layout);
 	vbox_layout->addWidget(camera_pairs_group_);
 
+	reconstructor_ = new Reconstruct3D(cam_thread_->get_no_of_cams(), this);
+
 
 	// calibration
 	calibration_group_ = new QGroupBox("Calibration", left_panel_);
-	start_calibration_video_ = new QPushButton("Start Calibration", calibration_group_);
+
+	recalibrate_button = new QPushButton("Recalibrate", calibration_group_);
+	recalibrate_button->setShortcut(QKeySequence(Qt::SHIFT + Qt::Key_R));
+
+	start_calibration_video_ = new QPushButton("&Start Calibration", calibration_group_);
+	start_calibration_video_->setShortcut(QKeySequence("s"));
 	
-	reconstructor_ = new Reconstruct3D(cam_thread_->get_no_of_cams(), this);
+
+	connect(recalibrate_button, &QPushButton::clicked, this, 
+		[&]()
+	{
+		reconstructor_->clear_camera_img_map();
+		CameraPairs pairs;
+		create_camera_pairs(pairs);
+		reconstructor_->recalibrate(pairs);
+	});
 
 	connect(start_calibration_video_, &QPushButton::clicked, this, 
 		[&]()
@@ -107,24 +131,23 @@ void FilteredStructLight::setupUi() {
 		connect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
 	});
 
-	end_calibration_video_ = new QPushButton("End Calibration", calibration_group_);
+	end_calibration_video_ = new QPushButton("&End Calibration", calibration_group_);
+	end_calibration_video_->setShortcut(QKeySequence("e"));
 	connect(end_calibration_video_, &QPushButton::clicked, this, 
 		[&]()
 	{
 		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
 		CameraPairs pairs;
-		for (int i = 0; i < CAM_CALIB_PAIRS / 2; ++i)
-		{
-			pairs.push_back(std::pair<int, int>(camera_pair_[2*i]->value(), 
-				camera_pair_[2*i + 1]->value()));
-		}
+		create_camera_pairs(pairs);
 		reconstructor_->run_calibration(pairs);
 	});
 
 	QVBoxLayout* calibration_group_layout = new QVBoxLayout(left_panel_);
+	calibration_group_layout->addWidget(recalibrate_button);
 	calibration_group_layout->addWidget(start_calibration_video_);
 	calibration_group_layout->addWidget(end_calibration_video_);
 
+	start_calibration_video_->setEnabled(true);
 	calibration_group_->setLayout(calibration_group_layout);
 
 	vbox_layout->addWidget(calibration_group_);
@@ -142,6 +165,7 @@ void FilteredStructLight::setupUi() {
 	});
 
 	start_reconstruction_video_ = new QPushButton("Start reconstruction", reconstruction_group_);
+	start_reconstruction_video_->setShortcut(QKeySequence("r"));
 	
 	connect(start_reconstruction_video_, &QPushButton::clicked, this, 
 		[&]()
@@ -151,16 +175,13 @@ void FilteredStructLight::setupUi() {
 	});
 
 	end_reconstruction_video_ = new QPushButton("End reconstruction", reconstruction_group_);
+	end_reconstruction_video_->setShortcut(QKeySequence("t"));
 	connect(end_reconstruction_video_, &QPushButton::clicked, this, 
 		[&]()
 	{
 		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
 		CameraPairs pairs;
-		for (int i = 0; i < CAM_CALIB_PAIRS / 2; ++i)
-		{
-			pairs.push_back(std::pair<int, int>(camera_pair_[2*i]->value(), 
-				camera_pair_[2*i + 1]->value()));
-		}
+		create_camera_pairs(pairs);
 		reconstructor_->run_reconstruction(pairs);
 	});
 

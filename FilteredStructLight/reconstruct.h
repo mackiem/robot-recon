@@ -55,8 +55,10 @@ public:
 
 	void run_reconstruction(std::vector<std::pair<int, int>> camera_pairs);
 
-	void stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam, 
-		Size boardSize, bool useCalibrated);
+	void stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam,
+	                      Size boardSize, bool useCalibrated, bool write_images = true);
+
+	void recalibrate(std::vector<std::pair<int, int>> camera_pairs);
 	
 	void reconstruct();
 	void alter_img_for_projection(const cv::Mat& img, cv::Mat& remapped_img, bool is_right) const;
@@ -68,7 +70,7 @@ public:
 
 	void compute_correlation_per_image(std::vector<UniqueEdges>& unique_colors_left,
 		std::vector<UniqueEdges>& unique_colors_right,
-		std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2);
+		std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts, CameraImgMap& camera_img_map, int left_cam, int right_cam);
 
 	void get_unique_edges(CameraImgMap& camera_img_map, int cam, std::vector<UniqueEdges> & unique_colors_per_image, bool is_right);
 	

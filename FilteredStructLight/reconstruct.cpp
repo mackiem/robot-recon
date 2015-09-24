@@ -68,6 +68,37 @@ void Reconstruct3D::run_calibration(std::vector<std::pair<int, int>> camera_pair
 	
 }
 
+void Reconstruct3D::recalibrate(std::vector<std::pair<int, int>> camera_pairs)
+{
+	/*for (auto& camera_pair_ : camera_pairs)
+	{
+		stereo_calibrate(camera_img_map_, camera_pair_.first, camera_pair_.second, cv::Size(9, 6), true); 
+	}*/
+	
+	// test for now
+	const int left_cam = camera_pairs[0].first;
+	const int right_cam = camera_pairs[0].second;
+
+	for (auto i = 0u; i < 20;++i)
+	{
+		
+
+			std::string left_img_name = "left0";  
+			std::string right_img_name = "right0";
+
+			cv::Mat left_img = imread(left_img_name + std::to_string(i+1) + std::string(".jpg"), 0);
+			cv::Mat right_img = imread(right_img_name + std::to_string(i+1) + std::string(".jpg"), 0);
+			if (left_img.data && right_img.data)
+			{
+				camera_img_map_[left_cam].push_back(left_img);
+				camera_img_map_[right_cam].push_back(right_img);
+			}
+			
+	}
+	stereo_calibrate(camera_img_map_, camera_pairs[0].first, camera_pairs[0].second, cv::Size(9, 6), true, false); 
+	
+}
+
 void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_pairs)
 {
 
@@ -94,7 +125,9 @@ void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_p
 	}
 }
 
-void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam, Size boardSize, bool useCalibrated) {
+
+
+void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam, Size boardSize, bool useCalibrated, bool write_images) {
 
 	if (camera_img_map.size() < 2) {
 		std::cout << "Only " << camera_img_map.size() << " available. Need at least 2..." << std::endl;
@@ -103,18 +136,18 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 
 	assert(left_cam < no_of_cams_);
 	assert(right_cam < no_of_cams_);
-	assert(camera_img_map.size() == no_of_cams_);
+//	assert(camera_img_map.size() == no_of_cams_);
 
 	
 	bool displayCorners = true;//true;
 	const int maxScale = 2;
-	const float squareSize = 11.f;  // Set this to your actual square size
+	const float squareSize = 25.f;  // Set this to your actual square size
 	
 	// ARRAY AND VECTOR STORAGE:
 	vector<vector<Point2f> > imagePoints[2];
 	vector<vector<Point3f> > objectPoints;
 
-	int i, j, k, nimages = (int)camera_img_map[0].size();
+	int i, j, k, nimages = (int)camera_img_map[left_cam].size();
 
 	imagePoints[0].resize(nimages);
 	imagePoints[1].resize(nimages);
@@ -126,8 +159,12 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		{
 			int image_index = (k == 0) ? left_cam : right_cam;
 			Mat& img = camera_img_map[image_index][i];
-			std::string img_name = (k == 0) ? "left0" : "right0";
-			imwrite(img_name + std::to_string(i+1) + std::string(".jpg"), img);
+			if (write_images)
+			{
+				std::string img_name = (k == 0) ? "left0" : "right0";
+				imwrite(img_name + std::to_string(i+1) + std::string(".jpg"), img);
+			}
+			
 
 			if (img.empty())
 				break;
@@ -226,12 +263,19 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 	cameraMatrix[0] = Mat::eye(3, 3, CV_64F);
 	cameraMatrix[1] = Mat::eye(3, 3, CV_64F);
 
+	cameraMatrix[0] = initCameraMatrix2D(objectPoints, imagePoints[0], imageSize, 1);
+	cameraMatrix[1] = initCameraMatrix2D(objectPoints, imagePoints[1], imageSize, 1);
+
+	std::cout << "intrinsic mat 1 : " << cameraMatrix[0] << std::endl;
+	std::cout << "intrinsic mat 2 : " << cameraMatrix[1] << std::endl;
+
 	double rms = stereoCalibrate(objectPoints, imagePoints[0], imagePoints[1],
 		cameraMatrix[0], distCoeffs[0],
 		cameraMatrix[1], distCoeffs[1],
 		imageSize, R, T, E, F,
 		TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 100, 1e-5),
-		CV_CALIB_FIX_ASPECT_RATIO +
+		CV_CALIB_USE_INTRINSIC_GUESS +
+		//CV_CALIB_FIX_ASPECT_RATIO +
 		//CV_CALIB_ZERO_TANGENT_DIST +
 		//CV_CALIB_SAME_FOCAL_LENGTH +
 		CV_CALIB_RATIONAL_MODEL +
@@ -434,7 +478,10 @@ void Reconstruct3D::get_unique_edges(CameraImgMap& camera_img_map, int cam, std:
 
 	for (int i = 0; i < camera_imgs.size(); i++) {    
 		cv::Mat& img = camera_imgs[i];
-		cv::Mat circle_img = img.clone();
+		int l = 20;
+		cv::Canny(img, img, l, l * 3, 3);
+		cv::Mat circle_img;
+		cv::cvtColor(img, circle_img, CV_GRAY2BGR);
 		UniqueEdges unique_edges;
 
 		for (int row = 0; row < img.rows; ++row) {
@@ -451,8 +498,7 @@ void Reconstruct3D::get_unique_edges(CameraImgMap& camera_img_map, int cam, std:
 					unsigned char post_color = img.at<unsigned char>(row, col);
 					
 
-					if (std::abs(pre_color - post_color) > color_threshold) {
-						auto color_pair = std::make_pair(pre_color, post_color);
+					if ((pre_color - post_color) > color_threshold) {
 						unique_edges_in_row.push_back(col);
 
 						// draw a circle at the point
@@ -464,7 +510,7 @@ void Reconstruct3D::get_unique_edges(CameraImgMap& camera_img_map, int cam, std:
 						cv::circle(circle_img,
 							cv::Point(col, row),
 							w / (32.0 * 4.0),
-							cv::Scalar(255, 255, 255),
+							cv::Scalar(0, 255, 0),
 							thickness,
 							lineType);
 					}
@@ -474,6 +520,8 @@ void Reconstruct3D::get_unique_edges(CameraImgMap& camera_img_map, int cam, std:
 		}
 
         unique_colors_all_images[i] = unique_edges;
+
+		imshow(std::string("unique edges_") + std::to_string(is_right), circle_img);
     }
 }
 
@@ -493,7 +541,7 @@ void Reconstruct3D::compute_correlation(std::vector <cv::Vec2f>& img_pts1, std::
 	std::vector<UniqueEdges> unique_edges_right;
 	
     get_unique_edges(camera_img_map, camera_pairs[0].first, unique_edges_left, false);
-    get_unique_edges(camera_img_map, camera_pairs[0].second, unique_edges_right, false);
+    get_unique_edges(camera_img_map, camera_pairs[0].second, unique_edges_right, true);
 
 
     std::vector < std::vector<int> > correlations;
@@ -501,7 +549,8 @@ void Reconstruct3D::compute_correlation(std::vector <cv::Vec2f>& img_pts1, std::
     img_pts1.clear();
     img_pts2.clear();
 
-    compute_correlation_per_image(unique_edges_left, unique_edges_right, img_pts1, img_pts2);
+    compute_correlation_per_image(unique_edges_left, unique_edges_right, img_pts1, img_pts2, 
+		camera_img_map, camera_pairs[0].first, camera_pairs[0].second);
 
 
     write_file("recon.cp", img_pts1, img_pts2);
@@ -523,7 +572,7 @@ void Reconstruct3D::write_file(const std::string& file_name, const std::vector <
     
 void Reconstruct3D::compute_correlation_per_image(std::vector<UniqueEdges>& unique_colors_left,
     std::vector<UniqueEdges>& unique_colors_right,
-    std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2) {
+    std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2, CameraImgMap& camera_img_map, int left_cam, int right_cam) {
 
 		for (auto j = 0u; j < unique_colors_left.size(); ++j)
 		{
@@ -531,6 +580,10 @@ void Reconstruct3D::compute_correlation_per_image(std::vector<UniqueEdges>& uniq
 			auto& unique_colors_per_image_right = unique_colors_right[j];
 
 			assert( unique_colors_per_image_left.size() == unique_colors_per_image_right.size());
+
+			cv::Mat& left_img = camera_img_map[left_cam][j];
+			cv::Mat correspond_img;
+			cv::cvtColor(left_img, correspond_img, CV_GRAY2BGR);
 
 			for (auto ucliter = unique_colors_per_image_left.begin(); ucliter != unique_colors_per_image_left.end(); ++ucliter)
 			{
@@ -557,11 +610,29 @@ void Reconstruct3D::compute_correlation_per_image(std::vector<UniqueEdges>& uniq
 				}
 
 				for (auto i = 0u; i < row_edges_vec_left.size(); ++i) {
-					img_pts1.push_back(cv::Vec2f(row_no, row_edges_vec_left[i]));
-					img_pts2.push_back(cv::Vec2f(row_no, row_edges_vec_right[i]));
+					//img_pts1.push_back(cv::Vec2f(row_no, row_edges_vec_left[i]));
+					//img_pts2.push_back(cv::Vec2f(row_no, row_edges_vec_right[i]));
+					int col = row_edges_vec_left[i];
+					img_pts1.push_back(cv::Vec2f(col, row_no));
+					img_pts2.push_back(cv::Vec2f(row_edges_vec_right[i], row_no));
+
+					// draw a circle at the point
+					int w = left_img.cols;
+
+					int thickness = 0;
+					int lineType = 8;
+					cv::circle(correspond_img,
+						cv::Point(col, row_no),
+						w / (32.0 * 4.0),
+						cv::Scalar(0, 255, 0),
+						thickness,
+						lineType);
+
+
 				}
 
 			}
+			imshow("Correspondence Image", correspond_img);
 		}
 
 }

@@ -13,20 +13,20 @@ int main(int argc, char *argv[])
 	FilteredStructLight w;
 	w.show();
 
-	ProjectorWndow projector_window;
-	projector_window.show();
+	//ProjectorWndow projector_window;
+	//projector_window.show();
 
-	QQuickView view;
+	QQuickView view; 
 	view.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
 	view.showFullScreen();
-	view.setPosition(QPoint(1280, 0));
+	view.setPosition(QPoint(2960, 0));
 	//view.show();
 
-	QQuickView view_2;
-	view_2.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
-	view_2.showFullScreen();
-	view_2.setPosition(QPoint(2560, 0));
-	//view.show();
+	//QQuickView view_2;
+	//view_2.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
+	//view_2.showFullScreen();
+	//view_2.setPosition(QPoint(2560, 0));
+
 
 	return a.exec();
 }

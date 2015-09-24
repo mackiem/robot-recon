@@ -11,7 +11,7 @@
 
 GLWidget::GLWidget(const int no_of_cams, const QGLFormat& format, QWidget* parent)
 	: no_of_cams_(no_of_cams), QGLWidget(format, parent),
-	m_vertexBuffer(QGLBuffer::VertexBuffer), threshold_(0.075), is_thresholding_on_(1)
+	m_vertexBuffer(QGLBuffer::VertexBuffer), threshold_(0.075), is_thresholding_on_(0)
 {
 }
 
@@ -33,7 +33,7 @@ void GLWidget::initializeGL()
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
 
-	// Prepare a complete shader program…
+	// Prepare a complete shader program?
 	if (!prepareShaderProgram(":/FilteredStructLight/vert.glsl", ":/FilteredStructLight/frag.glsl"))
 		return;
 
@@ -121,12 +121,12 @@ void GLWidget::initializeGL()
 bool GLWidget::prepareShaderProgram(const QString& vertexShaderPath,
 	const QString& fragmentShaderPath)
 {
-	// First we load and compile the vertex shader…
+	// First we load and compile the vertex shader?
 	bool result = m_shader.addShaderFromSourceFile(QGLShader::Vertex, vertexShaderPath);
 	if (!result)
 		qWarning() << m_shader.log();
 
-	// …now the fragment shader…
+	// …now the fragment shader?
 	result = m_shader.addShaderFromSourceFile(QGLShader::Fragment, fragmentShaderPath);
 	if (!result)
 		qWarning() << m_shader.log();
@@ -185,7 +185,7 @@ void GLWidget::paintGL()
 }
 
 QSize GLWidget::sizeHint() const {
-	return QSize(1024, 768);
+	return QSize(768, 768);
 }
 
 
