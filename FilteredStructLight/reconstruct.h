@@ -1,10 +1,10 @@
 #pragma once
-#include "opencv2/opencv.hpp"
 #include <QtCore>
 #include "FlyCapture2.h"
 #include <unordered_map>
 #include "cameradisplaywidget.h"
 #include <chrono>
+#include "fsl_common.h"
 
 using namespace FlyCapture2;
 using namespace std;
@@ -17,8 +17,6 @@ typedef std::unordered_map<CameraPairs, cv::Mat> CameraPairMatrix;
 
 typedef std::vector<cv::Vec6f> TriangleList;
 typedef std::pair<int, std::pair<cv::Vec3i, cv::Vec3i> > UniqueColorPair;
-typedef std::vector<cv::Vec2f> IPts;
-typedef std::vector<cv::Vec3f> WPts;
 typedef std::unordered_map<int, std::vector<int>> UniqueEdges;
 
 
@@ -80,6 +78,7 @@ public:
 	void init_imgs(CameraImgMap& camera_img_map, int cam, bool is_right);
 	
 
+	void read_file(const std::string& file_name, std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2);
 	void write_file(const std::string& file_name, const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2);
 
 	void triangulate_pts(const WPts& pnts, WPts& triangles, 
@@ -89,7 +88,7 @@ public:
 	
 	void resize_img(cv::Mat& img, const unsigned int resize_width) const;
 
-	void recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2, std::vector<cv::Vec3f>& world_pts) const;
+	void recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2, std::vector<cv::Vec3f>& world_pts);
 
 	//void gen_texture(GLuint& texture_id, cv::Mat& remapped_img_for_texture) const;
 
@@ -99,6 +98,10 @@ public:
 
 public slots:
 	void collect_images(FlyCapture2::Image img, int cam_no);
+	void collect_images_without_delay(FlyCapture2::Image img, int cam_no);
 	void compute_correspondence(FlyCapture2::Image img, int cam_no);
+
+signals:
+	void finished_reconstruction(WPts world_pts);
 };
 

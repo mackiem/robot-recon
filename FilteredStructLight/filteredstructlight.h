@@ -8,6 +8,8 @@
 #include "reconstruct.h"
 
 #define CAM_CALIB_PAIRS 6
+#include "modelviewer.h"
+
 class FilteredStructLight : public QMainWindow
 {
 	Q_OBJECT
@@ -48,9 +50,13 @@ private:
 	QPushButton* start_reconstruction_video_;
 	QPushButton* end_reconstruction_video_;
 	QPushButton* recalibrate_button;
-
+	QWidget* reconstruction_tab_;
+	ModelViewer* model_viewer_;
+	QWidget* camera_tab_;
 	void shutdown_cam_thread();
 	void create_camera_pairs(CameraPairs& pairs);
+
+	void add_reconstruction_tab(QTabWidget* tab_widget);
 };
 
 #endif // FILTEREDSTRUCTLIGHT_H

@@ -34,7 +34,7 @@ void GLWidget::initializeGL()
 	glBindVertexArray(vao);
 
 	// Prepare a complete shader program?
-	if (!prepareShaderProgram(":/FilteredStructLight/vert.glsl", ":/FilteredStructLight/frag.glsl"))
+	if (!prepareShaderProgram(":/FilteredStructLight/camera_vert.glsl", ":/FilteredStructLight/camera_frag.glsl"))
 		return;
 
 	// We need us some vertex data. Start simple with a triangle ;-)
@@ -149,6 +149,12 @@ void GLWidget::paintGL()
 {
 	// Clear the buffer with the current clearing color
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	if (!m_shader.bind())
+	{
+		qWarning() << "Could not bind shader program to context";
+		return;
+	}
 
 	for (int i = 0; i < no_of_cams_; ++i) {
 		glBindVertexArray(vao);

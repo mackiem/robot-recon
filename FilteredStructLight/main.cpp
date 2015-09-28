@@ -9,6 +9,7 @@ int main(int argc, char *argv[])
 	QApplication a(argc, argv);
 	qRegisterMetaType<FlyCapture2::Image>("FlyCapture2::Image");
 	qRegisterMetaType<FlyCapture2::Error>("FlyCapture2::Error");
+	qRegisterMetaType<cv::Vec3f>("cv::Vec3f");
 
 	FilteredStructLight w;
 	w.show();

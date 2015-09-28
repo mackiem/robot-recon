@@ -83,6 +83,15 @@
     <ClCompile Include="GeneratedFiles\Release\moc_reconstruct.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="modelviewer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_modelviewer.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_modelviewer.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="filteredstructlight.h">
@@ -103,6 +112,9 @@
     <CustomBuild Include="reconstruct.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="modelviewer.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="GeneratedFiles\ui_filteredstructlight.h">
@@ -117,15 +129,20 @@
     <ClInclude Include="projectorwindow.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="fsl_common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FilteredStructLight.rc" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="vert.glsl" />
-    <None Include="frag.glsl" />
     <None Include="projector.qml">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="camera_frag.glsl" />
+    <None Include="camera_vert.glsl" />
+    <None Include="model_frag.glsl" />
+    <None Include="model_vert.glsl" />
   </ItemGroup>
 </Project>

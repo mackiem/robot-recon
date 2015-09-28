@@ -1,7 +1,9 @@
 <RCC>
-    <qresource prefix="FilteredStructLight">
-	<file>vert.glsl</file>
-    <file>frag.glsl</file>
-	<file>projector.qml</file>
-    </qresource>
+  <qresource prefix="FilteredStructLight">
+    <file>model_vert.glsl</file>
+    <file>model_frag.glsl</file>
+    <file>camera_vert.glsl</file>
+    <file>camera_frag.glsl</file>
+    <file>projector.qml</file>
+  </qresource>
 </RCC>

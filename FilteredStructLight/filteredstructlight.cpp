@@ -1,5 +1,6 @@
 #include "filteredstructlight.h"
 #include <QGLFormat>
+#include "modelviewer.h"
 
 FilteredStructLight::FilteredStructLight(QWidget *parent)
 	: QMainWindow(parent)
@@ -26,6 +27,26 @@ void FilteredStructLight::create_camera_pairs(CameraPairs& pairs)
 	}
 }
 
+void FilteredStructLight::add_reconstruction_tab(QTabWidget* tab_widget) {
+	reconstruction_tab_ = new QWidget();
+	QHBoxLayout* reconstruction_layout_ = new QHBoxLayout();
+	// Specify an OpenGL 3.3 format using the Core profile.
+	// That is, no old-school fixed pipeline functionality
+	QGLFormat glFormat;
+	glFormat.setVersion(3, 3);
+	glFormat.setProfile(QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
+	glFormat.setSampleBuffers(true);
+	glFormat.setSwapInterval(1);
+
+	model_viewer_ = new ModelViewer(glFormat, reconstruction_tab_);
+	reconstruction_layout_->addWidget(model_viewer_);
+
+	reconstruction_tab_->setLayout(reconstruction_layout_);
+
+	tab_widget->addTab(reconstruction_tab_, "Reconstruction");
+
+}
+
 void FilteredStructLight::setupUi() {
 	central_widget_ = new QWidget(this);
 	setCentralWidget(central_widget_);
@@ -33,6 +54,18 @@ void FilteredStructLight::setupUi() {
 	QHBoxLayout *main_layout = new QHBoxLayout();
 	central_widget_->setLayout(main_layout);
 
+
+	QTabWidget* tab_widget = new QTabWidget();
+	
+	main_layout->addWidget(tab_widget);
+
+	camera_tab_ = new QWidget();
+	QHBoxLayout* camera_tab_layout = new QHBoxLayout();
+
+	camera_tab_->setLayout(camera_tab_layout);
+	tab_widget->addTab(camera_tab_, "Cameras");
+
+	add_reconstruction_tab(tab_widget);
 
 	left_panel_ = new QWidget(central_widget_);
 
@@ -54,7 +87,7 @@ void FilteredStructLight::setupUi() {
 	left_panel_->setLayout(vbox_layout);
 	left_panel_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
-	main_layout->addWidget(left_panel_);
+	camera_tab_layout->addWidget(left_panel_);
 
 
 	right_panel_ = new QWidget(central_widget_);
@@ -65,7 +98,7 @@ void FilteredStructLight::setupUi() {
 	right_panel_->setLayout(vbox_layout2);
 	right_panel_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
-	main_layout->addWidget(right_panel_);
+	camera_tab_layout->addWidget(right_panel_);
 	
 
 	// start cam thread
@@ -114,6 +147,8 @@ void FilteredStructLight::setupUi() {
 	start_calibration_video_ = new QPushButton("&Start Calibration", calibration_group_);
 	start_calibration_video_->setShortcut(QKeySequence("s"));
 	
+
+	connect(reconstructor_, &Reconstruct3D::finished_reconstruction, model_viewer_, &ModelViewer::update_model);
 
 	connect(recalibrate_button, &QPushButton::clicked, this, 
 		[&]()
@@ -171,7 +206,7 @@ void FilteredStructLight::setupUi() {
 		[&]()
 	{
 		reconstructor_->clear_camera_img_map();
-		connect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
+		connect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images_without_delay);
 	});
 
 	end_reconstruction_video_ = new QPushButton("End reconstruction", reconstruction_group_);
@@ -179,7 +214,7 @@ void FilteredStructLight::setupUi() {
 	connect(end_reconstruction_video_, &QPushButton::clicked, this, 
 		[&]()
 	{
-		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
+		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images_without_delay);
 		CameraPairs pairs;
 		create_camera_pairs(pairs);
 		reconstructor_->run_reconstruction(pairs);
@@ -202,9 +237,6 @@ void FilteredStructLight::setupUi() {
 
 	cam_thread_->start();
 	central_widget_->adjustSize();
-
-
-
 
 }
 
