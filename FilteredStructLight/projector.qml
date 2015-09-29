@@ -13,18 +13,18 @@ Rectangle {
 	//property int start_pos : Math.floor(Math.random() * background.width);
 	//property int end_pos : ((Math.random() - 0.5) > 0) ? 0 : background.width;
 	property int left_pt : parent.width / 3;
-	property int right_pt : parent.width * 2 / 3;
+	property int right_pt : parent.width * 1.8 / 3;
 	property int start_pos : left_pt;
 	property int end_pos : right_pt;
 	property bool left_to_right : true;
 		anchors.top : background.top
 		anchors.bottom : background.bottom
-	//	anchors.horizontalCenter : background.horizontalCenter
+		anchors.horizontalCenter : background.horizontalCenter
 		
 		width : 10
 		color : "white"
 
-		
+		/*
 		NumberAnimation on x {
 			id : stripe_animation
 			from : moving_stripe.start_pos
@@ -53,6 +53,7 @@ Rectangle {
 				}
 			}
 		}
+		*/
 		
 	}
 

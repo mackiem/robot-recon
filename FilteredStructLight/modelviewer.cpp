@@ -97,6 +97,16 @@ void ModelViewer::initializeGL()
 	// Cleanup state
 	glBindVertexArray(NULL);
 	glBindBuffer(GL_ARRAY_BUFFER, NULL);
+
+	WPts test_pts;
+	for (int x = -1; x <= 1; ++x) {
+		for (int y = -1; y <= 1; ++y) {
+			for (int z = -1; z <= 1; ++z) {
+				test_pts.push_back(cv::Vec3f(x, y, z));
+			}
+		}
+	}
+	update_model(test_pts);
 }
 
 bool ModelViewer::prepareShaderProgram(const QString& vertexShaderPath,
@@ -154,11 +164,12 @@ void ModelViewer::paintGL()
 
 	//std::cout << translate_x << " " << translate_y << std::endl;
 
-	glm::mat4 model = glm::rotate(glm::scale(glm::mat4(1.f), glm::vec3(0.1, 0.1, 0.1)), 0.1f * static_cast<float>(angle_++), glm::vec3(0.f, 1.f, 0.f));
+	glm::mat4 model = glm::rotate(glm::scale(glm::mat4(1.f), glm::vec3(0.1, 0.1, 0.1)), 0.1f * static_cast<float>(angle_++), glm::vec3(1.f, 1.f, 0.f));
 
 	glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
 
-	glm::mat4 projection = glm::perspective(zoom_, static_cast<float>(sizeHint().width())/static_cast<float>(sizeHint().height()), 0.1f, 1000.0f);
+	glm::mat4 projection = glm::perspective(zoom_, static_cast<float>(size().width())/static_cast<float>(size().height()), 0.1f, 1000.0f);
+	float ratio = static_cast<float>(size().width())/static_cast<float>(size().height());
 	GLint projection_location = m_shader.uniformLocation("projection");
 	glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
 

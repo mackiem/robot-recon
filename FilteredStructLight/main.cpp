@@ -21,7 +21,6 @@ int main(int argc, char *argv[])
 	view.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
 	view.showFullScreen();
 	view.setPosition(QPoint(2960, 0));
-	//view.show();
 
 	//QQuickView view_2;
 	//view_2.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));

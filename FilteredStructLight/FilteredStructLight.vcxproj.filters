@@ -92,6 +92,33 @@
     <ClCompile Include="GeneratedFiles\Release\moc_modelviewer.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="gaussfit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dpmpar.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="enorm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="expfit.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="fdjac2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lmdif.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="lmpar.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qrfac.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="qrsolv.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="filteredstructlight.h">
@@ -130,6 +157,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="fsl_common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="gaussfit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="f2c.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

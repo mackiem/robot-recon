@@ -66,9 +66,17 @@ public:
 
 	void create_rectification_map();
 
-	void compute_correlation_per_image(std::vector<UniqueEdges>& unique_colors_left,
+	void pick_correlated_points(std::vector<UniqueEdges>& unique_colors_left,
 		std::vector<UniqueEdges>& unique_colors_right,
 		std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts, CameraImgMap& camera_img_map, int left_cam, int right_cam);
+
+	void fit_gaussians(CameraImgMap& camera_img_map, int cam_no, std::unordered_map<int, std::pair<int, int>> mid_points);
+
+	void correpond_with_gaussians(CameraImgMap& camera_img_map, int left_cam_no, int right_cam_no,
+		std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2);
+
+	void compute_correlation_using_gaussian(std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2,
+		CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs);
 
 	void get_unique_edges(CameraImgMap& camera_img_map, int cam, std::vector<UniqueEdges> & unique_colors_per_image, bool is_right);
 	

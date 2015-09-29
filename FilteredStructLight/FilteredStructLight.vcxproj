@@ -78,7 +78,12 @@
   <ItemGroup>
     <ClCompile Include="cameradisplaywidget.cpp" />
     <ClCompile Include="camthread.cpp" />
+    <ClCompile Include="dpmpar.c" />
+    <ClCompile Include="enorm.c" />
+    <ClCompile Include="expfit.c" />
+    <ClCompile Include="fdjac2.c" />
     <ClCompile Include="filteredstructlight.cpp" />
+    <ClCompile Include="gaussfit.cpp" />
     <ClCompile Include="GeneratedFiles\Debug\moc_cameradisplaywidget.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
@@ -116,9 +121,13 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="gl_core_3_3.c" />
+    <ClCompile Include="lmdif.c" />
+    <ClCompile Include="lmpar.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="modelviewer.cpp" />
     <ClCompile Include="projectorwindow.cpp" />
+    <ClCompile Include="qrfac.c" />
+    <ClCompile Include="qrsolv.c" />
     <ClCompile Include="reconstruct.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -166,7 +175,9 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_GUI_LIB -DQT_QML_LIB -DQT_QUICK_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB "-I.\GeneratedFiles" "-I." "-I$(QTDIR)\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(QTDIR)\include\QtCore" "-I$(QTDIR)\include\QtGui" "-I$(QTDIR)\include\QtQml" "-I$(QTDIR)\include\QtQuick" "-I$(QTDIR)\include\QtOpenGL" "-I$(QTDIR)\include\QtWidgets"</Command>
     </CustomBuild>
+    <ClInclude Include="f2c.h" />
     <ClInclude Include="fsl_common.h" />
+    <ClInclude Include="gaussfit.h" />
     <ClInclude Include="GeneratedFiles\ui_filteredstructlight.h" />
     <ClInclude Include="gl_core_3_3.h" />
     <CustomBuild Include="modelviewer.h">

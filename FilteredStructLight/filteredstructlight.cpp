@@ -129,8 +129,8 @@ void FilteredStructLight::setupUi() {
 		pair_grid_layout->addWidget(camera_pair_[i], i / 2, i % 2);
 	}
 
-	camera_pair_[0]->setValue(2);
-	camera_pair_[1]->setValue(3);
+	camera_pair_[0]->setValue(0);
+	camera_pair_[1]->setValue(1);
 
 	camera_pairs_group_->setLayout(pair_grid_layout);
 	vbox_layout->addWidget(camera_pairs_group_);
