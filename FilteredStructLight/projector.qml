@@ -19,12 +19,12 @@ Rectangle {
 	property bool left_to_right : true;
 		anchors.top : background.top
 		anchors.bottom : background.bottom
-		anchors.horizontalCenter : background.horizontalCenter
+		//anchors.horizontalCenter : background.horizontalCenter
 		
 		width : 10
 		color : "white"
 
-		/*
+		
 		NumberAnimation on x {
 			id : stripe_animation
 			from : moving_stripe.start_pos
@@ -53,7 +53,7 @@ Rectangle {
 				}
 			}
 		}
-		*/
+		
 		
 	}
 

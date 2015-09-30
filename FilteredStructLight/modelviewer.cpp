@@ -164,7 +164,7 @@ void ModelViewer::paintGL()
 
 	//std::cout << translate_x << " " << translate_y << std::endl;
 
-	glm::mat4 model = glm::rotate(glm::scale(glm::mat4(1.f), glm::vec3(0.1, 0.1, 0.1)), 0.1f * static_cast<float>(angle_++), glm::vec3(1.f, 1.f, 0.f));
+	glm::mat4 model = glm::rotate(glm::scale(glm::mat4(1.f), glm::vec3(0.1, 0.1, 0.1)), 0.1f * static_cast<float>(angle_++), glm::vec3(0.f, 1.f, 0.f));
 
 	glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
 

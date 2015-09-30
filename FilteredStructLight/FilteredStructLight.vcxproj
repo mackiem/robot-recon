@@ -80,7 +80,6 @@
     <ClCompile Include="camthread.cpp" />
     <ClCompile Include="dpmpar.c" />
     <ClCompile Include="enorm.c" />
-    <ClCompile Include="expfit.c" />
     <ClCompile Include="fdjac2.c" />
     <ClCompile Include="filteredstructlight.cpp" />
     <ClCompile Include="gaussfit.cpp" />

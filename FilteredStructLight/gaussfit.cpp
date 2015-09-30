@@ -35,7 +35,8 @@ lmdifError_(int *m_ptr, int *n_ptr, double *params, double *error, int *)
 	for (int i = 0; i < nerrors; ++i) {
 		cv::Vec2i pt = non_zero_vals_g->at<cv::Vec2i>(i, 0);
 		int x = pt[0];
-		val[i] = (k * exp(-0.5 * pow((x - mean)/std_dev, 2.0))) + c;
+		double exponential = exp(-0.5 * pow((x - mean)/std_dev, 2.0));
+		val[i] = (k * exponential) + c;
 		error[i] = pow((val[i] - img_g->at<unsigned char>(current_row_g, x)), 2);
 	}
 
@@ -58,7 +59,7 @@ lmdifError_(int *m_ptr, int *n_ptr, double *params, double *error, int *)
 #define FACTOR                       100.0 
 
 
-int fit_gauss(cv::Mat& curr_img, int row, cv::Mat & non_zero_vals, int& mid_point)
+int fit_gauss(cv::Mat& curr_img, int row, cv::Mat & non_zero_vals, double estimate_mean, int& mid_point)
 {
     /* Parameters needed by MINPACK's lmdif() */
 	int     n = 3;
@@ -84,7 +85,7 @@ int fit_gauss(cv::Mat& curr_img, int row, cv::Mat & non_zero_vals, int& mid_poin
     double *wa2;
     double *wa3;
     double *wa4;
-	 double worldSize = 256;
+	 double worldSize = curr_img.cols;
 
 	//double mean = params[0];
 	//double std_dev = params[1];
@@ -94,8 +95,7 @@ int fit_gauss(cv::Mat& curr_img, int row, cv::Mat & non_zero_vals, int& mid_poin
 	 const int num = 3;
 	 double params[num];
 
-	 cv::Vec2i pt = non_zero_vals.at<cv::Vec2i>(0, 0);
-	 params[0] = pt[0];
+	 params[0] = estimate_mean;
 	 params[1] = 1.0;
 	 params[2] = 1.0;
 	 //params[3] = 0.0;

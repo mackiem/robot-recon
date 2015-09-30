@@ -305,13 +305,13 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		cameraMatrix[0], distCoeffs[0],
 		cameraMatrix[1], distCoeffs[1],
 		imageSize, R, T, E, F,
-		TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 100, 1e-5),
+		TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 555, 1e-5),
 		CV_CALIB_USE_INTRINSIC_GUESS +
 		//CV_CALIB_FIX_ASPECT_RATIO +
-		//CV_CALIB_ZERO_TANGENT_DIST +
+		CV_CALIB_ZERO_TANGENT_DIST +
 		//CV_CALIB_SAME_FOCAL_LENGTH +
 		CV_CALIB_RATIONAL_MODEL +
-		CV_CALIB_FIX_K5);
+		CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + CV_CALIB_FIX_K5);
 	cout << "done with RMS error=" << rms << endl;
 
 	// CALIBRATION QUALITY CHECK
@@ -777,17 +777,35 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 				&& (right_row_sum.at<int>(row, 0) >= threshold)) {
 
 					int left_mid_point;
-					cv::Mat left_points;
-					cv::findNonZero(left_img.row(row), left_points);
+					cv::Mat left_non_zero_points;
+					cv::findNonZero(left_img.row(row), left_non_zero_points);
 
-					fit_gauss(left_img, row, left_points, left_mid_point);
+					//cv::Mat left_mid_point_estimate_mat;
+					//cv::reduce(cv::Mat(left_non_zero_points), left_mid_point_estimate_mat, 0, CV_REDUCE_SUM, CV_32S);
+					//cv::Vec2i left_mid_point_estimate = left_mid_point_estimate_mat.at<cv::Vec2i>(0, 0);
+
+					cv::Vec2i left_avg;
+					for (auto i = 0u; i < left_non_zero_points.rows; ++i) {
+						left_avg += left_non_zero_points.at<cv::Vec2i>(i, 0);
+					}
+					left_avg /= left_non_zero_points.rows;
+
+					fit_gauss(left_img, row, left_non_zero_points, left_avg[0], left_mid_point);
 
 					int right_mid_point;
-					cv::Mat right_points;
-					cv::findNonZero(right_img.row(row), right_points);
+					cv::Mat right_non_zero_points;
+					cv::findNonZero(right_img.row(row), right_non_zero_points);
 
-					cv::Vec2i first_right_point = right_points.at<cv::Vec2i>(0, 0);
-					fit_gauss(right_img, row, right_points, right_mid_point);
+					//cv::Mat right_mid_point_estimate_mat;
+					//cv::reduce(cv::Mat(right_points), right_mid_point_estimate_mat, 0, CV_REDUCE_AVG, CV_32F);
+					//cv::Vec2i right_mid_point_estimate = right_mid_point_estimate_mat.at<cv::Vec2i>(0, 0);
+					cv::Vec2i right_avg;
+					for (auto i = 0u; i < right_non_zero_points.rows; ++i) {
+						right_avg += right_non_zero_points.at<cv::Vec2i>(i, 0);
+					}
+					right_avg /= right_non_zero_points.rows;
+
+					fit_gauss(right_img, row, right_non_zero_points, right_avg[0], right_mid_point);
 
 					img_pts1.push_back(cv::Point2f(left_mid_point, row));
 					img_pts2.push_back(cv::Point2f(right_mid_point, row));

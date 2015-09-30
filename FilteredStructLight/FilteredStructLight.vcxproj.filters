@@ -101,9 +101,6 @@
     <ClCompile Include="enorm.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="expfit.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="fdjac2.c">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -202,12 +202,16 @@ void GLWidget::set_no_of_cams(int no_of_cams) {
 void GLWidget::display_image(Image image, int cam_no) {
 
 	makeCurrent();
+	cv::Mat test(image.GetRows(), image.GetCols(), CV_8UC1, image.GetData(), image.GetStride());
+	cv::Mat test2;
+	//cv::cvtColor(test, colored, CV_BayerBG2BGR);
+	cv::cvtColor(test, test2, CV_BayerBG2GRAY);
 	// Set stride for unpacking pixels
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, image.GetStride());
 	// Replace current texture with new image
 	glBindTexture(GL_TEXTURE_2D, tex[cam_no]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, image.GetCols(), image.GetRows(), 0,
-		GL_RED, GL_UNSIGNED_BYTE, image.GetData());
+		GL_RED, GL_UNSIGNED_BYTE, test2.ptr());
 	FlyCapture2::PixelFormat format = image.GetPixelFormat();
 	glBindTexture(GL_TEXTURE_2D, NULL);
 
