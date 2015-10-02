@@ -59,13 +59,17 @@ private:
 	FILE* rawFile;
 
 	int createFiles(FILE** arhFile, unsigned int g_uiNumCameras);
-	 
+	void PrintBuildInfo();
+	void PrintCameraInfo(CameraInfo* pCamInfo);
+	void PrintError(Error error);
 	Camera** ppCameras;
 
+	int get_serial_no_from_cam_index(int index, unsigned* serial_no);
 
 
 public:
 	int get_no_of_cams();
+	std::vector<unsigned> get_serial_nos();
 	int init();
 	void run();
 	void cleanup();

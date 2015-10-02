@@ -47,6 +47,33 @@ void FilteredStructLight::add_reconstruction_tab(QTabWidget* tab_widget) {
 
 }
 
+void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids) {
+	camera_info_tab_ = new QWidget();
+	QVBoxLayout* camera_info_tab_layout = new QVBoxLayout();
+
+	camera_uuid_labels_ = new QLabel*[camera_uuids.size()];
+
+	camera_uuids_group_box_ = new QGroupBox("Camera Serial Nos", camera_info_tab_);
+
+	QHBoxLayout* camera_uuids_layout = new QHBoxLayout();
+
+	for (auto i = 0u; i < camera_uuids.size(); ++i) {
+		std::string label = "Camera Index " + std::to_string(i) + " : ";
+		label.append(std::to_string(camera_uuids[i]));
+
+		// init label and set text
+		camera_uuid_labels_[i] = new QLabel(camera_info_tab_);
+		camera_uuid_labels_[i]->setText(QString(label.c_str()));
+		camera_uuids_layout->addWidget(camera_uuid_labels_[i]);
+	}
+	camera_uuids_group_box_->setLayout(camera_uuids_layout);
+	camera_info_tab_layout->addWidget(camera_uuids_group_box_);
+	camera_info_tab_->setLayout(camera_info_tab_layout);
+
+	
+	tab_widget->addTab(camera_info_tab_, "Camera Info");
+}
+
 void FilteredStructLight::setupUi() {
 	central_widget_ = new QWidget(this);
 	setCentralWidget(central_widget_);
@@ -103,6 +130,10 @@ void FilteredStructLight::setupUi() {
 
 	// start cam thread
 	cam_thread_ = new CamThread(this);
+
+	auto serial_nos = cam_thread_->get_serial_nos();
+	add_camera_info_tab(tab_widget, serial_nos);
+
 
 	// Specify an OpenGL 3.3 format using the Core profile.
 	// That is, no old-school fixed pipeline functionality
@@ -174,7 +205,7 @@ void FilteredStructLight::setupUi() {
 		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
 		CameraPairs pairs;
 		create_camera_pairs(pairs);
-		reconstructor_->run_calibration(pairs);
+		reconstructor_->calibrate(pairs);
 	});
 
 	QVBoxLayout* calibration_group_layout = new QVBoxLayout(left_panel_);
@@ -190,13 +221,26 @@ void FilteredStructLight::setupUi() {
 	// reconstruction
 	reconstruction_group_ = new QGroupBox("reconstruction", left_panel_);
 	
+	// re reconstruction
+	re_reconstruction_button = new QPushButton("Re-reconstruct", reconstruction_group_);
+
+	connect(re_reconstruction_button, &QPushButton::clicked, this, 
+		[&]()
+	{
+		CameraPairs pairs;
+		create_camera_pairs(pairs);
+		reconstructor_->re_reconstruct(pairs);
+	});
+
 	load_camera_calibration_ = new QPushButton("Load calibration", reconstruction_group_);
 
 
 	connect(load_camera_calibration_, &QPushButton::clicked, this, 
 		[&]()
 	{
-		reconstructor_->load_calibration();
+		CameraPairs pairs;
+		create_camera_pairs(pairs);
+		reconstructor_->load_calibration(pairs[0].first, pairs[1].second);
 	});
 
 	start_reconstruction_video_ = new QPushButton("Start reconstruction", reconstruction_group_);
@@ -221,6 +265,7 @@ void FilteredStructLight::setupUi() {
 	});
 
 	QVBoxLayout* reconstruction_group_layout = new QVBoxLayout(left_panel_);
+	reconstruction_group_layout->addWidget(re_reconstruction_button);
 	reconstruction_group_layout->addWidget(load_camera_calibration_);
 	reconstruction_group_layout->addWidget(start_reconstruction_video_);
 	reconstruction_group_layout->addWidget(end_reconstruction_video_);

@@ -53,10 +53,15 @@ private:
 	QWidget* reconstruction_tab_;
 	ModelViewer* model_viewer_;
 	QWidget* camera_tab_;
+	QPushButton* re_reconstruction_button;
+	QWidget* camera_info_tab_;
+	QLabel** camera_uuid_labels_;
+	QGroupBox* camera_uuids_group_box_;
 	void shutdown_cam_thread();
 	void create_camera_pairs(CameraPairs& pairs);
 
 	void add_reconstruction_tab(QTabWidget* tab_widget);
+	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
 };
 
 #endif // FILTEREDSTRUCTLIGHT_H

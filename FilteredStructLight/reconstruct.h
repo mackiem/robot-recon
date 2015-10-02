@@ -23,12 +23,16 @@ typedef std::unordered_map<int, std::vector<int>> UniqueEdges;
 
 class Reconstruct3D : public QObject
 {
-	Q_OBJECT;
+	Q_OBJECT
+
 
 private:
 	int no_of_cams_;
 	bool calibration_loaded_;
 	bool started_capture_;
+	static std::string recon_dirname_;
+	static std::string calib_dirname_;
+	static std::string camera_subdir_prefix_;
 
 	struct ImageSet {
 		int cam_no;
@@ -49,7 +53,7 @@ private:
 public:
 	void clear_camera_img_map();
 
-	void run_calibration(std::vector<std::pair<int, int>> camera_pairs);
+	void calibrate(std::vector<std::pair<int, int>> camera_pairs);
 
 	void run_reconstruction(std::vector<std::pair<int, int>> camera_pairs);
 
@@ -62,7 +66,7 @@ public:
 	void alter_img_for_projection(const cv::Mat& img, cv::Mat& remapped_img, bool is_right) const;
 	void fill_row(const cv::Mat& P, double coord, cv::Mat& fill_matrix, cv::Mat& B, bool is_y) const;
 
-		void load_calibration();
+		void load_calibration(int left_cam, int right_cam);
 
 	void create_rectification_map();
 
@@ -95,10 +99,13 @@ public:
 	
 	
 	void resize_img(cv::Mat& img, const unsigned int resize_width) const;
-
+	std::string generate_intrinsics_filename(int left_num, int right_num);
+	std::string generate_extrinsics_filename(int left_num, int right_num);
 	void recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2, std::vector<cv::Vec3f>& world_pts);
 
+	void project_points_on_to_img(WPts& world_pts, cv::Mat& left_img, cv::Mat& right_img);
 	//void gen_texture(GLuint& texture_id, cv::Mat& remapped_img_for_texture) const;
+	void re_reconstruct(CameraPairs& camera_pairs);
 
 
 	Reconstruct3D(int no_of_cams, QObject* parent);

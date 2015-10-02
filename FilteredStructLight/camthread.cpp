@@ -16,6 +16,19 @@ CamThread::~CamThread()
 	//cleanup();
 }
 
+int CamThread::get_serial_no_from_cam_index(int index, unsigned* serial_no) {
+	if (index > no_of_cams_ - 1) {
+		std::cout << "invalid cam index: " << index << " . Only " << no_of_cams_ << " present." << std::endl;
+	}
+	Error error = busMgr.GetCameraSerialNumberFromIndex(index, serial_no);
+	if (error != PGRERROR_OK)
+	{
+		PrintError(error);
+		return -1;
+	}
+	return 1;
+}
+
 void CamThread::cleanup() {
 	for (unsigned int uiCamera = 0; uiCamera < no_of_cams_; uiCamera++)
 	{
@@ -52,7 +65,7 @@ int CamThread::createFiles(FILE** arhFile, unsigned int g_uiNumCameras)
 }
 
 
-void PrintBuildInfo()
+void CamThread::PrintBuildInfo()
 {
 	FC2Version fc2Version;
 	Utilities::GetLibraryVersion(&fc2Version);
@@ -64,7 +77,7 @@ void PrintBuildInfo()
 	std::cout << "Application build date: " << __DATE__ << ", " << __TIME__ << endl << endl;
 }
 
-void PrintCameraInfo(CameraInfo* pCamInfo)
+void CamThread::PrintCameraInfo(CameraInfo* pCamInfo)
 {
 	std::cout << "\n*** CAMERA INFORMATION ***\n"
 		<< "Serial number - " << pCamInfo->serialNumber << endl
@@ -76,13 +89,22 @@ void PrintCameraInfo(CameraInfo* pCamInfo)
 		<< "Firmware build time - " << pCamInfo->firmwareBuildTime << endl << endl;
 }
 
-void PrintError(Error error)
+void CamThread::PrintError(Error error)
 {
 	error.PrintErrorTrace();
 }
 
 int CamThread::get_no_of_cams() {
 	return no_of_cams_;
+}
+
+std::vector<unsigned> CamThread::get_serial_nos() {
+	std::vector<unsigned> serial_nos;
+	serial_nos.resize(no_of_cams_);
+	for (auto i = 0u; i < no_of_cams_; ++i) {
+		get_serial_no_from_cam_index(i, &serial_nos[i]);
+	}
+	return serial_nos;
 }
 
 int CamThread::init()
@@ -169,21 +191,21 @@ int CamThread::init()
 		}
 
 		// Setup image format
-		//Format7ImageSettings fmt7settings;
-		//fmt7settings.mode = MODE_1;
-		///*fmt7settings.offsetX = 156;
-		//fmt7settings.offsetY = 92;
-		//fmt7settings.width = 200;
-		//fmt7settings.height = 200;*/
-		//fmt7settings.offsetX = 66;
-		//fmt7settings.offsetY = 2;
-		//fmt7settings.width = 380;
-		//fmt7settings.height = 380;
-		////fmt7settings.pixelFormat = PIXEL_FORMAT_RAW8;
-		//
-		//fmt7settings.pixelFormat = PIXEL_FORMAT_MONO8;
+		Format7ImageSettings fmt7settings;
+		fmt7settings.mode = MODE_1;
+		/*fmt7settings.offsetX = 156;
+		fmt7settings.offsetY = 92;
+		fmt7settings.width = 200;
+		fmt7settings.height = 200;*/
+		fmt7settings.offsetX = 66;
+		fmt7settings.offsetY = 2;
+		fmt7settings.width = 380;
+		fmt7settings.height = 380;
+		//fmt7settings.pixelFormat = PIXEL_FORMAT_RAW8;
+		
+		fmt7settings.pixelFormat = PIXEL_FORMAT_MONO8;
 
-		error = ppCameras[uiCamera]->SetVideoModeAndFrameRate( VIDEOMODE_1024x768Y8, FRAMERATE_15);
+		//error = ppCameras[uiCamera]->SetVideoModeAndFrameRate( VIDEOMODE_1024x768Y8, FRAMERATE_15);
 
 
 		//Format7ImageSettings fmt7settings;
@@ -199,24 +221,24 @@ int CamThread::init()
 		//fmt7settings.pixelFormat = PIXEL_FORMAT_RAW8;
 
 		//// Validate format
-		//bool fmt7valid;
-		//Format7PacketInfo fmt7packetInfo;
-		//error = ppCameras[uiCamera]->ValidateFormat7Settings(&fmt7settings, &fmt7valid, &fmt7packetInfo);
+		bool fmt7valid;
+		Format7PacketInfo fmt7packetInfo;
+		error = ppCameras[uiCamera]->ValidateFormat7Settings(&fmt7settings, &fmt7valid, &fmt7packetInfo);
 		if (error != PGRERROR_OK)  
 		{
 			PrintError(error);
 			return -1;
 		}
-		//if (!fmt7valid) {
-		//	PrintError(error);
-		//	return -1;
-		//}
-		//// Apply image format
-		//error = ppCameras[uiCamera]->SetFormat7Configuration(&fmt7settings, fmt7packetInfo.maxBytesPerPacket);
-		//if (error != PGRERROR_OK) {
-		//	PrintError(error);
-		//	return -1;
-		//}
+		if (!fmt7valid) {
+			PrintError(error);
+			return -1;
+		}
+		// Apply image format
+		error = ppCameras[uiCamera]->SetFormat7Configuration(&fmt7settings, fmt7packetInfo.maxBytesPerPacket);
+		if (error != PGRERROR_OK) {
+			PrintError(error);
+			return -1;
+		}
 
 		// Set video mode and frame rate here!!!
 		/*error = ppCameras[uiCamera]->SetVideoModeAndFrameRate(VIDEOMODE_1024x768Y8, FRAMERATE_1_875);

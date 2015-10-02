@@ -205,6 +205,11 @@ void ModelViewer::change_world_pts(WPts& world_pts) {
 void ModelViewer::update_model(WPts world_pts) {
 	makeCurrent();
 
+	if (world_pts.size() < 1) {
+		std::cout << "No points to display" << std::endl;
+		return;
+	}
+
 	WPts color_pts;
 	cv::Vec3f white(1.f, 1.f, 1.f);
 	for (auto i = 0u; i < world_pts.size(); ++i) {

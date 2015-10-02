@@ -159,10 +159,10 @@ int fit_gauss(cv::Mat& curr_img, int row, cv::Mat & non_zero_vals, double estima
     double totalerror = 0;
     for (int i=0; i<m; i++)
        totalerror += fvec[i];
-    printf("\tnum function calls = %i\n", nfev);
-    printf("\tremaining total error value = %f\n", totalerror);
-    printf("\tor %1.2f per point\n", std::sqrt(totalerror) / m);
-    printf("...ended optimization step.\n");
+    //printf("\tnum function calls = %i\n", nfev);
+    //printf("\tremaining total error value = %f\n", totalerror);
+    //printf("\tor %1.2f per point\n", std::sqrt(totalerror) / m);
+    //printf("...ended optimization step.\n");
 
     /* copy result back to parameters array */
 	//std::cout << "final val. :";
