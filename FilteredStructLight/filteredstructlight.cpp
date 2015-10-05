@@ -27,7 +27,7 @@ void FilteredStructLight::create_camera_pairs(CameraPairs& pairs)
 	}
 }
 
-void FilteredStructLight::add_reconstruction_tab(QTabWidget* tab_widget) {
+void FilteredStructLight::add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget) {
 	reconstruction_tab_ = new QWidget();
 	QHBoxLayout* reconstruction_layout_ = new QHBoxLayout();
 	// Specify an OpenGL 3.3 format using the Core profile.
@@ -36,7 +36,50 @@ void FilteredStructLight::add_reconstruction_tab(QTabWidget* tab_widget) {
 	glFormat.setVersion(3, 3);
 	glFormat.setProfile(QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
 	glFormat.setSampleBuffers(true);
-	glFormat.setSwapInterval(1);
+	//glFormat.setSwapInterval(1);
+
+	QWidget* reconstruct_left_panel_ = new QWidget(reconstruction_tab_);
+	QVBoxLayout* reconstruct_left_panel_layout = new QVBoxLayout();
+
+	// camera pairs
+	QGroupBox* camera_pairs_group_box = new QGroupBox("Camera Pair",reconstruction_tab_);
+	QVBoxLayout* camera_pairs_box_layout = new QVBoxLayout();
+	std::string camera_pair_prefix_string = "Camera Pair ";
+	for (auto& camera_pair : camera_pairs) {
+		std::string camera_pair_string = camera_pair_prefix_string + std::to_string(camera_pair.first) +
+			std::string(" ") + std::to_string(camera_pair.second);
+		QString camera_pair_qstring(camera_pair_string.c_str());
+		QRadioButton* radio_button = new QRadioButton(camera_pair_qstring, camera_pairs_group_box);	
+		camera_pairs_box_layout->addWidget(radio_button);
+	}
+	camera_pairs_group_box->setLayout(camera_pairs_box_layout);
+
+
+	// draw triangles or points
+	QGroupBox* draw_method_group_box = new QGroupBox("Draw Method", reconstruction_tab_);
+	QVBoxLayout* draw_method_box_layout = new QVBoxLayout();
+	QRadioButton* draw_points_radio_button = new QRadioButton("Points", draw_method_group_box);	
+	draw_method_box_layout->addWidget(draw_points_radio_button);
+	QRadioButton* draw_triangles_radio_button = new QRadioButton("Triangles", draw_method_group_box);	
+	draw_method_box_layout->addWidget(draw_triangles_radio_button);
+	draw_method_group_box->setLayout(draw_method_box_layout);
+
+	// use texture or solid colors
+	QGroupBox* color_method_group_box = new QGroupBox("Color Method", reconstruction_tab_);
+	QVBoxLayout* color_method_box_layout = new QVBoxLayout();
+	QRadioButton* color_texture_radio_button = new QRadioButton("Texture", color_method_group_box);	
+	color_method_box_layout->addWidget(color_texture_radio_button);
+	QRadioButton* color_solid_color_radio_button = new QRadioButton("Solid Color", color_method_group_box);	
+	color_method_box_layout->addWidget(color_solid_color_radio_button);
+	color_method_group_box->setLayout(color_method_box_layout);
+
+	reconstruct_left_panel_layout->addWidget(camera_pairs_group_box);
+	reconstruct_left_panel_layout->addWidget(draw_method_group_box);
+	reconstruct_left_panel_layout->addWidget(color_method_group_box);
+
+	reconstruct_left_panel_->setLayout(reconstruct_left_panel_layout);
+
+	reconstruction_layout_->addWidget(reconstruct_left_panel_);
 
 	model_viewer_ = new ModelViewer(glFormat, reconstruction_tab_);
 	reconstruction_layout_->addWidget(model_viewer_);
@@ -45,6 +88,10 @@ void FilteredStructLight::add_reconstruction_tab(QTabWidget* tab_widget) {
 
 	tab_widget->addTab(reconstruction_tab_, "Reconstruction");
 
+	connect(draw_points_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_points);
+	connect(draw_triangles_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_triangles);
+	connect(color_texture_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_texture);
+	connect(color_solid_color_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_colors);
 }
 
 void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids) {
@@ -90,9 +137,7 @@ void FilteredStructLight::setupUi() {
 	QHBoxLayout* camera_tab_layout = new QHBoxLayout();
 
 	camera_tab_->setLayout(camera_tab_layout);
-	tab_widget->addTab(camera_tab_, "Cameras");
 
-	add_reconstruction_tab(tab_widget);
 
 	left_panel_ = new QWidget(central_widget_);
 
@@ -132,7 +177,6 @@ void FilteredStructLight::setupUi() {
 	cam_thread_ = new CamThread(this);
 
 	auto serial_nos = cam_thread_->get_serial_nos();
-	add_camera_info_tab(tab_widget, serial_nos);
 
 
 	// Specify an OpenGL 3.3 format using the Core profile.
@@ -160,8 +204,9 @@ void FilteredStructLight::setupUi() {
 		pair_grid_layout->addWidget(camera_pair_[i], i / 2, i % 2);
 	}
 
-	camera_pair_[0]->setValue(0);
-	camera_pair_[1]->setValue(1);
+	camera_pair_[0]->setValue(2);
+	camera_pair_[1]->setValue(3);
+
 
 	camera_pairs_group_->setLayout(pair_grid_layout);
 	vbox_layout->addWidget(camera_pairs_group_);
@@ -179,7 +224,12 @@ void FilteredStructLight::setupUi() {
 	start_calibration_video_->setShortcut(QKeySequence("s"));
 	
 
-	connect(reconstructor_, &Reconstruct3D::finished_reconstruction, model_viewer_, &ModelViewer::update_model);
+	CameraPairs pairs;
+	create_camera_pairs(pairs);
+	tab_widget->addTab(camera_tab_, "Cameras");
+	add_reconstruction_tab(pairs, tab_widget);
+	add_camera_info_tab(tab_widget, serial_nos);
+	connect(reconstructor_, &Reconstruct3D::finished_reconstruction_with_triangles, model_viewer_, &ModelViewer::update_model_with_triangles);
 
 	connect(recalibrate_button, &QPushButton::clicked, this, 
 		[&]()
@@ -223,6 +273,8 @@ void FilteredStructLight::setupUi() {
 	
 	// re reconstruction
 	re_reconstruction_button = new QPushButton("Re-reconstruct", reconstruction_group_);
+
+
 
 	connect(re_reconstruction_button, &QPushButton::clicked, this, 
 		[&]()

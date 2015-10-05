@@ -87,6 +87,7 @@ public:
 	void compute_correlation(std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2,
 		CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs);
 
+	void pre_proces_img(cv::Mat& img, cv::Mat& rImg, bool is_right);
 	void init_imgs(CameraImgMap& camera_img_map, int cam, bool is_right);
 	
 
@@ -104,7 +105,7 @@ public:
 	void recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2, std::vector<cv::Vec3f>& world_pts);
 
 	void project_points_on_to_img(WPts& world_pts, cv::Mat& left_img, cv::Mat& right_img);
-	//void gen_texture(GLuint& texture_id, cv::Mat& remapped_img_for_texture) const;
+	//void gen_texture(GLuint& texture_id_, cv::Mat& remapped_img_for_texture) const;
 	void re_reconstruct(CameraPairs& camera_pairs);
 
 
@@ -118,5 +119,6 @@ public slots:
 
 signals:
 	void finished_reconstruction(WPts world_pts);
+	void finished_reconstruction_with_triangles(WPts triangles, IPts texture_coords, cv::Mat texture_img);
 };
 

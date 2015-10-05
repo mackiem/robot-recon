@@ -240,6 +240,8 @@ void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_p
 	IPts img_pts1;
 	IPts img_pts2;
 	WPts world_pts;
+	WPts triangles;
+	IPts texture_coordinates;
 
 	//compute_correlation(img_pts1, img_pts2, camera_img_map_, camera_pairs);
 	compute_correlation_using_gaussian(img_pts1, img_pts2, camera_img_map_, camera_pairs);
@@ -248,6 +250,10 @@ void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_p
 
 	project_points_on_to_img(world_pts, left_img, right_img);
 
+	triangulate_pts(world_pts, triangles, texture_coordinates, left_img);
+
+	emit finished_reconstruction_with_triangles(triangles, texture_coordinates, left_img);
+				
 	} catch (std::exception &e)
 	{
 		std::cout << e.what() << std::endl;
@@ -662,6 +668,12 @@ void convert_2_left_camera_color(const cv::Mat& img, const cv::Mat& inter_camera
 }
 
 
+void Reconstruct3D::pre_proces_img(cv::Mat& input, cv::Mat& output, bool is_right) {
+	cv::Mat thresholded;
+	cv::threshold(input, thresholded, 30, 255, CV_THRESH_TOZERO);
+	remap(thresholded, output, rmap[is_right][0], rmap[is_right][1], CV_INTER_LINEAR);
+}
+
 void Reconstruct3D::init_imgs(CameraImgMap& camera_img_map, int cam, bool is_right) {
 
 	assert(cam < no_of_cams_);
@@ -672,10 +684,8 @@ void Reconstruct3D::init_imgs(CameraImgMap& camera_img_map, int cam, bool is_rig
 	std::string img_name = "remap_" + std::to_string(cam) + ".png";
 	for (int i = 0; i < camera_imgs.size(); i++) {
 		cv::Mat& img = camera_imgs[i];
-		cv::Mat thresholded;
-		cv::threshold(img, thresholded, 30, 255, CV_THRESH_TOZERO);
 		cv::Mat rImg;
-		remap(thresholded, rImg, rmap[is_right][0], rmap[is_right][1], CV_INTER_LINEAR);
+		pre_proces_img(img, rImg, is_right);
 		camera_imgs[i] = rImg;
 
 		imwrite(img_name, rImg);
@@ -1019,8 +1029,12 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 
 					fit_gauss(right_img, row, right_non_zero_points, right_avg[0], right_mid_point);
 
-					img_pts1.push_back(cv::Point2f(left_mid_point, row));
-					img_pts2.push_back(cv::Point2f(right_mid_point, row));
+
+					Rect rect(50, 50, 270, 270);
+					if (rect.contains(Point2i(left_mid_point, row))) {
+						img_pts1.push_back(cv::Point2f(left_mid_point, row));
+						img_pts2.push_back(cv::Point2f(right_mid_point, row));
+					}
 					//img_pts1.push_back(cv::Point2f(row, left_mid_point));
 					//img_pts2.push_back(cv::Point2f(row, right_mid_point));
 					//img_pts1.push_back(cv::Point2f(left_img.cols - left_mid_point, left_img.rows-row));
@@ -1073,6 +1087,11 @@ void Reconstruct3D::triangulate_pts(const WPts& world_pnts, WPts& triangles,
 	auto cmpy = [&] (const cv::Point2f& left, const cv::Point2f& right) -> bool {
 		return (left.y < right.y);
 	};
+
+	if (world_pnts.size() == 0) {
+		std::cout << "No points to triangulate" << std::endl;
+		return;
+	}
 
 	// construct rect
 	float maxX = (*std::max_element(projected_pts.begin(), projected_pts.end(), cmpx)).x;
@@ -1242,7 +1261,7 @@ void Reconstruct3D::recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std
 		world_pts.push_back(cv::Vec3f(XYZ.at<double>(0, 0), XYZ.at<double>(1, 0), XYZ.at<double>(2, 0)));
 	}
 
-	emit finished_reconstruction(world_pts);
+	//emit finished_reconstruction_with_triangles(world_pts);
 }
 
 void Reconstruct3D::project_points_on_to_img(WPts& world_pts, cv::Mat& left_img, cv::Mat& right_img) {
@@ -1336,17 +1355,48 @@ void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs) {
 		}
 	}
 
+		//int min = 5;
+		int min = INT_MAX;
+		for (auto i = 0u; i < camera_img_map_.size();++i)
+		{
+			min = std::min(static_cast<int>(camera_img_map_[i].size()), min);
+		}
+
+		for (auto i = 0u; i < camera_img_map_.size();++i)
+		{
+			camera_img_map_[i].resize(min);
+		}
+
+
 	load_calibration(camera_pairs[0].first, camera_pairs[0].second);
 	create_rectification_map();
 
 	IPts img_pts1;
 	IPts img_pts2;
 	WPts world_pts;
+	WPts triangles;
+	IPts texture_coordinates;
 
 	compute_correlation_using_gaussian(img_pts1, img_pts2, camera_img_map_, camera_pairs);
 
 	recon_obj(img_pts1, img_pts2, world_pts);
-	project_points_on_to_img(world_pts, camera_img_map_[camera_pairs[0].first][0],  camera_img_map_[camera_pairs[0].second][0]);
+	cv::Mat left_img = camera_img_map_[camera_pairs[0].first][0];
+	project_points_on_to_img(world_pts, left_img,  camera_img_map_[camera_pairs[0].second][0]);
+
+	triangulate_pts(world_pts, triangles, texture_coordinates, left_img);
+
+	cv::Mat texture_img = cv::imread("left_texture.png", 0);
+	if (!texture_img.data) {
+		texture_img = left_img;
+	} else {
+		// remap it
+		pre_proces_img(texture_img, texture_img, false);
+	}
+	
+	
+
+	//emit finished_reconstruction_with_triangles(world_pts, texture_coordinates, left_img);
+	emit finished_reconstruction_with_triangles(triangles, texture_coordinates, texture_img);
 	
 	} catch (std::exception &e)
 	{

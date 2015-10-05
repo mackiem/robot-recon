@@ -60,7 +60,7 @@ private:
 	void shutdown_cam_thread();
 	void create_camera_pairs(CameraPairs& pairs);
 
-	void add_reconstruction_tab(QTabWidget* tab_widget);
+	void add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget);
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
 };
 
