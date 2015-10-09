@@ -18,6 +18,9 @@ protected:
 	virtual void resizeGL(int w, int h);
 	virtual void wheelEvent(QWheelEvent *event);
 	void mouseMoveEvent(QMouseEvent* event);
+	void mouseReleaseEvent(QMouseEvent* event);
+	void keyPressEvent(QKeyEvent *event);
+
 
 private:
 	bool prepareShaderProgram(const QString& vertexShaderPath,
@@ -37,12 +40,20 @@ private:
 	bool is_draw_triangles_;
 	GLint active_texture_;
 	bool is_texture_on_;
+	float camera_distance_;
+	bool mouse_down_;
+	float look_at_x_;
+	float look_at_y_;
+	GLuint vao_pts_;
+	GLuint vbo_pts_[3];
+	GLint no_of_triangles_;
 	void gen_texture(GLuint& texture_id, cv::Mat& remapped_img_for_texture);
 
 	float m_xRot;
 	float m_yRot;
 	float m_zRot;
 	QPoint m_lastPos;
+
 	void setXRotation(float angle);
 	void setYRotation(float angle);
 	void setZRotation(float angle);
@@ -56,11 +67,12 @@ public:
 
 	public slots:
 	void update_model(WPts world_pts);
-	void update_model_with_triangles(WPts triangles, IPts texture_coords, cv::Mat texture_img);
+	void update_model_with_triangles(WPts world_pts, WPts world_pt_colors, WPts triangles, IPts texture_coords, cv::Mat texture_img);
 	void draw_triangles();
 	void draw_points();
 	void draw_colors();
 	void draw_texture();
+	void reset_view();
 	//void set_camera_pair();
 };
 

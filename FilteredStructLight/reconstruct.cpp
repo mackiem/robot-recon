@@ -21,6 +21,7 @@ Reconstruct3D::Reconstruct3D(int no_of_cams, QObject* parent)
 	: no_of_cams_(no_of_cams), QObject(parent), started_capture_(false)
 {
 	last_updated_ = Clock::now();
+	board_size_ = cv::Size(12, 12);
 }
 
 
@@ -113,7 +114,7 @@ void Reconstruct3D::calibrate(std::vector<std::pair<int, int>> camera_pairs)
 	// now calibrate each pair
 	for (auto& camera_pair : camera_pairs)
 	{
-		stereo_calibrate(camera_img_map_, camera_pair.first, camera_pair.second, cv::Size(9, 6), true); 
+		stereo_calibrate(camera_img_map_, camera_pair.first, camera_pair.second, board_size_, true); 
 	}
 	
 	//// test for now
@@ -182,7 +183,7 @@ void Reconstruct3D::recalibrate(std::vector<std::pair<int, int>> camera_pairs)
 	// now calibrate each pair
 	for (auto& camera_pair : camera_pairs)
 	{
-		stereo_calibrate(camera_img_map_, camera_pair.first, camera_pair.second, cv::Size(9, 6), true); 
+		stereo_calibrate(camera_img_map_, camera_pair.first, camera_pair.second, board_size_, true); 
 	}
 
 }
@@ -218,46 +219,8 @@ void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_p
 		}
 	}
 
-	try {
-		int min = 1;
-		//int min = INT_MAX;
-		for (auto i = 0u; i < camera_img_map_.size();++i)
-		{
-			min = std::min(static_cast<int>(camera_img_map_[i].size()), min);
-		}
+	reconstruct(camera_pairs);
 
-		for (auto i = 0u; i < camera_img_map_.size();++i)
-		{
-			camera_img_map_[i].resize(min);
-		}
-
-	cv::Mat& left_img =	camera_img_map_[camera_pairs[0].first][0];
-	cv::Mat& right_img =	camera_img_map_[camera_pairs[0].second][0];
-
-	load_calibration(camera_pairs[0].first, camera_pairs[0].second);
-	create_rectification_map();
-
-	IPts img_pts1;
-	IPts img_pts2;
-	WPts world_pts;
-	WPts triangles;
-	IPts texture_coordinates;
-
-	//compute_correlation(img_pts1, img_pts2, camera_img_map_, camera_pairs);
-	compute_correlation_using_gaussian(img_pts1, img_pts2, camera_img_map_, camera_pairs);
-
-	recon_obj(img_pts1, img_pts2, world_pts);
-
-	project_points_on_to_img(world_pts, left_img, right_img);
-
-	triangulate_pts(world_pts, triangles, texture_coordinates, left_img);
-
-	emit finished_reconstruction_with_triangles(triangles, texture_coordinates, left_img);
-				
-	} catch (std::exception &e)
-	{
-		std::cout << e.what() << std::endl;
-	}
 }
 
 
@@ -277,9 +240,9 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 
 	
 	bool displayCorners = true;//true;
-	const int maxScale = 1;
-	//const float squareSize = 38.1f;  // Set this to your actual square size
-	const float squareSize = 29.1f;  // Set this to your actual square size
+	const int maxScale = 2;
+	const float squareSize = 38.1f;  // Set this to your actual square size
+	//const float squareSize = 29.1f;  // Set this to your actual square size
 	
 	// ARRAY AND VECTOR STORAGE:
 	vector<vector<Point2f> > imagePoints[2];
@@ -321,7 +284,7 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 					resize(img, timg, Size(), scale, scale);
 				found = findChessboardCorners(timg, boardSize, corners,
 					CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE
-					| CV_CALIB_CB_FILTER_QUADS);
+					);
 				if (found)
 				{
 					if (scale > 1)
@@ -422,12 +385,12 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 555, 1e-5),
 		CV_CALIB_USE_INTRINSIC_GUESS +
 		//CV_CALIB_FIX_ASPECT_RATIO +
-		//CV_CALIB_ZERO_TANGENT_DIST +
+		CV_CALIB_ZERO_TANGENT_DIST +
 		//CV_CALIB_SAME_FOCAL_LENGTH +
 		CV_CALIB_RATIONAL_MODEL +
-		//CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + 
+		CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + 
 		CV_CALIB_FIX_K5);
-	cout << "done with RMS error=" << rms << endl;
+	std::cout << "done with RMS error=" << rms << " px" << std::endl;
 
 	// CALIBRATION QUALITY CHECK
 	// because the output fundamental matrix implicitly
@@ -457,7 +420,7 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		}
 		npoints += npt;
 	}
-	cout << "average reprojection err = " << err / npoints << endl;
+	std::cout << "average reprojection err = " << err / npoints << " px" << std::endl;
 
 	// save intrinsic parameters
 	FileStorage fs(generate_intrinsics_filename(left_cam, right_cam), CV_STORAGE_WRITE);
@@ -483,6 +446,9 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		cout << "Error: can not save the intrinsic parameters\n";
 	}
 
+
+	create_rectification_map();
+	
 	    // OpenCV can handle left-right
     // or up-down camera arrangements
     bool isVerticalStereo = fabs(P2.at<double>(1, 3)) > fabs(P2.at<double>(0, 3));
@@ -563,16 +529,14 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
         else
             for( j = 0; j < canvas.cols; j += 16 )
                 line(canvas, Point(j, 0), Point(j, canvas.rows), Scalar(0, 255, 0), 1, 8);
-        imshow("rectified", canvas);
+        imshow("rectified" + std::to_string(left_cam) + std::string("_") + std::to_string(right_cam), canvas);
+		
         char c = (char)waitKey();
         if( c == 27 || c == 'q' || c == 'Q' )
             break;
 	}
 }
 
-void Reconstruct3D::reconstruct()
-{
-}
 
 
 void Reconstruct3D::resize_img(cv::Mat& img, const unsigned int resize_width) const {
@@ -646,8 +610,8 @@ void Reconstruct3D::create_rectification_map() {
     stereoRectify(cameraMatrix[0], distCoeffs[0],
         cameraMatrix[1], distCoeffs[1],
         imageSize, R, T, R1, R2, P1, P2, Q,
-        //CALIB_ZERO_DISPARITY, 1, imageSize, &validRoi[0], &validRoi[1]);
-        0, 1, imageSize, &validRoi[0], &validRoi[1]);
+        CALIB_ZERO_DISPARITY, 1, imageSize, &validRoi[0], &validRoi[1]);
+        //0, 1, imageSize, &validRoi[0], &validRoi[1]);
     
     initUndistortRectifyMap(cameraMatrix[0], distCoeffs[0], R1, P1, imageSize, CV_16SC2, rmap[0][0], rmap[0][1]);
     initUndistortRectifyMap(cameraMatrix[1], distCoeffs[1], R2, P2, imageSize, CV_16SC2, rmap[1][0], rmap[1][1]);
@@ -670,7 +634,7 @@ void convert_2_left_camera_color(const cv::Mat& img, const cv::Mat& inter_camera
 
 void Reconstruct3D::pre_proces_img(cv::Mat& input, cv::Mat& output, bool is_right) {
 	cv::Mat thresholded;
-	cv::threshold(input, thresholded, 30, 255, CV_THRESH_TOZERO);
+	cv::threshold(input, thresholded, 50, 255, CV_THRESH_TOZERO);
 	remap(thresholded, output, rmap[is_right][0], rmap[is_right][1], CV_INTER_LINEAR);
 }
 
@@ -1030,7 +994,8 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 					fit_gauss(right_img, row, right_non_zero_points, right_avg[0], right_mid_point);
 
 
-					Rect rect(50, 50, 270, 270);
+					//Rect rect(50, 50, 270, 270);
+					Rect rect(validRoi[0]);
 					if (rect.contains(Point2i(left_mid_point, row))) {
 						img_pts1.push_back(cv::Point2f(left_mid_point, row));
 						img_pts2.push_back(cv::Point2f(right_mid_point, row));
@@ -1264,7 +1229,7 @@ void Reconstruct3D::recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std
 	//emit finished_reconstruction_with_triangles(world_pts);
 }
 
-void Reconstruct3D::project_points_on_to_img(WPts& world_pts, cv::Mat& left_img, cv::Mat& right_img) {
+void Reconstruct3D::project_points_on_to_img(WPts& world_pts, WPts& world_point_colors, cv::Mat& left_img, cv::Mat& right_img) {
 	cv::Mat proj1 = P1;
 	cv::Mat proj2 = P2;
 
@@ -1287,10 +1252,16 @@ void Reconstruct3D::project_points_on_to_img(WPts& world_pts, cv::Mat& left_img,
 
 		cv::Point2f left_projected_point(left_projected_matrix.at<double>(0, 0) / z, left_projected_matrix.at<double>(1, 0) / z);
 
+		cv::Vec3f world_pt_color(0, 0, 0);
 		if ((left_projected_point.x >= 0 && left_projected_point.x < left_projected_img.cols)
 			&& ((left_projected_point.y >= 0 && left_projected_point.y < left_projected_img.rows))) {
 				left_projected_img.at<cv::Vec3b>(left_projected_point.y, left_projected_point.x) = cv::Vec3b(0, 255, 0);
-		}
+				unsigned char red = left_img.at<unsigned char>(left_projected_point.y, left_projected_point.x);
+				float grayscale_float = red/255.f;
+
+				world_pt_color = cv::Vec3f(grayscale_float, grayscale_float, grayscale_float);
+		} 
+		world_point_colors.push_back(world_pt_color);
 
 		cv::Mat right_projected_matrix = P2 * world_pnt;
 		z = right_projected_matrix.at<double>(2, 0);
@@ -1310,8 +1281,59 @@ void Reconstruct3D::project_points_on_to_img(WPts& world_pts, cv::Mat& left_img,
 	
 }
 
-void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs) {
+void Reconstruct3D::reconstruct(CameraPairs& camera_pairs) {
 	try {
+		int min = 1;
+		//int min = INT_MAX;
+		for (auto i = 0u; i < camera_img_map_.size();++i)
+		{
+			min = std::min(static_cast<int>(camera_img_map_[i].size()), min);
+		}
+
+		for (auto i = 0u; i < camera_img_map_.size();++i)
+		{
+			camera_img_map_[i].resize(min);
+		}
+
+
+		load_calibration(camera_pairs[0].first, camera_pairs[0].second);
+		create_rectification_map();
+
+		IPts img_pts1;
+		IPts img_pts2;
+		WPts world_pts;
+		WPts triangles;
+		WPts world_point_colors;
+		IPts texture_coordinates;
+
+		compute_correlation_using_gaussian(img_pts1, img_pts2, camera_img_map_, camera_pairs);
+
+		recon_obj(img_pts1, img_pts2, world_pts);
+		cv::Mat left_img = camera_img_map_[camera_pairs[0].first][0];
+
+		cv::Mat texture_img = cv::imread("left_texture.png", 0);
+		if (!texture_img.data) {
+			texture_img = left_img;
+		} else {
+			// remap it
+			pre_proces_img(texture_img, texture_img, false);
+		}
+	
+		project_points_on_to_img(world_pts, world_point_colors, texture_img,  camera_img_map_[camera_pairs[0].second][0]);
+
+		triangulate_pts(world_pts, triangles, texture_coordinates, left_img);
+	
+
+		emit finished_reconstruction_with_triangles(world_pts, world_point_colors, triangles, texture_coordinates, texture_img);
+		//emit finished_reconstruction_with_triangles(triangles, texture_coordinates, texture_img);
+	
+	} catch (std::exception &e)
+	{
+		std::cout << e.what() << std::endl;
+	}
+}
+
+void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs) {
 
 		//std::string left_remapped_img_name = "left_img.png";
 		//std::string right_remapped_img_name = "right_img.png";
@@ -1355,53 +1377,7 @@ void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs) {
 		}
 	}
 
-		//int min = 5;
-		int min = INT_MAX;
-		for (auto i = 0u; i < camera_img_map_.size();++i)
-		{
-			min = std::min(static_cast<int>(camera_img_map_[i].size()), min);
-		}
-
-		for (auto i = 0u; i < camera_img_map_.size();++i)
-		{
-			camera_img_map_[i].resize(min);
-		}
-
-
-	load_calibration(camera_pairs[0].first, camera_pairs[0].second);
-	create_rectification_map();
-
-	IPts img_pts1;
-	IPts img_pts2;
-	WPts world_pts;
-	WPts triangles;
-	IPts texture_coordinates;
-
-	compute_correlation_using_gaussian(img_pts1, img_pts2, camera_img_map_, camera_pairs);
-
-	recon_obj(img_pts1, img_pts2, world_pts);
-	cv::Mat left_img = camera_img_map_[camera_pairs[0].first][0];
-	project_points_on_to_img(world_pts, left_img,  camera_img_map_[camera_pairs[0].second][0]);
-
-	triangulate_pts(world_pts, triangles, texture_coordinates, left_img);
-
-	cv::Mat texture_img = cv::imread("left_texture.png", 0);
-	if (!texture_img.data) {
-		texture_img = left_img;
-	} else {
-		// remap it
-		pre_proces_img(texture_img, texture_img, false);
-	}
-	
-	
-
-	//emit finished_reconstruction_with_triangles(world_pts, texture_coordinates, left_img);
-	emit finished_reconstruction_with_triangles(triangles, texture_coordinates, texture_img);
-	
-	} catch (std::exception &e)
-	{
-		std::cout << e.what() << std::endl;
-	}
+	reconstruct(camera_pairs);
 }
 
 void Reconstruct3D::fill_row(const cv::Mat& P, double coord, cv::Mat& fill_matrix, cv::Mat& B, bool is_y) const {

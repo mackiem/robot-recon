@@ -53,6 +53,7 @@ void FilteredStructLight::add_reconstruction_tab(CameraPairs& camera_pairs, QTab
 		camera_pairs_box_layout->addWidget(radio_button);
 	}
 	camera_pairs_group_box->setLayout(camera_pairs_box_layout);
+	camera_pairs_group_box->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
 
 
 	// draw triangles or points
@@ -73,9 +74,12 @@ void FilteredStructLight::add_reconstruction_tab(CameraPairs& camera_pairs, QTab
 	color_method_box_layout->addWidget(color_solid_color_radio_button);
 	color_method_group_box->setLayout(color_method_box_layout);
 
+	reset_orientation_button_ = new QPushButton(reconstruct_left_panel_);
+
 	reconstruct_left_panel_layout->addWidget(camera_pairs_group_box);
 	reconstruct_left_panel_layout->addWidget(draw_method_group_box);
 	reconstruct_left_panel_layout->addWidget(color_method_group_box);
+	reconstruct_left_panel_layout->addWidget(reset_orientation_button_);
 
 	reconstruct_left_panel_->setLayout(reconstruct_left_panel_layout);
 
@@ -92,6 +96,7 @@ void FilteredStructLight::add_reconstruction_tab(CameraPairs& camera_pairs, QTab
 	connect(draw_triangles_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_triangles);
 	connect(color_texture_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_texture);
 	connect(color_solid_color_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_colors);
+	connect(reset_orientation_button_, &QPushButton::clicked, model_viewer_, &ModelViewer::reset_view);
 }
 
 void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids) {
@@ -204,8 +209,8 @@ void FilteredStructLight::setupUi() {
 		pair_grid_layout->addWidget(camera_pair_[i], i / 2, i % 2);
 	}
 
-	camera_pair_[0]->setValue(2);
-	camera_pair_[1]->setValue(3);
+	camera_pair_[0]->setValue(0);
+	camera_pair_[1]->setValue(1);
 
 
 	camera_pairs_group_->setLayout(pair_grid_layout);

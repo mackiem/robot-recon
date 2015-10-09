@@ -40,6 +40,7 @@ private:
 	};
 
 	CameraImgMap camera_img_map_;
+	cv::Size board_size_;
 
 	// temp stuff for demo
 	cv::Mat cameraMatrix[2];
@@ -62,7 +63,6 @@ public:
 
 	void recalibrate(std::vector<std::pair<int, int>> camera_pairs);
 	
-	void reconstruct();
 	void alter_img_for_projection(const cv::Mat& img, cv::Mat& remapped_img, bool is_right) const;
 	void fill_row(const cv::Mat& P, double coord, cv::Mat& fill_matrix, cv::Mat& B, bool is_y) const;
 
@@ -104,7 +104,8 @@ public:
 	std::string generate_extrinsics_filename(int left_num, int right_num);
 	void recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2, std::vector<cv::Vec3f>& world_pts);
 
-	void project_points_on_to_img(WPts& world_pts, cv::Mat& left_img, cv::Mat& right_img);
+	void project_points_on_to_img(WPts& world_pts, WPts& world_point_colors, cv::Mat& left_img, cv::Mat& right_img);
+	void reconstruct(CameraPairs& camera_pairs);
 	//void gen_texture(GLuint& texture_id_, cv::Mat& remapped_img_for_texture) const;
 	void re_reconstruct(CameraPairs& camera_pairs);
 
@@ -119,6 +120,6 @@ public slots:
 
 signals:
 	void finished_reconstruction(WPts world_pts);
-	void finished_reconstruction_with_triangles(WPts triangles, IPts texture_coords, cv::Mat texture_img);
+	void finished_reconstruction_with_triangles(WPts world_pts, WPts world_pt_colors, WPts triangles, IPts texture_coords, cv::Mat texture_img);
 };
 

@@ -12,9 +12,10 @@
 ModelViewer::ModelViewer(const QGLFormat& format, QWidget* parent)
 	:  QGLWidget(format, parent),
 	m_vertexBuffer(QGLBuffer::VertexBuffer), no_of_pts_(0), angle_(0), is_draw_triangles_(true), is_texture_on_(true),
-	m_xRot(0), m_yRot(0), m_zRot(0)
+	m_xRot(0), m_yRot(0), m_zRot(0), mouse_down_(false)
 {
 
+	setFocusPolicy(Qt::StrongFocus);
 
 	//// Configure the timer_
  //   connect(&timer_, SIGNAL(timeout()), this, SLOT(updateGL()));
@@ -68,11 +69,15 @@ void ModelViewer::initializeGL()
 		return;
 	}
 
-	zoom_ = 50.f;
+	zoom_ = 45.f;
+
+	camera_distance_ = 100.f;
+
+	look_at_x_ = look_at_y_ = 0.f;
 
 	glm::mat4 projection = glm::perspective(zoom_, static_cast<float>(sizeHint().width())/static_cast<float>(sizeHint().height()), 0.1f, 1000.0f);
 
-	glm::mat4 camera = glm::lookAt(glm::vec3(0,0,-100), glm::vec3(0,0,0), glm::vec3(0,1,0));
+	glm::mat4 camera = glm::lookAt(glm::vec3(0.f,0.f,camera_distance_), glm::vec3(0.f,0.f,0.f), glm::vec3(0.f,1.f,0.f));
 
 	GLint projection_location = m_shader.uniformLocation("projection");
 	glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
@@ -114,6 +119,11 @@ void ModelViewer::initializeGL()
 	//	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	//	glBindTexture(GL_TEXTURE_2D, NULL);
 	//}
+
+	glGenVertexArrays(1, &vao_pts_);
+	glBindVertexArray(vao_pts_);
+
+	glGenBuffers(3, vbo_pts_);
 
 	// Cleanup state
 	glBindVertexArray(NULL);
@@ -173,7 +183,8 @@ void ModelViewer::wheelEvent(QWheelEvent* event) {
     QPoint numDegrees = event->angleDelta() / 8;
 
 	if (!numDegrees.isNull()) {
-		zoom_ += (float)(numDegrees.y()) / (float)(15 * 10);
+		//zoom_ += (float)(numDegrees.y()) / (float)(15 * 10);
+		camera_distance_ += (float)(numDegrees.y()) / (float)(1);
 	}
 	update();
 }
@@ -185,7 +196,6 @@ void ModelViewer::paintGL()
     glEnable(GL_CULL_FACE);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glBindVertexArray(vao_);
 	glBindTexture(GL_TEXTURE_2D, texture_id_);
 	glActiveTexture(GL_TEXTURE0 + active_texture_);
 
@@ -203,6 +213,9 @@ void ModelViewer::paintGL()
 	glm::mat4 rotateX = glm::rotate(glm::mat4(1.f), (float)m_xRot, glm::vec3(1.f, 0.f, 1.f));
 	glm::mat4 rotateY = glm::rotate(rotateX, (float)m_yRot, glm::vec3(0.f, 1.f, 0.f));
 	glm::mat4 rotateZ = glm::rotate(rotateY, (float)m_zRot, glm::vec3(0.f, 0.f, 1.f));
+	//glm::mat4 rotateX = glm::rotate(glm::mat4(1.f), (float)1.f, glm::vec3(1.f, 0.f, 1.f));
+	//glm::mat4 rotateY = glm::rotate(rotateX, (float)1.f, glm::vec3(0.f, 1.f, 0.f));
+	//glm::mat4 rotateZ = glm::rotate(rotateY, (float)1.f, glm::vec3(0.f, 0.f, 1.f));
 	
 	glm::mat4 model = rotateZ;
 
@@ -214,6 +227,12 @@ void ModelViewer::paintGL()
 	GLint projection_location = m_shader.uniformLocation("projection");
 	glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
 
+	glm::mat4 camera = glm::lookAt(glm::vec3(look_at_x_, look_at_y_, camera_distance_), glm::vec3(look_at_x_, look_at_y_, 0.f), glm::vec3(0.f,1.f,0.f));
+
+	GLint camera_location = m_shader.uniformLocation("camera");
+	glUniformMatrix4fv(camera_location, 1, GL_FALSE, glm::value_ptr(camera));
+
+
 	GLint texture_used_loc = m_shader.uniformLocation("is_texture_used");
 	glUniform1i(texture_used_loc, is_texture_on_);
 	//if (is_texture_on_) {
@@ -222,9 +241,11 @@ void ModelViewer::paintGL()
 	//}
 
 	if (is_draw_triangles_) {
-		glDrawArrays(GL_TRIANGLES, 0, no_of_pts_);
+		glBindVertexArray(vao_);
+		glDrawArrays(GL_TRIANGLES, 0, no_of_triangles_);
 		//glDrawArrays(GL_POINTS, 0, no_of_pts_);
 	} else {
+		glBindVertexArray(vao_pts_);
 		glDrawArrays(GL_POINTS, 0, no_of_pts_);
 	}
 
@@ -297,7 +318,7 @@ void ModelViewer::update_model(WPts world_pts) {
 	glEnableVertexAttribArray(vert_color_attr);
 	glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
 
-	no_of_pts_ = world_pts.size();
+	no_of_triangles_ = world_pts.size();
 
 	//is_draw_triangles_ = false;
 	//GLint texture_used_loc = m_shader.uniformLocation("is_texture_used");
@@ -353,7 +374,12 @@ void ModelViewer::draw_texture() {
 	update();
 }
 
-void ModelViewer::update_model_with_triangles(WPts triangles, IPts texture_coords, cv::Mat texture_img) {
+void ModelViewer::reset_view() {
+	look_at_x_ = look_at_y_ = 0.f;
+	update();
+}
+
+void ModelViewer::update_model_with_triangles(WPts world_pts, WPts world_pt_colors, WPts triangles, IPts texture_coords, cv::Mat texture_img) {
 	makeCurrent();
 
 	if (triangles.size() < 1) {
@@ -416,13 +442,33 @@ void ModelViewer::update_model_with_triangles(WPts triangles, IPts texture_coord
 	glEnableVertexAttribArray(vert_tex_attr);
 	glVertexAttribPointer(vert_tex_attr, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), NULL);
 
-	no_of_pts_ = triangles.size();
+	no_of_triangles_ = triangles.size();
 	
 	gen_texture(texture_id_, texture_img);
 
 	//is_draw_triangles_ = true;
 	//GLint texture_used_loc = m_shader.uniformLocation("is_texture_used");
 	//glUniform1i(texture_used_loc, is_draw_triangles_);
+
+	change_world_pts(world_pts);
+
+	glBindVertexArray(vao_pts_);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_pts_[0]);
+	glBufferData(GL_ARRAY_BUFFER, world_pts.size() * sizeof(cv::Vec3f), &world_pts[0], GL_STATIC_DRAW);
+
+
+	glEnableVertexAttribArray(vert_pos_attr);
+	glVertexAttribPointer(vert_pos_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
+
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_pts_[1]);
+	glBufferData(GL_ARRAY_BUFFER, world_pt_colors.size() * sizeof(cv::Vec3f), &world_pt_colors[0], GL_STATIC_DRAW);
+
+
+	glEnableVertexAttribArray(vert_color_attr);
+	glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
+
+	no_of_pts_ = world_pts.size();
 
 	glBindVertexArray(NULL);
 	
@@ -470,16 +516,39 @@ void ModelViewer::setZRotation(float angle)
 
 void ModelViewer::mouseMoveEvent(QMouseEvent *event)
 {
-    int dx = event->x() - m_lastPos.x();
-    int dy = event->y() - m_lastPos.y();
+	if (mouse_down_) {
+		int dx = event->x() - m_lastPos.x();
+		int dy = event->y() - m_lastPos.y();
 
-	float mouse_drag_sensitivity = 0.2;
-    if (event->buttons() & Qt::LeftButton) {
-        setXRotation(m_xRot + mouse_drag_sensitivity * dy);
-        setYRotation(m_yRot + mouse_drag_sensitivity * dx);
-    } else if (event->buttons() & Qt::RightButton) {
-        setXRotation(m_xRot + mouse_drag_sensitivity * dy);
-        setZRotation(m_zRot + mouse_drag_sensitivity * dx);
-    }
-    m_lastPos = event->pos();
+		float mouse_drag_sensitivity = 0.1;
+		if (event->buttons() & Qt::LeftButton) {
+			setXRotation(m_xRot + mouse_drag_sensitivity * dy);
+			setYRotation(m_yRot + mouse_drag_sensitivity * dx);
+		} else if (event->buttons() & Qt::RightButton) {
+			setXRotation(m_xRot + mouse_drag_sensitivity * dy);
+			setZRotation(m_zRot + mouse_drag_sensitivity * dx);
+		}
+		m_lastPos = event->pos();
+	} else {
+		m_lastPos = event->pos();
+		mouse_down_ = true;
+	}
+}
+
+void ModelViewer::mouseReleaseEvent(QMouseEvent* event) {
+	mouse_down_ = false;
+}
+
+void ModelViewer::keyPressEvent(QKeyEvent* event) {
+	float multiplier = 1.f;
+	if (event->key() == Qt::Key_D) {
+		look_at_x_ += multiplier;
+	} else if (event->key() == Qt::Key_A) {
+		look_at_x_ -= multiplier;
+	} else if (event->key() == Qt::Key_W) {
+		look_at_y_ += multiplier;
+	} else if (event->key() == Qt::Key_S) {
+		look_at_y_ -= multiplier;
+	}
+	update();
 }
