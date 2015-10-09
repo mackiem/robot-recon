@@ -210,7 +210,9 @@ void ModelViewer::paintGL()
 	//std::cout << translate_x << " " << translate_y << std::endl;
 
 	//glm::mat4 model = glm::rotate(glm::scale(glm::mat4(1.f), glm::vec3(0.1, 0.1, 0.1)), 0.1f * static_cast<float>(angle_++), glm::vec3(0.f, 1.f, 0.f));
-	glm::mat4 rotateX = glm::rotate(glm::mat4(1.f), (float)m_xRot, glm::vec3(1.f, 0.f, 1.f));
+
+	glm::mat4 scale_mat = glm::scale(glm::mat4(1.f), glm::vec3(scale_, scale_, scale_));
+	glm::mat4 rotateX = glm::rotate(scale_mat, (float)m_xRot, glm::vec3(1.f, 0.f, 1.f));
 	glm::mat4 rotateY = glm::rotate(rotateX, (float)m_yRot, glm::vec3(0.f, 1.f, 0.f));
 	glm::mat4 rotateZ = glm::rotate(rotateY, (float)m_zRot, glm::vec3(0.f, 0.f, 1.f));
 	//glm::mat4 rotateX = glm::rotate(glm::mat4(1.f), (float)1.f, glm::vec3(1.f, 0.f, 1.f));
@@ -376,6 +378,11 @@ void ModelViewer::draw_texture() {
 
 void ModelViewer::reset_view() {
 	look_at_x_ = look_at_y_ = 0.f;
+	update();
+}
+
+void ModelViewer::set_scale(int value) {
+	scale_ = 0.01f * value;
 	update();
 }
 

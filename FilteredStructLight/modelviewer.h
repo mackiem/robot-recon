@@ -47,6 +47,7 @@ private:
 	GLuint vao_pts_;
 	GLuint vbo_pts_[3];
 	GLint no_of_triangles_;
+	float scale_;
 	void gen_texture(GLuint& texture_id, cv::Mat& remapped_img_for_texture);
 
 	float m_xRot;
@@ -73,6 +74,7 @@ public:
 	void draw_colors();
 	void draw_texture();
 	void reset_view();
+	void set_scale(int value);
 	//void set_camera_pair();
 };
 

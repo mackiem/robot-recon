@@ -58,6 +58,7 @@ private:
 	QLabel** camera_uuid_labels_;
 	QGroupBox* camera_uuids_group_box_;
 	QPushButton* reset_orientation_button_;
+	QSpinBox* recon_no_of_images_spin_box_;
 	void shutdown_cam_thread();
 	void create_camera_pairs(CameraPairs& pairs);
 

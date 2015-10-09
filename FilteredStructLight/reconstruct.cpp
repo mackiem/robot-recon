@@ -188,7 +188,7 @@ void Reconstruct3D::recalibrate(std::vector<std::pair<int, int>> camera_pairs)
 
 }
 
-void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_pairs)
+void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_pairs, int no_of_images)
 {
 	// first save the images for each camera
 	QDir reconstruction_dir(recon_dirname_.c_str());
@@ -219,7 +219,7 @@ void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_p
 		}
 	}
 
-	reconstruct(camera_pairs);
+	reconstruct(camera_pairs, no_of_images);
 
 }
 
@@ -942,12 +942,12 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 
 	int threshold = 50;
 
-	for (auto i = 0u; i < left_imgs.size(); ++i) {
-		cv::Mat& left_img = left_imgs[i];
+	for (auto img = 0u; img < left_imgs.size(); ++img) {
+		cv::Mat& left_img = left_imgs[img];
 		cv::Mat left_row_sum;
 		cv::reduce(left_img, left_row_sum, 1, CV_REDUCE_SUM, CV_32S);
 
-		cv::Mat& right_img = right_imgs[i];
+		cv::Mat& right_img = right_imgs[img];
 		cv::Mat right_row_sum;
 		cv::reduce(right_img, right_row_sum, 1, CV_REDUCE_SUM, CV_32S);
 
@@ -1281,9 +1281,10 @@ void Reconstruct3D::project_points_on_to_img(WPts& world_pts, WPts& world_point_
 	
 }
 
-void Reconstruct3D::reconstruct(CameraPairs& camera_pairs) {
+void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 	try {
-		int min = 1;
+		
+		int min = (no_of_images < 0) ? INT_MAX : no_of_images;
 		//int min = INT_MAX;
 		for (auto i = 0u; i < camera_img_map_.size();++i)
 		{
@@ -1333,7 +1334,7 @@ void Reconstruct3D::reconstruct(CameraPairs& camera_pairs) {
 	}
 }
 
-void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs) {
+void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 
 		//std::string left_remapped_img_name = "left_img.png";
 		//std::string right_remapped_img_name = "right_img.png";
@@ -1377,7 +1378,7 @@ void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs) {
 		}
 	}
 
-	reconstruct(camera_pairs);
+	reconstruct(camera_pairs, no_of_images);
 }
 
 void Reconstruct3D::fill_row(const cv::Mat& P, double coord, cv::Mat& fill_matrix, cv::Mat& B, bool is_y) const {

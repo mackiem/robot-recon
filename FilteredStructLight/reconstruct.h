@@ -56,7 +56,7 @@ public:
 
 	void calibrate(std::vector<std::pair<int, int>> camera_pairs);
 
-	void run_reconstruction(std::vector<std::pair<int, int>> camera_pairs);
+	void run_reconstruction(std::vector<std::pair<int, int>> camera_pairs, int no_of_images);
 
 	void stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam,
 	                      Size boardSize, bool useCalibrated, bool write_images = true);
@@ -105,9 +105,9 @@ public:
 	void recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2, std::vector<cv::Vec3f>& world_pts);
 
 	void project_points_on_to_img(WPts& world_pts, WPts& world_point_colors, cv::Mat& left_img, cv::Mat& right_img);
-	void reconstruct(CameraPairs& camera_pairs);
+	void reconstruct(CameraPairs& camera_pairs, int no_of_images);
 	//void gen_texture(GLuint& texture_id_, cv::Mat& remapped_img_for_texture) const;
-	void re_reconstruct(CameraPairs& camera_pairs);
+	void re_reconstruct(CameraPairs& camera_pairs, int no_of_images);
 
 
 	Reconstruct3D(int no_of_cams, QObject* parent);

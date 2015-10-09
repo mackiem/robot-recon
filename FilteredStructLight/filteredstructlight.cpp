@@ -67,19 +67,35 @@ void FilteredStructLight::add_reconstruction_tab(CameraPairs& camera_pairs, QTab
 
 	// use texture or solid colors
 	QGroupBox* color_method_group_box = new QGroupBox("Color Method", reconstruction_tab_);
-	QVBoxLayout* color_method_box_layout = new QVBoxLayout();
+	QVBoxLayout* color_method_box_layout = new QVBoxLayout(color_method_group_box);
 	QRadioButton* color_texture_radio_button = new QRadioButton("Texture", color_method_group_box);	
 	color_method_box_layout->addWidget(color_texture_radio_button);
 	QRadioButton* color_solid_color_radio_button = new QRadioButton("Solid Color", color_method_group_box);	
 	color_method_box_layout->addWidget(color_solid_color_radio_button);
 	color_method_group_box->setLayout(color_method_box_layout);
 
-	reset_orientation_button_ = new QPushButton(reconstruct_left_panel_);
+	QGroupBox* misc_controls_group_box = new QGroupBox("Misc. Controls", reconstruction_tab_);
+	reset_orientation_button_ = new QPushButton("Reset Controls", misc_controls_group_box);
+	QLabel* scale_label = new QLabel("Scale", misc_controls_group_box);
+	QSlider* scale_slider = new QSlider(Qt::Orientation::Horizontal, misc_controls_group_box);
+	scale_slider->setMaximum(100);
+	scale_slider->setMinimum(1);
+	scale_slider->setFocusPolicy(Qt::StrongFocus);
+	scale_slider->setTickInterval(10);
+	scale_slider->setSingleStep(1);
+	scale_slider->setTickPosition(QSlider::TicksBothSides);
+
+	QVBoxLayout* misc_control_box_layout = new QVBoxLayout(misc_controls_group_box);
+	misc_control_box_layout->addWidget(reset_orientation_button_);
+	misc_control_box_layout->addWidget(scale_label);
+	misc_control_box_layout->addWidget(scale_slider);
+	misc_controls_group_box->setLayout(misc_control_box_layout);
+
 
 	reconstruct_left_panel_layout->addWidget(camera_pairs_group_box);
 	reconstruct_left_panel_layout->addWidget(draw_method_group_box);
 	reconstruct_left_panel_layout->addWidget(color_method_group_box);
-	reconstruct_left_panel_layout->addWidget(reset_orientation_button_);
+	reconstruct_left_panel_layout->addWidget(misc_controls_group_box);
 
 	reconstruct_left_panel_->setLayout(reconstruct_left_panel_layout);
 
@@ -97,6 +113,11 @@ void FilteredStructLight::add_reconstruction_tab(CameraPairs& camera_pairs, QTab
 	connect(color_texture_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_texture);
 	connect(color_solid_color_radio_button, &QRadioButton::clicked, model_viewer_, &ModelViewer::draw_colors);
 	connect(reset_orientation_button_, &QPushButton::clicked, model_viewer_, &ModelViewer::reset_view);
+	connect(scale_slider, &QSlider::valueChanged, model_viewer_, &ModelViewer::set_scale);
+
+	color_solid_color_radio_button->click();
+	draw_points_radio_button->click();
+	scale_slider->setValue(100);
 }
 
 void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids) {
@@ -284,9 +305,10 @@ void FilteredStructLight::setupUi() {
 	connect(re_reconstruction_button, &QPushButton::clicked, this, 
 		[&]()
 	{
+		reconstructor_->clear_camera_img_map();
 		CameraPairs pairs;
 		create_camera_pairs(pairs);
-		reconstructor_->re_reconstruct(pairs);
+		reconstructor_->re_reconstruct(pairs, recon_no_of_images_spin_box_->value());
 	});
 
 	load_camera_calibration_ = new QPushButton("Load calibration", reconstruction_group_);
@@ -297,7 +319,7 @@ void FilteredStructLight::setupUi() {
 	{
 		CameraPairs pairs;
 		create_camera_pairs(pairs);
-		reconstructor_->load_calibration(pairs[0].first, pairs[1].second);
+		reconstructor_->load_calibration(pairs[0].first, pairs[0].second);
 	});
 
 	start_reconstruction_video_ = new QPushButton("Start reconstruction", reconstruction_group_);
@@ -318,10 +340,18 @@ void FilteredStructLight::setupUi() {
 		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images_without_delay);
 		CameraPairs pairs;
 		create_camera_pairs(pairs);
-		reconstructor_->run_reconstruction(pairs);
+		reconstructor_->run_reconstruction(pairs, recon_no_of_images_spin_box_->value());
 	});
 
+	QLabel* no_of_images = new QLabel("No. of images to use (-1 = all)", reconstruction_group_);
+	recon_no_of_images_spin_box_ = new QSpinBox(reconstruction_group_);
+	recon_no_of_images_spin_box_->setMinimum(-1);
+	recon_no_of_images_spin_box_->setMaximum(100);
+	recon_no_of_images_spin_box_->setValue(-1);
+
 	QVBoxLayout* reconstruction_group_layout = new QVBoxLayout(left_panel_);
+	reconstruction_group_layout->addWidget(no_of_images);
+	reconstruction_group_layout->addWidget(recon_no_of_images_spin_box_);
 	reconstruction_group_layout->addWidget(re_reconstruction_button);
 	reconstruction_group_layout->addWidget(load_camera_calibration_);
 	reconstruction_group_layout->addWidget(start_reconstruction_video_);
