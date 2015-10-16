@@ -330,6 +330,7 @@ void FilteredStructLight::setupUi() {
 	{
 		reconstructor_->clear_camera_img_map();
 		connect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images_without_delay);
+		//connect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
 	});
 
 	end_reconstruction_video_ = new QPushButton("End reconstruction", reconstruction_group_);
@@ -338,6 +339,7 @@ void FilteredStructLight::setupUi() {
 		[&]()
 	{
 		disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images_without_delay);
+		//disconnect(cam_thread_, &CamThread::image_ready, reconstructor_, &Reconstruct3D::collect_images);
 		CameraPairs pairs;
 		create_camera_pairs(pairs);
 		reconstructor_->run_reconstruction(pairs, recon_no_of_images_spin_box_->value());

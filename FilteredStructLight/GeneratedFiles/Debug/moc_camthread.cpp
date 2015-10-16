@@ -68,14 +68,14 @@ void CamThread::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, v
     if (_c == QMetaObject::InvokeMetaMethod) {
         CamThread *_t = static_cast<CamThread *>(_o);
         switch (_id) {
-        case 0: _t->image_ready((*reinterpret_cast< FlyCapture2::Image(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
+        case 0: _t->image_ready((*reinterpret_cast< const FlyCapture2::Image(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
         int *result = reinterpret_cast<int *>(_a[0]);
         void **func = reinterpret_cast<void **>(_a[1]);
         {
-            typedef void (CamThread::*_t)(FlyCapture2::Image , int );
+            typedef void (CamThread::*_t)(const FlyCapture2::Image & , int );
             if (*reinterpret_cast<_t *>(func) == static_cast<_t>(&CamThread::image_ready)) {
                 *result = 0;
             }
@@ -120,7 +120,7 @@ int CamThread::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 }
 
 // SIGNAL 0
-void CamThread::image_ready(FlyCapture2::Image _t1, int _t2)
+void CamThread::image_ready(const FlyCapture2::Image & _t1, int _t2)
 {
     void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)), const_cast<void*>(reinterpret_cast<const void*>(&_t2)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);

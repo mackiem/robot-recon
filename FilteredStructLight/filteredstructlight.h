@@ -10,6 +10,7 @@
 #define CAM_CALIB_PAIRS 6
 #include "modelviewer.h"
 
+
 class FilteredStructLight : public QMainWindow
 {
 	Q_OBJECT

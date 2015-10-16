@@ -143,9 +143,10 @@ void ModelViewer::initializeGL()
 	std::vector<glm::vec3> out_normals;
 	loadOBJ("deer-obj.obj", out_vertices, out_uvs, out_normals);
 
+	test_pts.resize(1);
 
 	for (auto& out_vertice : out_vertices) {
-		test_pts.push_back(cv::Vec3f(out_vertice[0], out_vertice[1], out_vertice[2]));
+		test_pts[0].push_back(cv::Vec3f(out_vertice[0], out_vertice[1], out_vertice[2]));
 	}
 
 	update_model(test_pts);
@@ -261,16 +262,16 @@ QSize ModelViewer::sizeHint() const {
 	return QSize(768, 768);
 }
 
-void ModelViewer::change_world_pts(WPts& world_pts) {
+void ModelViewer::change_world_pts(WPt& world_pts) {
 	
 	cv::Vec3f distance(0.f);
 	for (auto i = 0u; i < world_pts.size(); ++i) {
 		distance += cv::Vec3f(0.f) - cv::Vec3f(world_pts[i]);
 	}
-	cv::Vec3f avg_distance = distance / (float)(world_pts.size());
+	cv::Vec3d avg_distance = distance / (double)(world_pts.size());
 
 	// Copy all scene points into a local array
-	WPts pts(world_pts.size());
+	WPt pts(world_pts.size());
 
 	for (int p = 0; p < world_pts.size(); p++) {
 		pts[p] = world_pts[p] + avg_distance;
@@ -279,21 +280,28 @@ void ModelViewer::change_world_pts(WPts& world_pts) {
 	world_pts = pts;
 }
 
-void ModelViewer::update_model(WPts world_pts) {
+void ModelViewer::update_model(WPts world_pnts) {
 	makeCurrent();
 
-	if (world_pts.size() < 1) {
+	if (world_pnts.size() < 1) {
 		std::cout << "No points to display" << std::endl;
 		return;
 	}
 
-	WPts color_pts;
+	WPt world_pt_single_array;
+	for (auto img = 0u; img < world_pnts.size(); ++img) {
+		for (auto i = 0u; i < world_pnts[img].size(); ++i) {
+			world_pt_single_array.push_back(world_pnts[img][i]);
+		}
+	}
+
+	WPt color_pts;
 	cv::Vec3f white(1.f, 1.f, 1.f);
-	for (auto i = 0u; i < world_pts.size(); ++i) {
+	for (auto i = 0u; i < world_pt_single_array.size(); ++i) {
 		color_pts.push_back(white);
 	}
 
-	change_world_pts(world_pts);
+	change_world_pts(world_pt_single_array);
 
 
 	if (!m_shader.bind())
@@ -305,7 +313,7 @@ void ModelViewer::update_model(WPts world_pts) {
 	glBindVertexArray(vao_);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_[0]);
-	glBufferData(GL_ARRAY_BUFFER, world_pts.size() * sizeof(cv::Vec3f), &world_pts[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, world_pt_single_array.size() * sizeof(cv::Vec3f), &world_pt_single_array[0], GL_STATIC_DRAW);
 
 	GLuint vert_pos_attr = m_shader.attributeLocation("vertex");
 
@@ -320,7 +328,7 @@ void ModelViewer::update_model(WPts world_pts) {
 	glEnableVertexAttribArray(vert_color_attr);
 	glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
 
-	no_of_triangles_ = world_pts.size();
+	no_of_triangles_ = world_pt_single_array.size();
 
 	//is_draw_triangles_ = false;
 	//GLint texture_used_loc = m_shader.uniformLocation("is_texture_used");
@@ -386,7 +394,8 @@ void ModelViewer::set_scale(int value) {
 	update();
 }
 
-void ModelViewer::update_model_with_triangles(WPts world_pts, WPts world_pt_colors, WPts triangles, IPts texture_coords, cv::Mat texture_img) {
+void ModelViewer::update_model_with_triangles(WPts world_pnts, WPts world_pt_colrs, WPt triangles, IPt texture_coords,
+											  cv::Mat texture_img) {
 	makeCurrent();
 
 	if (triangles.size() < 1) {
@@ -394,7 +403,22 @@ void ModelViewer::update_model_with_triangles(WPts world_pts, WPts world_pt_colo
 		return;
 	}
 
-	WPts color_pts;
+	WPt world_pt_single_array;
+	for (auto img = 0u; img < world_pnts.size(); ++img) {
+		for (auto i = 0u; i < world_pnts[img].size(); ++i) {
+			world_pt_single_array.push_back(cv::Vec3d(world_pnts[img][i][0], world_pnts[img][i][1], world_pnts[img][i][2]));
+		}
+	}
+
+	std::vector<glm::vec3> world_pt_colors_single_array;
+	for (auto img = 0u; img < world_pt_colrs.size(); ++img) {
+		for (auto i = 0u; i < world_pt_colrs[img].size(); ++i) {
+			world_pt_colors_single_array.push_back(glm::vec3(world_pt_colrs[img][i][0], world_pt_colrs[img][i][1], 
+				world_pt_colrs[img][i][2]));
+		}
+	}
+
+	WPt color_pts;
 	cv::Vec3f white(1.f, 0.f, 0.f);
 	for (auto i = 0u; i < triangles.size(); ++i) {
 		color_pts.push_back(white);
@@ -434,12 +458,12 @@ void ModelViewer::update_model_with_triangles(WPts world_pts, WPts world_pt_colo
 	glVertexAttribPointer(vert_pos_attr, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), NULL);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_[1]);
-	glBufferData(GL_ARRAY_BUFFER, color_pts.size() * sizeof(cv::Vec3f), &color_pts[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, color_pts.size() * sizeof(cv::Vec3d), &color_pts[0], GL_STATIC_DRAW);
 
 	GLuint vert_color_attr = m_shader.attributeLocation("vertColor");
 
 	glEnableVertexAttribArray(vert_color_attr);
-	glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
+	glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3d), NULL);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_[2]);
 	glBufferData(GL_ARRAY_BUFFER, texture_coords.size() * sizeof(glm::vec2), &glm_tex_coords[0], GL_STATIC_DRAW);
@@ -457,25 +481,33 @@ void ModelViewer::update_model_with_triangles(WPts world_pts, WPts world_pt_colo
 	//GLint texture_used_loc = m_shader.uniformLocation("is_texture_used");
 	//glUniform1i(texture_used_loc, is_draw_triangles_);
 
-	change_world_pts(world_pts);
+
+	change_world_pts(world_pt_single_array);
+
+	std::vector<glm::vec3> glm_world_pt_single_array;
+		for (auto i = 0u; i < world_pt_single_array.size(); ++i) {
+			glm_world_pt_single_array.push_back(glm::vec3(world_pt_single_array[i][0], world_pt_single_array[i][1], 
+				world_pt_single_array[i][2]));
+		}
+
 
 	glBindVertexArray(vao_pts_);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_pts_[0]);
-	glBufferData(GL_ARRAY_BUFFER, world_pts.size() * sizeof(cv::Vec3f), &world_pts[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, glm_world_pt_single_array.size() * sizeof(glm::vec3), &glm_world_pt_single_array[0], GL_STATIC_DRAW);
 
 
 	glEnableVertexAttribArray(vert_pos_attr);
-	glVertexAttribPointer(vert_pos_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
+	glVertexAttribPointer(vert_pos_attr, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), NULL);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_pts_[1]);
-	glBufferData(GL_ARRAY_BUFFER, world_pt_colors.size() * sizeof(cv::Vec3f), &world_pt_colors[0], GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, world_pt_colors_single_array.size() * sizeof(glm::vec3), &world_pt_colors_single_array[0], GL_STATIC_DRAW);
 
 
 	glEnableVertexAttribArray(vert_color_attr);
-	glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
+	glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), NULL);
 
-	no_of_pts_ = world_pts.size();
+	no_of_pts_ = world_pt_single_array.size();
 
 	glBindVertexArray(NULL);
 	

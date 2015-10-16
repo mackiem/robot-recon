@@ -10,6 +10,7 @@
 
 using namespace FlyCapture2;
 
+Q_DECLARE_METATYPE(FlyCapture2::Image);
 
 class GLWidget : public QGLWidget
 {
@@ -37,7 +38,7 @@ private:
 	int is_thresholding_on_;
 
 public slots:
-void display_image(FlyCapture2::Image img, int cam_no);
+void display_image(const FlyCapture2::Image& img, int cam_no);
 void set_threshold(int value);
 void toggle_thresholding(int value);
 

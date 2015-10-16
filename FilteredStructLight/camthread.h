@@ -13,6 +13,7 @@
 using namespace FlyCapture2;
 using namespace std;
 
+
 class CamThread : public QThread
 {
 	Q_OBJECT
@@ -78,7 +79,7 @@ public:
 	~CamThread();
 
 signals:
-	void image_ready(FlyCapture2::Image img, int cam_no);
+	void image_ready(const FlyCapture2::Image& img, int cam_no);
 
 };
 

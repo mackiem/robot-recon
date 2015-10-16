@@ -24,7 +24,41 @@ Rectangle {
 		width : 10
 		color : "white"
 
+		property int offset : 100
+
+		/*
+		SequentialAnimation on x {
+			id: seq_animation
+			running : true
+			//loops : Animation.Infinite 
+			PauseAnimation {
+				duration : 1000
+			}
+			NumberAnimation {
+				 target: moving_stripe; 
+				 property: "x"; 
+				 from : moving_stripe.start_pos
+				 to: moving_stripe.start_pos + moving_stripe.offset
+				 duration: 1
+			}
+			PauseAnimation { duration : 1000
+			}
+
+			onStopped : {
+				if (!seq_animation.running) {
+					if (((moving_stripe.start_pos) > moving_stripe.right_pt) || (moving_stripe.start_pos < moving_stripe.left_pt)) {
+						moving_stripe.offset = -moving_stripe.offset
+						console.log(moving_stripe.offset);
+					}
+					moving_stripe.start_pos += moving_stripe.offset
+					seq_animation.start();
+				}
+			}
+		}
+		*/
+
 		
+	
 		NumberAnimation on x {
 			id : stripe_animation
 			from : moving_stripe.start_pos
@@ -54,6 +88,7 @@ Rectangle {
 			}
 		}
 		
+	
 		
 	}
 

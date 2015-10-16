@@ -7,6 +7,7 @@
 #include "fsl_common.h"
 #include <QTimer>
 #include <QWheelEvent>
+#include <opencv2/video/background_segm.hpp>
 
 class ModelViewer : public QGLWidget
 {
@@ -64,11 +65,11 @@ public:
 	ModelViewer(const QGLFormat& format, QWidget* parent = 0);
 	virtual ~ModelViewer(void);
 	QSize sizeHint() const override;
-	void change_world_pts(WPts& world_pts);
+	void change_world_pts(WPt& world_pts);
 
 	public slots:
 	void update_model(WPts world_pts);
-	void update_model_with_triangles(WPts world_pts, WPts world_pt_colors, WPts triangles, IPts texture_coords, cv::Mat texture_img);
+	void update_model_with_triangles(WPts world_pts, WPts world_pt_colors, WPt triangles, IPt texture_coords, cv::Mat texture_img);
 	void draw_triangles();
 	void draw_points();
 	void draw_colors();

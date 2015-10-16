@@ -116,6 +116,7 @@ int CamThread::init()
 	PrintBuildInfo();
 
 
+	busMgr.RescanBus();
 	error = busMgr.GetNumOfCameras(&no_of_cams_);
 	if (error != PGRERROR_OK)
 	{
@@ -205,45 +206,47 @@ int CamThread::init()
 		//
 		//fmt7settings.pixelFormat = PIXEL_FORMAT_MONO8;
 
-		error = ppCameras[uiCamera]->SetVideoModeAndFrameRate( VIDEOMODE_1024x768Y8, FRAMERATE_15);
-		if (error != PGRERROR_OK)  
-		{
-			PrintError(error);
-			return -1;
-		}
-
-
-		//Format7ImageSettings fmt7settings;
-		//fmt7settings.mode = MODE_0;
-		///*fmt7settings.offsetX = 156;
-		//fmt7settings.offsetY = 92;
-		//fmt7settings.width = 200;
-		//fmt7settings.height = 200;*/
-		//fmt7settings.offsetX = 0;
-		//fmt7settings.offsetY = 0;
-		//fmt7settings.width = 496;
-		//fmt7settings.height = 500;
-		//fmt7settings.pixelFormat = PIXEL_FORMAT_RAW8;
-
-		//// Validate format
-		//bool fmt7valid;
-		//Format7PacketInfo fmt7packetInfo;
-		//error = ppCameras[uiCamera]->ValidateFormat7Settings(&fmt7settings, &fmt7valid, &fmt7packetInfo);
+		
+		//error = ppCameras[uiCamera]->SetVideoModeAndFrameRate( VIDEOMODE_1024x768Y8, FRAMERATE_15);
 		//if (error != PGRERROR_OK)  
 		//{
 		//	PrintError(error);
 		//	return -1;
 		//}
-		//if (!fmt7valid) {
-		//	PrintError(error);
-		//	return -1;
-		//}
-		//// Apply image format
-		//error = ppCameras[uiCamera]->SetFormat7Configuration(&fmt7settings, fmt7packetInfo.maxBytesPerPacket);
-		//if (error != PGRERROR_OK) {
-		//	PrintError(error);
-		//	return -1;
-		//}
+		
+
+
+		Format7ImageSettings fmt7settings;
+		fmt7settings.mode = MODE_0;
+		/*fmt7settings.offsetX = 156;
+		fmt7settings.offsetY = 92;
+		fmt7settings.width = 200;
+		fmt7settings.height = 200;*/
+		fmt7settings.offsetX = 164;
+		fmt7settings.offsetY = 34;
+		fmt7settings.width = 496;
+		fmt7settings.height = 500;
+		fmt7settings.pixelFormat = PIXEL_FORMAT_RAW8;
+
+		// Validate format
+		bool fmt7valid;
+		Format7PacketInfo fmt7packetInfo;
+		error = ppCameras[uiCamera]->ValidateFormat7Settings(&fmt7settings, &fmt7valid, &fmt7packetInfo);
+		if (error != PGRERROR_OK)  
+		{
+			PrintError(error);
+			return -1;
+		}
+		if (!fmt7valid) {
+			PrintError(error);
+			return -1;
+		}
+		// Apply image format
+		error = ppCameras[uiCamera]->SetFormat7Configuration(&fmt7settings, fmt7packetInfo.maxBytesPerPacket);
+		if (error != PGRERROR_OK) {
+			PrintError(error);
+			return -1;
+		}
 
 		// Set video mode and frame rate here!!!
 		/*error = ppCameras[uiCamera]->SetVideoModeAndFrameRate(VIDEOMODE_1024x768Y8, FRAMERATE_1_875);

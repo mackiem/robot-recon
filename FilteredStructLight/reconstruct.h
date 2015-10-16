@@ -5,6 +5,10 @@
 #include "cameradisplaywidget.h"
 #include <chrono>
 #include "fsl_common.h"
+#include <opencv2/video/background_segm.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/core/core.hpp>
 
 using namespace FlyCapture2;
 using namespace std;
@@ -72,54 +76,65 @@ public:
 
 	void pick_correlated_points(std::vector<UniqueEdges>& unique_colors_left,
 		std::vector<UniqueEdges>& unique_colors_right,
-		std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts, CameraImgMap& camera_img_map, int left_cam, int right_cam);
+		IPts& img_pts1, IPts& img_pts, CameraImgMap& camera_img_map, int left_cam, int right_cam);
 
 	void fit_gaussians(CameraImgMap& camera_img_map, int cam_no, std::unordered_map<int, std::pair<int, int>> mid_points);
 
 	void correpond_with_gaussians(CameraImgMap& camera_img_map, int left_cam_no, int right_cam_no,
-		std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2);
+		IPts& img_pts1, IPts& img_pts2);
 
-	void compute_correlation_using_gaussian(std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2,
+	void compute_correlation_using_gaussian(IPts& img_pts1, IPts& img_pts2,
 		CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs);
 
 	void get_unique_edges(CameraImgMap& camera_img_map, int cam, std::vector<UniqueEdges> & unique_colors_per_image, bool is_right);
 	
-	void compute_correlation(std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2,
+	void compute_correlation(IPts& img_pts1, IPts& img_pts2,
 		CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs);
 
 	void pre_proces_img(cv::Mat& img, cv::Mat& rImg, bool is_right);
 	void init_imgs(CameraImgMap& camera_img_map, int cam, bool is_right);
 	
 
-	void read_file(const std::string& file_name, std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2);
-	void write_file(const std::string& file_name, const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2);
+	void read_file(const std::string& file_name, IPts& img_pts1, IPts& img_pts2);
+	void write_file(const std::string& file_name, const IPts& img_pts1, const IPts& img_pts2);
 
-	void triangulate_pts(const WPts& pnts, WPts& triangles, 
-		std::vector<cv::Vec2f>& texture_coords, cv::Mat& remapped_img);
+	void triangulate_pts(const WPts& pnts, WPt& triangles, 
+		IPt& texture_coords, cv::Mat& remapped_img);
 	void gen_texture(GLuint& texture_id, cv::Mat& remapped_img_for_texture) const;
 	
 	
 	void resize_img(cv::Mat& img, const unsigned int resize_width) const;
 	std::string generate_intrinsics_filename(int left_num, int right_num);
 	std::string generate_extrinsics_filename(int left_num, int right_num);
-	void recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2, std::vector<cv::Vec3f>& world_pts);
 
-	void project_points_on_to_img(WPts& world_pts, WPts& world_point_colors, cv::Mat& left_img, cv::Mat& right_img);
+
+	cv::Vec3d Reconstruct3D::calculate_3D_point(const cv::Vec2d& left_image_point, const cv::Vec2d& right_image_point, 
+		const cv::Mat& proj1, const cv::Mat& proj2) const;
+	void recon_obj(const IPts& img_pts1, const IPts& img_pts2, WPts& world_pts);
+
+	void correct_img_coordinates(IPts& img_pts1, IPts& img_pts2);
+
+
+	cv::Point2d Reconstruct3D::project_point(const cv::Vec3d& world_pt, const cv::Mat& projection_matrix) const;
+
+	void project_points_on_to_img(WPts& world_pts, WPts& world_point_colors, cv::Mat& left_img, cv::Mat& right_img,
+		IPts& img_pts1, IPts& img_pts2);
 	void reconstruct(CameraPairs& camera_pairs, int no_of_images);
 	//void gen_texture(GLuint& texture_id_, cv::Mat& remapped_img_for_texture) const;
 	void re_reconstruct(CameraPairs& camera_pairs, int no_of_images);
+	void filter_noise(WPt& single_stripe_world_pts);
 
 
 	Reconstruct3D(int no_of_cams, QObject* parent);
 	~Reconstruct3D();
 
 public slots:
-	void collect_images(FlyCapture2::Image img, int cam_no);
-	void collect_images_without_delay(FlyCapture2::Image img, int cam_no);
+	void collect_images(const FlyCapture2::Image& img, int cam_no);
+	void collect_images_without_delay(const FlyCapture2::Image& img, int cam_no);
 	void compute_correspondence(FlyCapture2::Image img, int cam_no);
 
 signals:
 	void finished_reconstruction(WPts world_pts);
-	void finished_reconstruction_with_triangles(WPts world_pts, WPts world_pt_colors, WPts triangles, IPts texture_coords, cv::Mat texture_img);
+	void finished_reconstruction_with_triangles(WPts world_pts, WPts world_pt_colors, WPt triangles, IPt texture_coords, cv::Mat texture_img);
 };
 

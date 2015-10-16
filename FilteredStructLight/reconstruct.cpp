@@ -9,6 +9,9 @@
 #include "gl_core_3_3.h"
 #include "gaussfit.h"
 #include <QtWidgets/QMessageBox>
+#include <iomanip>
+#include <opencv2/video/background_segm.hpp>
+#include <opencv2/video/background_segm.hpp>
 
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::milliseconds milliseconds;
@@ -29,7 +32,7 @@ Reconstruct3D::~Reconstruct3D()
 {
 }
 
-void Reconstruct3D::collect_images(FlyCapture2::Image img, int cam_no)
+void Reconstruct3D::collect_images(const FlyCapture2::Image& img, int cam_no)
 {
 	std::chrono::high_resolution_clock::time_point now = Clock::now();
 	auto duration = std::chrono::duration_cast<std::chrono::milliseconds>( now - last_updated_ ).count();
@@ -56,19 +59,23 @@ void Reconstruct3D::collect_images(FlyCapture2::Image img, int cam_no)
 	}
 }
 
-void Reconstruct3D::collect_images_without_delay(FlyCapture2::Image img, int cam_no)
+void Reconstruct3D::collect_images_without_delay(const FlyCapture2::Image& img, int cam_no)
 {
 	cv::Mat test(img.GetRows(), img.GetCols(), CV_8UC1, img.GetData(), img.GetStride());
 	cv::Mat colored;
-	cv::Mat test2;
+	cv::Mat test2 = test.clone();
 	//cv::cvtColor(test, colored, CV_BayerBG2BGR);
-	cv::cvtColor(test, test2, CV_BayerBG2GRAY);
 
 	//cv::imshow("bayer 2 gray", test2);
 	//cv::imshow("bayer 2 color", colored);
 	//cv::imshow("bayer ", test2);
 
-	camera_img_map_[cam_no].push_back(test2.clone());
+	//std::cout << img.GetTimeStamp().cycleSeconds << std::endl;
+	//std::cout << img.GetTimeStamp().cycleOffset<< std::endl;
+	//std::cout << img.GetTimeStamp().cycleCount<< std::endl;
+	//std::cout << img.GetTimeStamp().microSeconds << std::endl <<std::endl;
+
+	camera_img_map_[cam_no].push_back(test2);
 }
 
 void Reconstruct3D::compute_correspondence(FlyCapture2::Image img, int cam_no)
@@ -213,9 +220,16 @@ void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_p
 		
 		auto& images = itr->second;
 		for (auto i = 0u; i < images.size(); ++i) {
-			std::string filename = "camera_" + std::to_string(i) + std::string(".png");
+			std::ostringstream ss;
+			ss << std::setw(5) << std::setfill('0') << i ;
+			std::string s2(ss.str());
+			std::string filename = "camera_" + s2 + std::string(".png");
 			QString filepath = camera_pair_dir.filePath(filename.c_str());
-			cv::imwrite(filepath.toStdString(), images[i]);
+			cv::Mat converted_img;
+			cv::cvtColor(images[i], converted_img, CV_BayerBG2GRAY);
+			cv::imwrite(filepath.toStdString(), converted_img);
+			images[i] = converted_img;
+			std::cout << filepath.toStdString() << std::endl;
 		}
 	}
 
@@ -295,21 +309,6 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 					break;
 				}
 			}
-			if (displayCorners)
-			{
-				//cout << filename << endl;
-				Mat cimg, cimg1;
-				cvtColor(img, cimg, COLOR_GRAY2BGR);
-				drawChessboardCorners(cimg, boardSize, corners, found);
-				double sf = 640. / MAX(img.rows, img.cols);
-				resize(cimg, cimg1, Size(), sf, sf);
-				imshow(img_name, cimg1);
-				char c = (char)waitKey(500);
-				if (c == 27 || c == 'q' || c == 'Q') //Allow ESC to quit
-					exit(-1);
-			}
-			else
-				putchar('.');
 			
 			
 				
@@ -318,6 +317,25 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 			cv::cornerSubPix(img, corners, Size(11, 11), Size(-1, -1),
 				TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS,
 				30, 0.01));
+			if (displayCorners)
+			{
+				//cout << filename << endl;
+				Mat cimg, cimg1;
+				cvtColor(img, cimg, COLOR_GRAY2BGR);
+				drawChessboardCorners(cimg, boardSize, corners, found);
+				//double sf = 640. / MAX(img.rows, img.cols);
+				//resize(cimg, cimg1, Size(), sf, sf);
+				imshow(img_name, cimg);
+				if (write_images)
+				{
+					imwrite(img_name  + std::string(".png"), cimg);
+				}
+				char c = (char)waitKey(500);
+				if (c == 27 || c == 'q' || c == 'Q') //Allow ESC to quit
+					exit(-1);
+			}
+			else
+				putchar('.');
 			good_images_found++;
 
 			//for (auto x = 0; x < corners.size(); ++x) {
@@ -325,10 +343,6 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 			//	corners[x].x = imageSize.width - corners[x].x;
 			//}
 			
-			if (write_images)
-			{
-				imwrite(img_name  + std::string(".jpg"), img);
-			}
 		}
 		if (k == 2)
 		{
@@ -421,6 +435,8 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		npoints += npt;
 	}
 	std::cout << "average reprojection err = " << err / npoints << " px" << std::endl;
+
+
 
 	// save intrinsic parameters
 	FileStorage fs(generate_intrinsics_filename(left_cam, right_cam), CV_STORAGE_WRITE);
@@ -531,10 +547,29 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
                 line(canvas, Point(j, 0), Point(j, canvas.rows), Scalar(0, 255, 0), 1, 8);
         imshow("rectified" + std::to_string(left_cam) + std::string("_") + std::to_string(right_cam), canvas);
 		
+
+
         char c = (char)waitKey();
         if( c == 27 || c == 'q' || c == 'Q' )
             break;
 	}
+
+	// project and write images
+	//for (auto z = 0u; z < objectPoints.size(); ++z) {
+	//	Mat left_img = camera_img_map[left_cam][i];
+	//	Mat right_img = camera_img_map[right_cam][i];
+
+	//	for (auto i = 0u; i < imagePoints[0].size(); ++i) {
+	//		cv::Mat points_vec(4, 1, CV_64F);
+	//		for (auto n  = 0u; n < imagePoints[0][i].size(); ++n) {
+	//			for (auto x = 0u; x < 3; ++x) {
+	//				points_vec.at<double>(x, 0) = image_poin
+	//			}
+	//			
+	//		}
+	//	}
+
+	//}
 }
 
 
@@ -635,7 +670,7 @@ void convert_2_left_camera_color(const cv::Mat& img, const cv::Mat& inter_camera
 void Reconstruct3D::pre_proces_img(cv::Mat& input, cv::Mat& output, bool is_right) {
 	cv::Mat thresholded;
 	cv::threshold(input, thresholded, 50, 255, CV_THRESH_TOZERO);
-	remap(thresholded, output, rmap[is_right][0], rmap[is_right][1], CV_INTER_LINEAR);
+	remap(thresholded, output, rmap[is_right][0], rmap[is_right][1], CV_INTER_CUBIC);
 }
 
 void Reconstruct3D::init_imgs(CameraImgMap& camera_img_map, int cam, bool is_right) {
@@ -746,7 +781,7 @@ void Reconstruct3D::get_unique_edges(CameraImgMap& camera_img_map, int cam, std:
 }
 
 
-void Reconstruct3D::compute_correlation(std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2,
+void Reconstruct3D::compute_correlation(IPts& img_pts1, IPts& img_pts2,
 		CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs) {
 
 
@@ -777,7 +812,7 @@ void Reconstruct3D::compute_correlation(std::vector <cv::Vec2f>& img_pts1, std::
     //read_input_file("recon.cp", img_pts1, img_pts2);
 }
 
-void Reconstruct3D::compute_correlation_using_gaussian(std::vector<cv::Vec2f>& img_pts1, std::vector<cv::Vec2f>& img_pts2, 
+void Reconstruct3D::compute_correlation_using_gaussian(IPts& img_pts1, IPts& img_pts2, 
 													   CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs) {
 
     init_imgs(camera_img_map, camera_pairs[0].first, false);
@@ -789,7 +824,7 @@ void Reconstruct3D::compute_correlation_using_gaussian(std::vector<cv::Vec2f>& i
     write_file("recon.cp", img_pts1, img_pts2);
 }
 
-void Reconstruct3D::write_file(const std::string& file_name, const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2) {
+void Reconstruct3D::write_file(const std::string& file_name, const IPts& img_pts1, const IPts& img_pts2) {
     std::ofstream file;
     file.open(file_name);
     for (int i = 0; i < img_pts1.size(); ++i) {
@@ -801,7 +836,7 @@ void Reconstruct3D::write_file(const std::string& file_name, const std::vector <
     file.close();
 }
 
-void Reconstruct3D::read_file(const std::string& file_name, std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2) {
+void Reconstruct3D::read_file(const std::string& file_name, IPts& img_pts1, IPts& img_pts2) {
     std::ifstream file;
     file.open(file_name);
 	
@@ -828,7 +863,7 @@ void Reconstruct3D::read_file(const std::string& file_name, std::vector <cv::Vec
     
 void Reconstruct3D::pick_correlated_points(std::vector<UniqueEdges>& unique_colors_left,
     std::vector<UniqueEdges>& unique_colors_right,
-    std::vector <cv::Vec2f>& img_pts1, std::vector <cv::Vec2f>& img_pts2, CameraImgMap& camera_img_map, int left_cam, int right_cam) {
+    IPts& img_pts1, IPts& img_pts2, CameraImgMap& camera_img_map, int left_cam, int right_cam) {
 
 
 		bool one_point = false;
@@ -877,8 +912,8 @@ void Reconstruct3D::pick_correlated_points(std::vector<UniqueEdges>& unique_colo
 					int right_col = row_edges_vec_right[i];
 					//img_pts1.push_back(cv::Vec2f(left_col, row_no));
 					//img_pts2.push_back(cv::Vec2f(right_col, row_no));
-					img_pts1.push_back(cv::Vec2f(row_no, left_col));
-					img_pts2.push_back(cv::Vec2f(row_no, right_col));
+					//img_pts1.push_back(cv::Vec2f(row_no, left_col));
+					//img_pts2.push_back(cv::Vec2f(row_no, right_col));
 
 					// draw a circle at the point
 					//int w = left_img.cols;
@@ -934,13 +969,15 @@ void Reconstruct3D::fit_gaussians(CameraImgMap& camera_img_map, int cam_no, std:
 }
 
 void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int left_cam_no, int right_cam_no, 
-											 std::vector<cv::Vec2f>& img_pts1, std::vector<cv::Vec2f>& img_pts2) {
+											 IPts& img_pts1, IPts& img_pts2) {
 	auto& left_imgs = camera_img_map[left_cam_no];
 	auto& right_imgs = camera_img_map[right_cam_no];
 
 	assert(left_imgs.size() == right_imgs.size());
 
 	int threshold = 50;
+	img_pts1.resize(left_imgs.size());
+	img_pts2.resize(right_imgs.size());
 
 	for (auto img = 0u; img < left_imgs.size(); ++img) {
 		cv::Mat& left_img = left_imgs[img];
@@ -962,7 +999,7 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 			if ((left_row_sum.at<int>(row, 0) >= threshold)
 				&& (right_row_sum.at<int>(row, 0) >= threshold)) {
 
-					int left_mid_point;
+					double left_mid_point;
 					cv::Mat left_non_zero_points;
 					cv::findNonZero(left_img.row(row), left_non_zero_points);
 
@@ -970,35 +1007,42 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 					//cv::reduce(cv::Mat(left_non_zero_points), left_mid_point_estimate_mat, 0, CV_REDUCE_SUM, CV_32S);
 					//cv::Vec2i left_mid_point_estimate = left_mid_point_estimate_mat.at<cv::Vec2i>(0, 0);
 
-					cv::Vec2i left_avg;
+					cv::Vec2d left_avg;
 					for (auto i = 0u; i < left_non_zero_points.rows; ++i) {
 						left_avg += left_non_zero_points.at<cv::Vec2i>(i, 0);
 					}
-					left_avg /= left_non_zero_points.rows;
+					left_avg /= static_cast<double>(left_non_zero_points.rows);
 
 					fit_gauss(left_img, row, left_non_zero_points, left_avg[0], left_mid_point);
+					//left_mid_point = left_avg[0];
 
-					int right_mid_point;
+					double right_mid_point;
 					cv::Mat right_non_zero_points;
 					cv::findNonZero(right_img.row(row), right_non_zero_points);
 
 					//cv::Mat right_mid_point_estimate_mat;
 					//cv::reduce(cv::Mat(right_points), right_mid_point_estimate_mat, 0, CV_REDUCE_AVG, CV_32F);
 					//cv::Vec2i right_mid_point_estimate = right_mid_point_estimate_mat.at<cv::Vec2i>(0, 0);
-					cv::Vec2i right_avg;
+					cv::Vec2d right_avg;
 					for (auto i = 0u; i < right_non_zero_points.rows; ++i) {
 						right_avg += right_non_zero_points.at<cv::Vec2i>(i, 0);
 					}
-					right_avg /= right_non_zero_points.rows;
+					right_avg /= static_cast<double>(right_non_zero_points.rows);
 
 					fit_gauss(right_img, row, right_non_zero_points, right_avg[0], right_mid_point);
+					//right_mid_point = right_avg[0];
 
 
 					//Rect rect(50, 50, 270, 270);
-					Rect rect(validRoi[0]);
-					if (rect.contains(Point2i(left_mid_point, row))) {
-						img_pts1.push_back(cv::Point2f(left_mid_point, row));
-						img_pts2.push_back(cv::Point2f(right_mid_point, row));
+					Rect left_rect(validRoi[0]);
+					Rect right_rect(validRoi[1]);
+					if (left_rect.contains(Point2d(left_mid_point, row))
+						&& (right_rect.contains(Point2d(right_mid_point, row)))) {
+						img_pts1[img].push_back(cv::Point2d(left_mid_point, row));
+						img_pts2[img].push_back(cv::Point2d(right_mid_point, row));
+
+						left_corr_img.at<cv::Vec3b>(row, left_mid_point) = cv::Vec3b(0, 0, 255);
+						right_corr_img.at<cv::Vec3b>(row, right_mid_point) = cv::Vec3b(0, 0, 255);
 					}
 					//img_pts1.push_back(cv::Point2f(row, left_mid_point));
 					//img_pts2.push_back(cv::Point2f(row, right_mid_point));
@@ -1007,8 +1051,6 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 					//img_pts1.push_back(cv::Point2f(row, left_mid_point));
 					//img_pts2.push_back(cv::Point2f(row, right_mid_point));
 
-					left_corr_img.at<cv::Vec3b>(row, left_mid_point) = cv::Vec3b(0, 0, 255);
-					right_corr_img.at<cv::Vec3b>(row, right_mid_point) = cv::Vec3b(0, 0, 255);
 			}
 		}
 
@@ -1017,8 +1059,8 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 	}
 }
 
-void Reconstruct3D::triangulate_pts(const WPts& world_pnts, WPts& triangles, 
-	std::vector<cv::Vec2f>& texture_coords, cv::Mat& remapped_img) {
+void Reconstruct3D::triangulate_pts(const WPts& world_pnts, WPt& triangles, 
+	IPt& texture_coords, cv::Mat& remapped_img) {
 
 
 	const cv::Mat proj = P1;
@@ -1029,20 +1071,27 @@ void Reconstruct3D::triangulate_pts(const WPts& world_pnts, WPts& triangles,
 	//cv::Mat pt_on_plane(3, 1, CV_32F, z1);
 	//cv::Mat normal = some_pnt - pt_on_plane;
 
-	std::vector<cv::Point2f> projected_pts;
-	for (int i = 0u; i < world_pnts.size(); ++i) {
-		// project point
-		cv::Mat world_pnt(4, 1, CV_64F);
-		for (int x = 0; x < 3; ++x) {
-			world_pnt.at<double>(x, 0) = (double)world_pnts[i][x];
+	WPt world_pt_single_array;
+	for (auto img = 0u; img < world_pnts.size(); ++img) {
+		for (auto i = 0u; i < world_pnts[img].size(); ++i) {
+			world_pt_single_array.push_back(world_pnts[img][i]);
 		}
-		world_pnt.at<double>(3, 0) = 1.0;
-		cv::Mat projected_pt = proj * world_pnt;
-		double z = projected_pt.at<double>(2, 0);
-		projected_pts.push_back(cv::Point2f(projected_pt.at<double>(0, 0) / z, projected_pt.at<double>(1, 0) / z));
 	}
 
-	assert(world_pnts.size() == projected_pts.size());
+	std::vector<cv::Point2f> projected_pts;
+	for (auto i = 0u; i < world_pt_single_array.size(); ++i) {
+			// project point
+			cv::Mat world_pnt(4, 1, CV_64F);
+			for (int x = 0; x < 3; ++x) {
+				world_pnt.at<double>(x, 0) = (double)world_pt_single_array[i][x];
+			}
+			world_pnt.at<double>(3, 0) = 1.0;
+			cv::Mat projected_pt = proj * world_pnt;
+			double z = projected_pt.at<double>(2, 0);
+			projected_pts.push_back(cv::Point2f(projected_pt.at<double>(0, 0) / z, projected_pt.at<double>(1, 0) / z));
+	}
+
+	assert(world_pt_single_array.size() == projected_pts.size());
 
 
 	auto cmpx = [&] (const cv::Point2f& left, const cv::Point2f& right) -> bool {
@@ -1096,11 +1145,11 @@ void Reconstruct3D::triangulate_pts(const WPts& world_pnts, WPts& triangles,
 		}
 
 		if (triangle_index.size() == 3) {
-			WPts triangle;
+			WPt triangle;
 			std::vector<cv::Point2f> image_coords;
 			for (auto k = 0u; k < triangle_index.size(); ++k) {
-				triangles.push_back(world_pnts[triangle_index[k]]);
-				triangle.push_back(world_pnts[triangle_index[k]]);
+				triangles.push_back(world_pt_single_array[triangle_index[k]]);
+				triangle.push_back(world_pt_single_array[triangle_index[k]]);
 				image_coords.push_back(projected_pts[triangle_index[k]]);
 			}
 			for (int i = 0; i < 3; ++i) {
@@ -1154,82 +1203,135 @@ void Reconstruct3D::alter_img_for_projection(const cv::Mat& img, cv::Mat& remapp
 	cv::remap(img_copy, remapped_img, rmap[is_right][0], rmap[is_right][1], CV_INTER_LINEAR);
 }
 
-void Reconstruct3D::recon_obj(const std::vector <cv::Vec2f>& img_pts1, const std::vector <cv::Vec2f>& img_pts2, std::vector<cv::Vec3f>& world_pts) {
+void Reconstruct3D::filter_noise(WPt& single_stripe_world_pts) {
+	
+}
+
+cv::Vec3d Reconstruct3D::calculate_3D_point(const cv::Vec2d& left_image_point, const cv::Vec2d& right_image_point, 
+		const cv::Mat& proj1, const cv::Mat& proj2) const {
+			cv::Mat D(4, 3, CV_64F);
+			cv::Mat b(4, 1, CV_64F);
+
+			// fill rows from point 1
+			for (auto x = 0u; x < 2; ++x) {
+				cv::Mat row_D(1, 3, CV_64F);
+				cv::Mat row_B(1, 1, CV_64F);
+				fill_row(proj1, left_image_point[x], row_D, row_B, x);
+				row_D.row(0).copyTo(D.row(x));
+				row_B.row(0).copyTo(b.row(x));
+			}
+			for (auto x = 0u; x < 2; ++x) {
+				cv::Mat row_D(1, 3, CV_64F);
+				cv::Mat row_B(1, 1, CV_64F);
+				fill_row(proj2, right_image_point[x], row_D, row_B, x);
+				row_D.row(0).copyTo(D.row(x + 2));
+				row_B.row(0).copyTo(b.row(x + 2));
+			}
+			cv::Mat XYZ(3, 1, CV_64F);
+			cv::solve(D, b, XYZ, DECOMP_SVD);
+			//cv::Mat D_inv = D.inv(DECOMP_SVD);
+			//cv::Mat XYZ = D_inv * b;
+
+			//cv::Mat b_test = D * XYZ;
+			//cv::Mat results = b - b_test;
+			//std::cout << "error: " << results << std::endl;
+			//std::cout << "XYZ : " << XYZ << std::endl;
+			//std::cout << "D Matrix : " << D << std::endl;
+			//std::cout << "b Matrix : " << b << std::endl;
+			//std::cout << "Img Points 1 : " << img_pts1[i].x << ", " << img_pts1[i].y << std::endl;
+			//std::cout << "Img Points 2 : " << img_pts2[i].x << ", " << img_pts2[i].y << std::endl;
+			cv::Vec3d point_3D(XYZ.at<double>(0, 0), XYZ.at<double>(1, 0), XYZ.at<double>(2, 0));
+
+			return point_3D;
+}
+
+
+void  Reconstruct3D::correct_img_coordinates(IPts& img_pts1, IPts& img_pts2) {
+	// read file
+	cv::Mat proj1 = P1;
+	cv::Mat proj2 = P2;
+
+	for (auto img = 0u; img < img_pts1.size(); ++img) {
+		for (auto i = 0u; i < img_pts1[img].size(); ++i) {
+			optimize_image_coordinates(img_pts1[img][i], img_pts2[img][i], this, proj1, proj2);
+		}
+	}
+}
+
+void Reconstruct3D::recon_obj(const IPts& img_pts1, const IPts& img_pts2, WPts& world_pts) {
 	assert(img_pts1.size() == img_pts2.size());
 
 	// read file
 	cv::Mat proj1 = P1;
 	cv::Mat proj2 = P2;
 
+	world_pts.clear();
+
 	//std::cout << "Projection Matrix 1: " << std::endl;
 	//std::cout << proj1 << std::endl;
 	//std::cout << "Projection Matrix 2: " << std::endl;
 	//std::cout << proj2 << std::endl;
 
-	//cv::Mat img_pt_mat1(2, img_pts1.size(), CV_64F);
-	//cv::Mat img_pt_mat2(2, img_pts1.size(), CV_64F);
+	//for (auto img = 0u; img < img_pts1.size(); ++img) {
+	//	WPt world_pts_per_img;
+	//	cv::Mat img_pt_mat1(2, img_pts1[img].size(), CV_64F);
+	//	cv::Mat img_pt_mat2(2, img_pts1[img].size(), CV_64F);
 
-	//for (auto i = 0u; i < img_pts1.size(); ++i) {
-	//	for (auto x = 0u; x < 2; ++x) {
-	//		img_pt_mat1.at<double>(x, i) = img_pts1[i][x];
+	//	for (auto i = 0u; i < img_pts1[img].size(); ++i) {
+	//		for (auto x = 0u; x < 2; ++x) {
+	//			img_pt_mat1.at<double>(x, i) = img_pts1[img][i][x];
+	//		}
 	//	}
-	//}
 
-	//for (auto i = 0u; i < img_pts2.size(); ++i) {
-	//	for (auto x = 0u; x < 2; ++x) {
-	//		img_pt_mat2.at<double>(x, i) = img_pts2[i][x];
+	//	for (auto i = 0u; i < img_pts2[img].size(); ++i) {
+	//		for (auto x = 0u; x < 2; ++x) {
+	//			img_pt_mat2.at<double>(x, i) = img_pts2[img][i][x];
+	//		}
 	//	}
+
+	//	cv::Mat pts4D(4, img_pts1[img].size(), CV_64F);
+
+	//	cv::triangulatePoints(proj1, proj2, img_pt_mat1, img_pt_mat2, pts4D);
+
+	//	for (auto i = 0u; i < img_pts2[img].size(); ++i) {
+	//		world_pts_per_img.push_back(cv::Vec3f(pts4D.at<double>(0, i) / pts4D.at<double>(3, i),
+	//			pts4D.at<double>(1, i) / pts4D.at<double>(3, i),
+	//			pts4D.at<double>(2, i) / pts4D.at<double>(3, i)));
+	//	}
+	//	world_pts.push_back(world_pts_per_img);
 	//}
 
-	//cv::Mat pts4D(4, img_pts1.size(), CV_64F);
-
-	//cv::triangulatePoints(proj1, proj2, img_pt_mat1, img_pt_mat2, pts4D);
-
-	//for (auto i = 0u; i < img_pts2.size(); ++i) {
-	//	world_pts.push_back((pts4D.at<double>(0, i) / pts4D.at<double>(3, i),
-	//		pts4D.at<double>(1, i) / pts4D.at<double>(3, i),
-	//		pts4D.at<double>(2, i) / pts4D.at<double>(3, i)));
-	//}
-
-	for (auto i = 0u; i < img_pts1.size(); ++i) {
-		cv::Mat D(4, 3, CV_64F);
-		cv::Mat b(4, 1, CV_64F);
-
-		// fill rows from point 1
-		for (auto x = 0u; x < 2; ++x) {
-			cv::Mat row_D(1, 3, CV_64F);
-			cv::Mat row_B(1, 1, CV_64F);
-			fill_row(proj1, img_pts1[i][x], row_D, row_B, x);
-			row_D.row(0).copyTo(D.row(x));
-			row_B.row(0).copyTo(b.row(x));
+	for (auto img = 0u; img < img_pts1.size(); ++img) {
+		WPt world_pt;
+		for (auto i = 0u; i < img_pts1[img].size(); ++i) {
+			world_pt.push_back(calculate_3D_point(img_pts1[img][i], img_pts2[img][i], proj1, proj2));
 		}
-		for (auto x = 0u; x < 2; ++x) {
-			cv::Mat row_D(1, 3, CV_64F);
-			cv::Mat row_B(1, 1, CV_64F);
-			fill_row(proj2, img_pts2[i][x], row_D, row_B, x);
-			row_D.row(0).copyTo(D.row(x + 2));
-			row_B.row(0).copyTo(b.row(x + 2));
-		}
-		//cv::Mat XYZ(3, 1, CV_64F);
-		//cv::solve(D, b, XYZ, DECOMP_SVD);
-		cv::Mat D_inv = D.inv(DECOMP_SVD);
-		cv::Mat XYZ = D_inv * b;
-
-		cv::Mat b_test = D * XYZ;
-		cv::Mat results = b - b_test;
-		//std::cout << "error: " << results << std::endl;
-		//std::cout << "XYZ : " << XYZ << std::endl;
-		//std::cout << "D Matrix : " << D << std::endl;
-		//std::cout << "b Matrix : " << b << std::endl;
-		//std::cout << "Img Points 1 : " << img_pts1[i].x << ", " << img_pts1[i].y << std::endl;
-		//std::cout << "Img Points 2 : " << img_pts2[i].x << ", " << img_pts2[i].y << std::endl;
-		world_pts.push_back(cv::Vec3f(XYZ.at<double>(0, 0), XYZ.at<double>(1, 0), XYZ.at<double>(2, 0)));
+		world_pts.push_back(world_pt);
 	}
 
 	//emit finished_reconstruction_with_triangles(world_pts);
 }
 
-void Reconstruct3D::project_points_on_to_img(WPts& world_pts, WPts& world_point_colors, cv::Mat& left_img, cv::Mat& right_img) {
+cv::Point2d Reconstruct3D::project_point(const cv::Vec3d& world_pt, const cv::Mat& projection_matrix) const {
+	cv::Mat world_pnt_mtx(4, 1, CV_64F);
+	for (int x = 0; x < 3; ++x) {
+		world_pnt_mtx.at<double>(x, 0) = (double)world_pt[x];
+	}
+	world_pnt_mtx.at<double>(3, 0) = 1.0;
+
+	cv::Mat projected_matrix = projection_matrix * world_pnt_mtx;
+	double z = projected_matrix.at<double>(2, 0);
+
+	cv::Point2d projected_point(projected_matrix.at<double>(0, 0) / z, projected_matrix.at<double>(1, 0) / z);
+
+	return projected_point;
+}
+
+cv::RNG rng(255);
+
+void Reconstruct3D::project_points_on_to_img(WPts& world_pts, WPts& world_point_colors_all,
+                                             cv::Mat& left_img, cv::Mat& right_img, IPts& img_pts1, IPts& img_pts2) {
+
 	cv::Mat proj1 = P1;
 	cv::Mat proj2 = P2;
 
@@ -1239,39 +1341,58 @@ void Reconstruct3D::project_points_on_to_img(WPts& world_pts, WPts& world_point_
 	cv::Mat right_projected_img = right_img.clone();
 	cv::cvtColor(right_projected_img, right_projected_img, CV_GRAY2BGR);
 
-	for (int i = 0u; i < world_pts.size(); ++i) {
-		// project point
-		cv::Mat world_pnt(4, 1, CV_64F);
-		for (int x = 0; x < 3; ++x) {
-			world_pnt.at<double>(x, 0) = (double)world_pts[i][x];
+
+	world_point_colors_all.clear();
+
+	for (auto img = 0u; img < world_pts.size(); ++img) {
+		img_pts1[img].clear();
+		img_pts2[img].clear();
+
+		WPt world_pt_colors_per_img;
+		for (auto i = 0u; i < world_pts[img].size(); ++i) {
+			cv::Vec3b common_color(rng.next(), rng.next(), rng.next());
+			// project point
+
+			cv::Point2d left_projected_point = project_point(world_pts[img][i], P1);
+
+			// unique color for each stripe for better recognition, common color 
+			if (i < 5 && img == 0) {
+				std::cout  << std::setprecision(15) << " left projected points : "<< left_projected_point.x << ", " << left_projected_point.y << std::endl;
+			}
+
+			cv::Vec3d world_pt_color(0, 0, 0);
+
+			bool left_point_exists = false;
+			if ((left_projected_point.x >= 0 && left_projected_point.x < left_projected_img.cols)
+				&& ((left_projected_point.y >= 0 && left_projected_point.y < left_projected_img.rows))) {
+					left_projected_img.at<cv::Vec3b>(left_projected_point.y, left_projected_point.x) = common_color;
+					unsigned char red = left_img.at<unsigned char>(left_projected_point.y, left_projected_point.x);
+					float grayscale_float = red;
+
+					world_pt_color = cv::Vec3d(grayscale_float, grayscale_float, grayscale_float);
+					//world_pt_color = cv::Vec3d(common_color[2], common_color[1], common_color[0]);
+					world_pt_color /= 255.f;
+					left_point_exists = true;
+			} 
+			world_pt_colors_per_img.push_back(world_pt_color);
+
+			cv::Point2d right_projected_point = project_point(world_pts[img][i], P2);
+
+			if ((right_projected_point.x >= 0 && right_projected_point.x < right_projected_img.cols)
+				&& ((right_projected_point.y >= 0 && right_projected_point.y < right_projected_img.rows))) {
+					right_projected_img.at<cv::Vec3b>(right_projected_point.y, right_projected_point.x) = common_color;
+					//left_projected_img.at<cv::Vec3b>(right_projected_point.y, right_projected_point.x) = common_color;
+					if (left_point_exists) {
+						img_pts1[img].push_back(cv::Vec2d(left_projected_point.x, left_projected_point.y));
+						img_pts2[img].push_back(cv::Vec2d(right_projected_point.x, right_projected_point.y));
+					}
+			}
+
+			if (i < 5 && img == 0) {
+				std::cout  << " right projected points : "<< right_projected_point.x << ", " << right_projected_point.y << std::endl;
+			}
 		}
-		world_pnt.at<double>(3, 0) = 1.0;
-
-		cv::Mat left_projected_matrix = P1 * world_pnt;
-		double z = left_projected_matrix.at<double>(2, 0);
-
-		cv::Point2f left_projected_point(left_projected_matrix.at<double>(0, 0) / z, left_projected_matrix.at<double>(1, 0) / z);
-
-		cv::Vec3f world_pt_color(0, 0, 0);
-		if ((left_projected_point.x >= 0 && left_projected_point.x < left_projected_img.cols)
-			&& ((left_projected_point.y >= 0 && left_projected_point.y < left_projected_img.rows))) {
-				left_projected_img.at<cv::Vec3b>(left_projected_point.y, left_projected_point.x) = cv::Vec3b(0, 255, 0);
-				unsigned char red = left_img.at<unsigned char>(left_projected_point.y, left_projected_point.x);
-				float grayscale_float = red/255.f;
-
-				world_pt_color = cv::Vec3f(grayscale_float, grayscale_float, grayscale_float);
-		} 
-		world_point_colors.push_back(world_pt_color);
-
-		cv::Mat right_projected_matrix = P2 * world_pnt;
-		z = right_projected_matrix.at<double>(2, 0);
-
-		cv::Point2f right_projected_point(right_projected_matrix.at<double>(0, 0) / z, right_projected_matrix.at<double>(1, 0) / z);
-
-		if ((right_projected_point.x >= 0 && right_projected_point.x < right_projected_img.cols)
-			&& ((right_projected_point.y >= 0 && right_projected_point.y < right_projected_img.rows))) {
-				right_projected_img.at<cv::Vec3b>(right_projected_point.y, right_projected_point.x) = cv::Vec3b(0, 255, 0);
-		}
+		world_point_colors_all.push_back(world_pt_colors_per_img);
 	}
 
 	cv::imshow("left projected image", left_projected_img);
@@ -1303,29 +1424,66 @@ void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 		IPts img_pts1;
 		IPts img_pts2;
 		WPts world_pts;
-		WPts triangles;
+		WPt triangles;
 		WPts world_point_colors;
-		IPts texture_coordinates;
+		IPt texture_coordinates;
 
 		compute_correlation_using_gaussian(img_pts1, img_pts2, camera_img_map_, camera_pairs);
 
-		recon_obj(img_pts1, img_pts2, world_pts);
-		cv::Mat left_img = camera_img_map_[camera_pairs[0].first][0];
 
-		cv::Mat texture_img = cv::imread("left_texture.png", 0);
-		if (!texture_img.data) {
-			texture_img = left_img;
+		cv::Mat left_img = camera_img_map_[camera_pairs[0].first][0];
+		cv::Mat right_img = camera_img_map_[camera_pairs[0].second][0];
+
+
+		cv::Mat left_texture_img = cv::imread("left_texture.png", 0);
+		if (!left_texture_img.data) {
+			left_texture_img = left_img;
 		} else {
 			// remap it
-			pre_proces_img(texture_img, texture_img, false);
+			pre_proces_img(left_texture_img, left_texture_img, false);
 		}
+
+		cv::Mat right_texture_img = cv::imread("right_texture.png", 0);
+		if (!right_texture_img.data) {
+			right_texture_img = right_img;
+		} else {
+			// remap it
+			pre_proces_img(right_texture_img, right_texture_img, true);
+		}
+
+		for (auto i = 0; i < 15; ++i) {
+			std::cout << "original points : " << img_pts1[0][i][0] << ", " << img_pts1[0][i][1] << std::endl;
+		}
+		std::cout << std::endl;
+
+		for (auto i = 0; i < 15; ++i) {
+			std::cout << "original points : " << img_pts2[0][i][0] << ", " << img_pts2[0][i][1] << std::endl;
+		}
+		std::cout << std::endl;
+
 	
-		project_points_on_to_img(world_pts, world_point_colors, texture_img,  camera_img_map_[camera_pairs[0].second][0]);
+		//correct_img_coordinates(img_pts1, img_pts2);
+
+		for (auto i = 0; i < 15; ++i) {
+			std::cout << "corrected points : " << img_pts1[0][i][0] << ", " << img_pts1[0][i][1] << std::endl;
+		}
+		std::cout << std::endl;
+
+		for (auto i = 0; i < 15; ++i) {
+			std::cout << "corrected points : " << img_pts2[0][i][0] << ", " << img_pts2[0][i][1] << std::endl;
+		}
+		std::cout << std::endl;
+
+		// experiment ... let's iterate
+		//for (auto i = 0u; i < 100; ++i) {
+			recon_obj(img_pts1, img_pts2, world_pts);
+			project_points_on_to_img(world_pts, world_point_colors, left_texture_img, right_texture_img, img_pts1, img_pts2);
+		//}
 
 		triangulate_pts(world_pts, triangles, texture_coordinates, left_img);
 	
 
-		emit finished_reconstruction_with_triangles(world_pts, world_point_colors, triangles, texture_coordinates, texture_img);
+		emit finished_reconstruction_with_triangles(world_pts, world_point_colors, triangles, texture_coordinates, left_texture_img);
 		//emit finished_reconstruction_with_triangles(triangles, texture_coordinates, texture_img);
 	
 	} catch (std::exception &e)
@@ -1372,8 +1530,13 @@ void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs, int no_of_images) 
 			continue;
 		}
 		QDirIterator it(camera_pair_dir.absolutePath(), QStringList() << "*.png", QDir::Files);
+		int z = 0;
 		while (it.hasNext()) {
-			cv::Mat img = imread(it.next().toStdString(), 0);
+			std::string filename = it.next().toStdString();
+			if (z++ < 4) {
+				std::cout << filename << std::endl;
+			}
+			cv::Mat img = imread(filename, 0);
 			camera_img_map_[i].push_back(img);
 		}
 	}

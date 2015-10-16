@@ -199,19 +199,19 @@ void GLWidget::set_no_of_cams(int no_of_cams) {
 	no_of_cams_ = no_of_cams;
 }
 
-void GLWidget::display_image(Image image, int cam_no) {
+void GLWidget::display_image(const Image& image, int cam_no) {
 
 	makeCurrent();
-	cv::Mat test(image.GetRows(), image.GetCols(), CV_8UC1, image.GetData(), image.GetStride());
-	cv::Mat test2;
+	cv::Mat test2(image.GetRows(), image.GetCols(), CV_8UC1, image.GetData(), image.GetStride());
+	cv::Mat test;
 	//cv::cvtColor(test, colored, CV_BayerBG2BGR);
-	cv::cvtColor(test, test2, CV_BayerBG2GRAY);
+	cv::cvtColor(test2, test, CV_BayerBG2GRAY);
 	// Set stride for unpacking pixels
 	glPixelStorei(GL_UNPACK_ROW_LENGTH, image.GetStride());
 	// Replace current texture with new image
 	glBindTexture(GL_TEXTURE_2D, tex[cam_no]);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, image.GetCols(), image.GetRows(), 0,
-		GL_RED, GL_UNSIGNED_BYTE, test2.ptr());
+		GL_RED, GL_UNSIGNED_BYTE, test.ptr());
 	FlyCapture2::PixelFormat format = image.GetPixelFormat();
 	glBindTexture(GL_TEXTURE_2D, NULL);
 
@@ -221,10 +221,11 @@ void GLWidget::display_image(Image image, int cam_no) {
 	//cv::imwrite(img_filename, test);
 	
 
-	if (cam_no == no_of_cams_ - 1) {
-		//glViewport(0, 0, width(), qMax(height(), 1));
-		updateGL();
-	}
+	update();
+	//if (cam_no == no_of_cams_ - 1) {
+	//	//glViewport(0, 0, width(), qMax(height(), 1));
+	//	updateGL();
+	//}
 
 }
 
