@@ -12,6 +12,9 @@
 #include <iomanip>
 #include <opencv2/video/background_segm.hpp>
 #include <opencv2/video/background_segm.hpp>
+#include "smoothopt.h"
+#include <cmath>
+
 
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::milliseconds milliseconds;
@@ -667,7 +670,7 @@ void convert_2_left_camera_color(const cv::Mat& img, const cv::Mat& inter_camera
 }
 
 
-void Reconstruct3D::pre_proces_img(cv::Mat& input, cv::Mat& output, bool is_right) {
+void Reconstruct3D::pre_process_img(cv::Mat& input, cv::Mat& output, bool is_right) {
 	cv::Mat thresholded;
 	cv::threshold(input, thresholded, 50, 255, CV_THRESH_TOZERO);
 	remap(thresholded, output, rmap[is_right][0], rmap[is_right][1], CV_INTER_CUBIC);
@@ -684,7 +687,7 @@ void Reconstruct3D::init_imgs(CameraImgMap& camera_img_map, int cam, bool is_rig
 	for (int i = 0; i < camera_imgs.size(); i++) {
 		cv::Mat& img = camera_imgs[i];
 		cv::Mat rImg;
-		pre_proces_img(img, rImg, is_right);
+		pre_process_img(img, rImg, is_right);
 		camera_imgs[i] = rImg;
 
 		imwrite(img_name, rImg);
@@ -813,25 +816,28 @@ void Reconstruct3D::compute_correlation(IPts& img_pts1, IPts& img_pts2,
 }
 
 void Reconstruct3D::compute_correlation_using_gaussian(IPts& img_pts1, IPts& img_pts2, 
-													   CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs) {
+													   CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs,
+													   Intensities& left_intensities, Intensities& right_intensities) {
 
     init_imgs(camera_img_map, camera_pairs[0].first, false);
     init_imgs(camera_img_map, camera_pairs[0].second, true);
 
 	typedef std::unordered_map<int, int> GaussMidPoints;
 
-	correpond_with_gaussians(camera_img_map, camera_pairs[0].first, camera_pairs[0].second, img_pts1, img_pts2);
+	correpond_with_gaussians(camera_img_map, camera_pairs[0].first, camera_pairs[0].second, img_pts1, img_pts2, left_intensities, right_intensities);
     write_file("recon.cp", img_pts1, img_pts2);
 }
 
 void Reconstruct3D::write_file(const std::string& file_name, const IPts& img_pts1, const IPts& img_pts2) {
     std::ofstream file;
     file.open(file_name);
-    for (int i = 0; i < img_pts1.size(); ++i) {
-        file << img_pts1[i][0] << "\t";
-        file << img_pts1[i][1] << "\t";
-        file << img_pts2[i][0] << "\t";
-        file << img_pts2[i][1] << "\n";
+    for (int img = 0; img < img_pts1.size(); ++img) {
+		for (auto i = 0u; i < img_pts1[img].size(); ++i) {
+			file << img_pts1[img][i][0] << "\t";
+			file << img_pts1[img][i][1] << "\t";
+			file << img_pts2[img][i][0] << "\t";
+			file << img_pts2[img][i][1] << "\n";
+		}
     }
     file.close();
 }
@@ -969,15 +975,20 @@ void Reconstruct3D::fit_gaussians(CameraImgMap& camera_img_map, int cam_no, std:
 }
 
 void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int left_cam_no, int right_cam_no, 
-											 IPts& img_pts1, IPts& img_pts2) {
+											 IPts& img_pts1, IPts& img_pts2, Intensities& left_intensities, Intensities& right_intensities) {
+
 	auto& left_imgs = camera_img_map[left_cam_no];
 	auto& right_imgs = camera_img_map[right_cam_no];
+
 
 	assert(left_imgs.size() == right_imgs.size());
 
 	int threshold = 50;
 	img_pts1.resize(left_imgs.size());
 	img_pts2.resize(right_imgs.size());
+
+	left_intensities.resize(left_imgs.size());
+	right_intensities.resize(right_imgs.size());
 
 	for (auto img = 0u; img < left_imgs.size(); ++img) {
 		cv::Mat& left_img = left_imgs[img];
@@ -995,6 +1006,11 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 		cv::Mat right_corr_img;
 		cv::cvtColor(right_img, right_corr_img, CV_GRAY2BGR);
 
+		const int image_width = left_img.cols;
+		const int width_threshold_percentage = 10;
+		const int std_dev_threhsold = image_width * 0.01 * 10;
+
+
 		for (auto row = 0u; row < left_row_sum.rows; ++row) {
 			if ((left_row_sum.at<int>(row, 0) >= threshold)
 				&& (right_row_sum.at<int>(row, 0) >= threshold)) {
@@ -1007,13 +1023,16 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 					//cv::reduce(cv::Mat(left_non_zero_points), left_mid_point_estimate_mat, 0, CV_REDUCE_SUM, CV_32S);
 					//cv::Vec2i left_mid_point_estimate = left_mid_point_estimate_mat.at<cv::Vec2i>(0, 0);
 
-					cv::Vec2d left_avg;
-					for (auto i = 0u; i < left_non_zero_points.rows; ++i) {
-						left_avg += left_non_zero_points.at<cv::Vec2i>(i, 0);
-					}
-					left_avg /= static_cast<double>(left_non_zero_points.rows);
+//					cv::Vec2d left_avg;
+//					for (auto i = 0u; i < left_non_zero_points.rows; ++i) {
+//						left_avg += left_non_zero_points.at<cv::Vec2i>(i, 0);
+//					}
+//					left_avg /= static_cast<double>(left_non_zero_points.rows);
 
-					fit_gauss(left_img, row, left_non_zero_points, left_avg[0], left_mid_point);
+					cv::Scalar left_mean;
+					cv::Scalar left_std_dev;
+					cv::meanStdDev(left_non_zero_points, left_mean, left_std_dev);
+
 					//left_mid_point = left_avg[0];
 
 					double right_mid_point;
@@ -1023,23 +1042,47 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 					//cv::Mat right_mid_point_estimate_mat;
 					//cv::reduce(cv::Mat(right_points), right_mid_point_estimate_mat, 0, CV_REDUCE_AVG, CV_32F);
 					//cv::Vec2i right_mid_point_estimate = right_mid_point_estimate_mat.at<cv::Vec2i>(0, 0);
-					cv::Vec2d right_avg;
-					for (auto i = 0u; i < right_non_zero_points.rows; ++i) {
-						right_avg += right_non_zero_points.at<cv::Vec2i>(i, 0);
-					}
-					right_avg /= static_cast<double>(right_non_zero_points.rows);
 
-					fit_gauss(right_img, row, right_non_zero_points, right_avg[0], right_mid_point);
+//					cv::Vec2d right_avg;
+//					for (auto i = 0u; i < right_non_zero_points.rows; ++i) {
+//						right_avg += right_non_zero_points.at<cv::Vec2i>(i, 0);
+//					}
+//					right_avg /= static_cast<double>(right_non_zero_points.rows);
+
+					cv::Scalar right_mean;
+					cv::Scalar right_std_dev;
+					cv::meanStdDev(right_non_zero_points, right_mean, right_std_dev);
+
+					if (left_std_dev[0] > std_dev_threhsold) {
+						std::cout << "Intensity points spread too far in left image. Std dev : " << left_std_dev[0] << "Skipping row : " << row << std::endl;
+						continue;
+					} else if (right_std_dev[0] > std_dev_threhsold) {
+						std::cout << "Intensity points spread too far in right image. Std dev : " << right_std_dev[0] << "Skipping row : " << row << std::endl;
+						continue;
+					}
+
+					// fit gaussians only after checking for weird standard deviations, if points are all over, some error condition has occured
+
+					fit_gauss(left_img, row, left_non_zero_points, left_mean[0], left_mid_point);
+
+					fit_gauss(right_img, row, right_non_zero_points, right_mean[0], right_mid_point);
 					//right_mid_point = right_avg[0];
 
 
 					//Rect rect(50, 50, 270, 270);
 					Rect left_rect(validRoi[0]);
 					Rect right_rect(validRoi[1]);
+
 					if (left_rect.contains(Point2d(left_mid_point, row))
 						&& (right_rect.contains(Point2d(right_mid_point, row)))) {
 						img_pts1[img].push_back(cv::Point2d(left_mid_point, row));
 						img_pts2[img].push_back(cv::Point2d(right_mid_point, row));
+
+						double left_intensity = left_img.at<unsigned char>(row, static_cast<int>(left_mid_point + 0.5));
+						double right_intensity = right_img.at<unsigned char>(row, static_cast<int>(right_mid_point + 0.5));
+
+						left_intensities[img].push_back(left_intensity);
+						right_intensities[img].push_back(right_intensity);
 
 						left_corr_img.at<cv::Vec3b>(row, left_mid_point) = cv::Vec3b(0, 0, 255);
 						right_corr_img.at<cv::Vec3b>(row, right_mid_point) = cv::Vec3b(0, 0, 255);
@@ -1203,8 +1246,10 @@ void Reconstruct3D::alter_img_for_projection(const cv::Mat& img, cv::Mat& remapp
 	cv::remap(img_copy, remapped_img, rmap[is_right][0], rmap[is_right][1], CV_INTER_LINEAR);
 }
 
-void Reconstruct3D::filter_noise(WPt& single_stripe_world_pts) {
-	
+void Reconstruct3D::filter_noise(WPts& world_pts, const Intensities& left_intensities, const Intensities& right_intensities) {
+	for (auto img = 0u; img < world_pts.size(); ++img) {
+		optimize_smoothness(world_pts[img], left_intensities[img], right_intensities[img]);
+	}
 }
 
 cv::Vec3d Reconstruct3D::calculate_3D_point(const cv::Vec2d& left_image_point, const cv::Vec2d& right_image_point, 
@@ -1428,7 +1473,11 @@ void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 		WPts world_point_colors;
 		IPt texture_coordinates;
 
-		compute_correlation_using_gaussian(img_pts1, img_pts2, camera_img_map_, camera_pairs);
+		Intensities left_intensities;
+		Intensities right_intensities;
+
+		compute_correlation_using_gaussian(img_pts1, img_pts2, camera_img_map_, camera_pairs,
+			left_intensities, right_intensities);
 
 
 		cv::Mat left_img = camera_img_map_[camera_pairs[0].first][0];
@@ -1440,7 +1489,7 @@ void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 			left_texture_img = left_img;
 		} else {
 			// remap it
-			pre_proces_img(left_texture_img, left_texture_img, false);
+			pre_process_img(left_texture_img, left_texture_img, false);
 		}
 
 		cv::Mat right_texture_img = cv::imread("right_texture.png", 0);
@@ -1448,7 +1497,7 @@ void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 			right_texture_img = right_img;
 		} else {
 			// remap it
-			pre_proces_img(right_texture_img, right_texture_img, true);
+			pre_process_img(right_texture_img, right_texture_img, true);
 		}
 
 		for (auto i = 0; i < 15; ++i) {
@@ -1474,11 +1523,11 @@ void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 		}
 		std::cout << std::endl;
 
-		// experiment ... let's iterate
-		//for (auto i = 0u; i < 100; ++i) {
-			recon_obj(img_pts1, img_pts2, world_pts);
-			project_points_on_to_img(world_pts, world_point_colors, left_texture_img, right_texture_img, img_pts1, img_pts2);
-		//}
+		recon_obj(img_pts1, img_pts2, world_pts);
+
+		filter_noise(world_pts, left_intensities, right_intensities);
+
+		project_points_on_to_img(world_pts, world_point_colors, left_texture_img, right_texture_img, img_pts1, img_pts2);
 
 		triangulate_pts(world_pts, triangles, texture_coordinates, left_img);
 	

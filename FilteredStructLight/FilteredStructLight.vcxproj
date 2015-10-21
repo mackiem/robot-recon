@@ -122,9 +122,11 @@
     <ClCompile Include="gl_core_3_3.c" />
     <ClCompile Include="lmdif.c" />
     <ClCompile Include="lmpar.c" />
+    <ClCompile Include="lsqr.c" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="modelviewer.cpp" />
     <ClCompile Include="objloader.cpp" />
+    <ClCompile Include="smoothopt.cpp" />
     <ClCompile Include="projectorwindow.cpp" />
     <ClCompile Include="qrfac.c" />
     <ClCompile Include="qrsolv.c" />
@@ -190,6 +192,7 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_GUI_LIB -DQT_QML_LIB -DQT_QUICK_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB  "-I.\include" "-I.\GeneratedFiles" "-I." "-I$(QTDIR)\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(QTDIR)\include\QtCore" "-I$(QTDIR)\include\QtGui" "-I$(QTDIR)\include\QtQml" "-I$(QTDIR)\include\QtQuick" "-I$(QTDIR)\include\QtOpenGL" "-I$(QTDIR)\include\QtWidgets"</Command>
     </CustomBuild>
+    <ClInclude Include="lsqr.h" />
     <ClInclude Include="objloader.hpp" />
     <ClInclude Include="projectorwindow.h" />
     <CustomBuild Include="reconstruct.h">

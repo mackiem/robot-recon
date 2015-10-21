@@ -9,6 +9,7 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/core.hpp>
+#include <opencv2/core/core.hpp>
 
 using namespace FlyCapture2;
 using namespace std;
@@ -81,17 +82,18 @@ public:
 	void fit_gaussians(CameraImgMap& camera_img_map, int cam_no, std::unordered_map<int, std::pair<int, int>> mid_points);
 
 	void correpond_with_gaussians(CameraImgMap& camera_img_map, int left_cam_no, int right_cam_no,
-		IPts& img_pts1, IPts& img_pts2);
+		IPts& img_pts1, IPts& img_pts2, Intensities& left_intensities, Intensities& right_intensities);
 
 	void compute_correlation_using_gaussian(IPts& img_pts1, IPts& img_pts2,
-		CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs);
+		CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs, 
+		Intensities& left_intensities, Intensities& right_intensities);
 
 	void get_unique_edges(CameraImgMap& camera_img_map, int cam, std::vector<UniqueEdges> & unique_colors_per_image, bool is_right);
 	
 	void compute_correlation(IPts& img_pts1, IPts& img_pts2,
 		CameraImgMap& camera_img_map, std::vector<std::pair<int, int>> camera_pairs);
 
-	void pre_proces_img(cv::Mat& img, cv::Mat& rImg, bool is_right);
+	void pre_process_img(cv::Mat& img, cv::Mat& rImg, bool is_right);
 	void init_imgs(CameraImgMap& camera_img_map, int cam, bool is_right);
 	
 
@@ -122,7 +124,7 @@ public:
 	void reconstruct(CameraPairs& camera_pairs, int no_of_images);
 	//void gen_texture(GLuint& texture_id_, cv::Mat& remapped_img_for_texture) const;
 	void re_reconstruct(CameraPairs& camera_pairs, int no_of_images);
-	void filter_noise(WPt& single_stripe_world_pts);
+	void filter_noise(WPts& world_pts, const Intensities& left_intensities, const Intensities& right_intensities);
 
 
 	Reconstruct3D(int no_of_cams, QObject* parent);

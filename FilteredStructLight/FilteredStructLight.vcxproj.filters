@@ -119,6 +119,12 @@
     <ClCompile Include="objloader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="lsqr.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="smoothopt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="filteredstructlight.h">
@@ -166,6 +172,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="objloader.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="lsqr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
