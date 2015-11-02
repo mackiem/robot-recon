@@ -224,8 +224,8 @@ lmdif_reconstruction_error(int *m_ptr, int *n_ptr, double *params, double *error
 		cv::Vec2d right_projected_pt = reconstructor_3D_g->project_point(point_3D, *right_proj_mtx_g);
 
 		double error_per_point = 0.0;
-		Vec2d diff_left_point = (left_projected_pt - left_pt);
-		Vec2d diff_right_point = (right_projected_pt - right_pt);
+		cv::Vec2d diff_left_point = (left_projected_pt - left_pt);
+		cv::Vec2d diff_right_point = (right_projected_pt - right_pt);
 		error_per_point += pow(diff_left_point[0], 2) + pow(diff_left_point[1], 2);
 		error_per_point += pow(diff_right_point[0], 2) + pow(diff_right_point[1], 2);
 

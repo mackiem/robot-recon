@@ -400,7 +400,7 @@ void ModelViewer::update_model_with_triangles(WPts world_pnts, WPts world_pt_col
 
 	if (triangles.size() < 1) {
 		std::cout << "No triangles to display" << std::endl;
-		return;
+//		return;
 	}
 
 	WPt world_pt_single_array;
@@ -433,6 +433,10 @@ void ModelViewer::update_model_with_triangles(WPts world_pnts, WPts world_pt_col
 		return;
 	}
 
+	GLuint vert_pos_attr = m_shader.attributeLocation("vertex");
+	GLuint vert_color_attr = m_shader.attributeLocation("vertColor");
+	GLuint vert_tex_attr = m_shader.attributeLocation("vertCoords");
+
 	std::vector<glm::vec3> glm_world_pts;
 
 	for (auto& triangle : triangles) {
@@ -446,34 +450,34 @@ void ModelViewer::update_model_with_triangles(WPts world_pnts, WPts world_pt_col
 		glm_tex_coords.push_back(vec2);
 	}
 
-	glBindVertexArray(vao_);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_[0]);
-	//glBufferData(GL_ARRAY_BUFFER, triangles.size() * sizeof(cv::Vec3f), &triangles[0], GL_STATIC_DRAW);
-	glBufferData(GL_ARRAY_BUFFER, glm_world_pts.size() * sizeof(glm::vec3), &glm_world_pts[0], GL_STATIC_DRAW);
+	if (triangles.size() > 0) {
+		glBindVertexArray(vao_);
 
-	GLuint vert_pos_attr = m_shader.attributeLocation("vertex");
+		glBindBuffer(GL_ARRAY_BUFFER, vbo_[0]);
+		//glBufferData(GL_ARRAY_BUFFER, triangles.size() * sizeof(cv::Vec3f), &triangles[0], GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, glm_world_pts.size() * sizeof(glm::vec3), &glm_world_pts[0], GL_STATIC_DRAW);
 
-	glEnableVertexAttribArray(vert_pos_attr);
-	glVertexAttribPointer(vert_pos_attr, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), NULL);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_[1]);
-	glBufferData(GL_ARRAY_BUFFER, color_pts.size() * sizeof(cv::Vec3d), &color_pts[0], GL_STATIC_DRAW);
+		glEnableVertexAttribArray(vert_pos_attr);
+		glVertexAttribPointer(vert_pos_attr, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), NULL);
 
-	GLuint vert_color_attr = m_shader.attributeLocation("vertColor");
+		glBindBuffer(GL_ARRAY_BUFFER, vbo_[1]);
+		glBufferData(GL_ARRAY_BUFFER, color_pts.size() * sizeof(cv::Vec3d), &color_pts[0], GL_STATIC_DRAW);
 
-	glEnableVertexAttribArray(vert_color_attr);
-	glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3d), NULL);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_[2]);
-	glBufferData(GL_ARRAY_BUFFER, texture_coords.size() * sizeof(glm::vec2), &glm_tex_coords[0], GL_STATIC_DRAW);
+		glEnableVertexAttribArray(vert_color_attr);
+		glVertexAttribPointer(vert_color_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3d), NULL);
 
-	GLuint vert_tex_attr = m_shader.attributeLocation("vertCoords");
+		glBindBuffer(GL_ARRAY_BUFFER, vbo_[2]);
+		glBufferData(GL_ARRAY_BUFFER, texture_coords.size() * sizeof(glm::vec2), &glm_tex_coords[0], GL_STATIC_DRAW);
 
-	glEnableVertexAttribArray(vert_tex_attr);
-	glVertexAttribPointer(vert_tex_attr, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), NULL);
 
-	no_of_triangles_ = triangles.size();
+		glEnableVertexAttribArray(vert_tex_attr);
+		glVertexAttribPointer(vert_tex_attr, 2, GL_FLOAT, GL_FALSE, sizeof(glm::vec2), NULL);
+
+		no_of_triangles_ = triangles.size();
+	}
 	
 	gen_texture(texture_id_, texture_img);
 

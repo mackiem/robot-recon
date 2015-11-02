@@ -15,6 +15,15 @@
 #include "smoothopt.h"
 #include <cmath>
 
+#include <pcl/io/pcd_io.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/surface/mls.h>
+#include <pcl/surface/poisson.h>
+#include <pcl/io/vtk_io.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/kdtree/kdtree_flann.h>
+
+
 
 typedef std::chrono::high_resolution_clock Clock;
 typedef std::chrono::milliseconds milliseconds;
@@ -70,7 +79,7 @@ void Reconstruct3D::collect_images_without_delay(const FlyCapture2::Image& img, 
 	//cv::cvtColor(test, colored, CV_BayerBG2BGR);
 
 	//cv::imshow("bayer 2 gray", test2);
-	//cv::imshow("bayer 2 color", colored);
+	//cv::imshow("bayer 2 color", colored
 	//cv::imshow("bayer ", test2);
 
 	//std::cout << img.GetTimeStamp().cycleSeconds << std::endl;
@@ -185,7 +194,7 @@ void Reconstruct3D::recalibrate(std::vector<std::pair<int, int>> camera_pairs)
 		}
 		QDirIterator it(camera_pair_dir.absolutePath(), QStringList() << "*.png", QDir::Files);
 		while (it.hasNext()) {
-			cv::Mat img = imread(it.next().toStdString(), 0);
+			cv::Mat img = cv::imread(it.next().toStdString(), 0);
 			camera_img_map_[i].push_back(img);
 		}
 	}
@@ -242,7 +251,7 @@ void Reconstruct3D::run_reconstruction(std::vector<std::pair<int, int>> camera_p
 
 
 
-void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam, Size boardSize, bool useCalibrated, bool write_images) {
+void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam, cv::Size boardSize, bool useCalibrated, bool write_images) {
 
 	if (camera_img_map.size() < 2) {
 		std::cout << "Only " << camera_img_map.size() << " available. Need at least 2..." << std::endl;
@@ -262,8 +271,8 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 	//const float squareSize = 29.1f;  // Set this to your actual square size
 	
 	// ARRAY AND VECTOR STORAGE:
-	vector<vector<Point2f> > imagePoints[2];
-	vector<vector<Point3f> > objectPoints;
+	vector<vector<cv::Point2f> > imagePoints[2];
+	vector<vector<cv::Point3f> > objectPoints;
 
 	int i, j, k, nimages = (int)camera_img_map[left_cam].size();
 
@@ -276,14 +285,14 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		for (k = 0; k < 2; k++)
 		{
 			int image_index = (k == 0) ? left_cam : right_cam;
-			Mat& img = camera_img_map[image_index][i];
+			cv::Mat& img = camera_img_map[image_index][i];
 			
 			std::string img_name = (k == 0) ? "left0" : "right0";
 			img_name += std::to_string(i+1);
 
 			if (img.empty())
 				break;
-			if (imageSize == Size())
+			if (imageSize == cv::Size())
 				imageSize = img.size();
 			else if (img.size() != imageSize)
 			{
@@ -291,14 +300,14 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 				break;
 			}
 			bool found = false;
-			vector<Point2f>& corners = imagePoints[k][j];
+			vector<cv::Point2f>& corners = imagePoints[k][j];
 			for (int scale = 1; scale <= maxScale; scale++)
 			{
-				Mat timg;
+				cv::Mat timg;
 				if (scale == 1)
 					timg = img;
 				else
-					resize(img, timg, Size(), scale, scale);
+					resize(img, timg, cv::Size(), scale, scale);
 				found = findChessboardCorners(timg, boardSize, corners,
 					CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE
 					);
@@ -306,7 +315,7 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 				{
 					if (scale > 1)
 					{
-						Mat cornersMat(corners);
+						cv::Mat cornersMat(corners);
 						cornersMat *= 1. / scale;
 					}
 					break;
@@ -317,23 +326,23 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 				
 			if (!found)
 				break;
-			cv::cornerSubPix(img, corners, Size(11, 11), Size(-1, -1),
-				TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS,
+			cv::cornerSubPix(img, corners, cv::Size(11, 11), cv::Size(-1, -1),
+			                 cv::TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS,
 				30, 0.01));
 			if (displayCorners)
 			{
 				//cout << filename << endl;
-				Mat cimg, cimg1;
-				cvtColor(img, cimg, COLOR_GRAY2BGR);
+				cv::Mat cimg, cimg1;
+				cvtColor(img, cimg, cv::COLOR_GRAY2BGR);
 				drawChessboardCorners(cimg, boardSize, corners, found);
 				//double sf = 640. / MAX(img.rows, img.cols);
 				//resize(cimg, cimg1, Size(), sf, sf);
-				imshow(img_name, cimg);
+				cv::imshow(img_name, cimg);
 				if (write_images)
 				{
 					imwrite(img_name  + std::string(".png"), cimg);
 				}
-				char c = (char)waitKey(500);
+				char c = (char)cv::waitKey(500);
 				if (c == 27 || c == 'q' || c == 'Q') //Allow ESC to quit
 					exit(-1);
 			}
@@ -379,15 +388,15 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		for (j = 0; j < boardSize.height; j++)
 			for (k = 0; k < boardSize.width; k++)
 				//for (k = boardSize.width - 1; k >= 0; --k)
-				objectPoints[i].push_back(Point3f(j*squareSize, k*squareSize, 0));
+				objectPoints[i].push_back(cv::Point3f(j*squareSize, k*squareSize, 0));
 	}
 
 	cout << "Running stereo calibration ...\n";
 
 
 
-	cameraMatrix[0] = Mat::eye(3, 3, CV_64F);
-	cameraMatrix[1] = Mat::eye(3, 3, CV_64F);
+	cameraMatrix[0] = cv::Mat::eye(3, 3, CV_64F);
+	cameraMatrix[1] = cv::Mat::eye(3, 3, CV_64F);
 
 	cameraMatrix[0] = initCameraMatrix2D(objectPoints, imagePoints[0], imageSize, 1);
 	cameraMatrix[1] = initCameraMatrix2D(objectPoints, imagePoints[1], imageSize, 1);
@@ -399,13 +408,13 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		cameraMatrix[0], distCoeffs[0],
 		cameraMatrix[1], distCoeffs[1],
 		imageSize, R, T, E, F,
-		TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 555, 1e-5),
+		cv::TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 555, 1e-5),
 		CV_CALIB_USE_INTRINSIC_GUESS +
 		//CV_CALIB_FIX_ASPECT_RATIO +
-		CV_CALIB_ZERO_TANGENT_DIST +
+//		CV_CALIB_ZERO_TANGENT_DIST +
 		//CV_CALIB_SAME_FOCAL_LENGTH +
 		CV_CALIB_RATIONAL_MODEL +
-		CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + 
+//		CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + 
 		CV_CALIB_FIX_K5);
 	std::cout << "done with RMS error=" << rms << " px" << std::endl;
 
@@ -416,15 +425,15 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 	// epipolar geometry constraint: m2^t*F*m1=0
 	double err = 0;
 	int npoints = 0;
-	vector<Vec3f> lines[2];
+	vector<cv::Vec3f> lines[2];
 	for (i = 0; i < nimages; i++)
 	{
 		int npt = (int)imagePoints[0][i].size();
-		Mat imgpt[2];
+		cv::Mat imgpt[2];
 		for (k = 0; k < 2; k++)
 		{
-			imgpt[k] = Mat(imagePoints[k][i]);
-			undistortPoints(imgpt[k], imgpt[k], cameraMatrix[k], distCoeffs[k], Mat(), cameraMatrix[k]);
+			imgpt[k] = cv::Mat(imagePoints[k][i]);
+			undistortPoints(imgpt[k], imgpt[k], cameraMatrix[k], distCoeffs[k], cv::Mat(), cameraMatrix[k]);
 			computeCorrespondEpilines(imgpt[k], k + 1, F, lines[k]);
 		}
 		for (j = 0; j < npt; j++)
@@ -442,7 +451,7 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 
 
 	// save intrinsic parameters
-	FileStorage fs(generate_intrinsics_filename(left_cam, right_cam), CV_STORAGE_WRITE);
+	cv::FileStorage fs(generate_intrinsics_filename(left_cam, right_cam), CV_STORAGE_WRITE);
 	if (fs.isOpened())
 	{
 		fs << "M1" << cameraMatrix[0] << "D1" << distCoeffs[0] <<
@@ -472,7 +481,7 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
     // or up-down camera arrangements
     bool isVerticalStereo = fabs(P2.at<double>(1, 3)) > fabs(P2.at<double>(0, 3));
 
-    Mat rmap[2][2];
+	cv::Mat rmap[2][2];
 // IF BY CALIBRATED (BOUGUET'S METHOD)
     if( useCalibrated )
     {
@@ -484,15 +493,15 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
  // compute the rectification transformation directly
  // from the fundamental matrix
     {
-        vector<Point2f> allimgpt[2];
+        vector<cv::Point2f> allimgpt[2];
         for( k = 0; k < 2; k++ )
         {
             for( i = 0; i < nimages; i++ )
                 std::copy(imagePoints[k][i].begin(), imagePoints[k][i].end(), back_inserter(allimgpt[k]));
         }
-        F = findFundamentalMat(Mat(allimgpt[0]), Mat(allimgpt[1]), FM_8POINT, 0, 0);
-        Mat H1, H2;
-        stereoRectifyUncalibrated(Mat(allimgpt[0]), Mat(allimgpt[1]), F, imageSize, H1, H2, 3);
+        F = cv::findFundamentalMat(cv::Mat(allimgpt[0]), cv::Mat(allimgpt[1]), cv::FM_8POINT, 0, 0);
+        cv::Mat H1, H2;
+        stereoRectifyUncalibrated(cv::Mat(allimgpt[0]), cv::Mat(allimgpt[1]), F, imageSize, H1, H2, 3);
 
         R1 = cameraMatrix[0].inv()*H1*cameraMatrix[0];
         R2 = cameraMatrix[1].inv()*H2*cameraMatrix[1];
@@ -504,7 +513,7 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
     initUndistortRectifyMap(cameraMatrix[0], distCoeffs[0], R1, P1, imageSize, CV_16SC2, rmap[0][0], rmap[0][1]);
     initUndistortRectifyMap(cameraMatrix[1], distCoeffs[1], R2, P2, imageSize, CV_16SC2, rmap[1][0], rmap[1][1]);
 
-    Mat canvas;
+    cv::Mat canvas;
     double sf;
     int w, h;
     if( !isVerticalStereo )
@@ -527,43 +536,43 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
         for( k = 0; k < 2; k++ )
         {
 			int image_index = (k == 0) ? left_cam : right_cam;
-			Mat img = camera_img_map[image_index][i];
+			cv::Mat img = camera_img_map[image_index][i];
              //= imread(goodImageList[i*2+k], 0, 
 			cv::Mat rimg, cimg;
             remap(img, rimg, rmap[k][0], rmap[k][1], CV_INTER_LINEAR);
-            cvtColor(rimg, cimg, COLOR_GRAY2BGR);
-            Mat canvasPart = !isVerticalStereo ? canvas(Rect(w*k, 0, w, h)) : canvas(Rect(0, h*k, w, h));
+            cvtColor(rimg, cimg, cv::COLOR_GRAY2BGR);
+            cv::Mat canvasPart = !isVerticalStereo ? canvas(cv::Rect(w*k, 0, w, h)) : canvas(cv::Rect(0, h*k, w, h));
             resize(cimg, canvasPart, canvasPart.size(), 0, 0, CV_INTER_AREA);
             if( useCalibrated )
             {
-                Rect vroi(cvRound(validRoi[k].x*sf), cvRound(validRoi[k].y*sf),
+                cv::Rect vroi(cvRound(validRoi[k].x*sf), cvRound(validRoi[k].y*sf),
                           cvRound(validRoi[k].width*sf), cvRound(validRoi[k].height*sf));
-                rectangle(canvasPart, vroi, Scalar(0,0,255), 3, 8);
+                rectangle(canvasPart, vroi, cv::Scalar(0,0,255), 3, 8);
             }
         }
 
         if( !isVerticalStereo )
             for( j = 0; j < canvas.rows; j += 16 )
-                line(canvas, Point(0, j), Point(canvas.cols, j), Scalar(0, 255, 0), 1, 8);
+                line(canvas, cv::Point(0, j), cv::Point(canvas.cols, j), cv::Scalar(0, 255, 0), 1, 8);
         else
             for( j = 0; j < canvas.cols; j += 16 )
-                line(canvas, Point(j, 0), Point(j, canvas.rows), Scalar(0, 255, 0), 1, 8);
+                line(canvas, cv::Point(j, 0), cv::Point(j, canvas.rows), cv::Scalar(0, 255, 0), 1, 8);
         imshow("rectified" + std::to_string(left_cam) + std::string("_") + std::to_string(right_cam), canvas);
 		
 
 
-        char c = (char)waitKey();
+        char c = (char)cv::waitKey();
         if( c == 27 || c == 'q' || c == 'Q' )
             break;
 	}
 
 	// project and write images
 	//for (auto z = 0u; z < objectPoints.size(); ++z) {
-	//	Mat left_img = camera_img_map[left_cam][i];
-	//	Mat right_img = camera_img_map[right_cam][i];
+	//	cv::Mat left_img = camera_img_map[left_cam][i];
+	//	cv::Mat right_img = camera_img_map[right_cam][i];
 
 	//	for (auto i = 0u; i < imagePoints[0].size(); ++i) {
-	//		cv::Mat points_vec(4, 1, CV_64F);
+	//		cv::cv::Mat points_vec(4, 1, CV_64F);
 	//		for (auto n  = 0u; n < imagePoints[0][i].size(); ++n) {
 	//			for (auto x = 0u; x < 3; ++x) {
 	//				points_vec.at<double>(x, 0) = image_poin
@@ -581,7 +590,7 @@ void Reconstruct3D::resize_img(cv::Mat& img, const unsigned int resize_width) co
     //if (img.size().width > resize_width) {
         float aspect_ratio = (float)(img.size().width) / (float)(img.size().height);
         int operating_height = (int)((float)(resize_width) / aspect_ratio);
-        cv::resize(img, img, cv::Size(resize_width, operating_height), INTER_NEAREST);
+        cv::resize(img, img, cv::Size(resize_width, operating_height), cv::INTER_NEAREST);
     //}
 }
 
@@ -605,7 +614,7 @@ std::string Reconstruct3D::generate_extrinsics_filename(int left_num, int right_
 
 void Reconstruct3D::load_calibration(int left_cam, int right_cam) {
     // save intrinsic parameters
-    FileStorage fs(generate_intrinsics_filename(left_cam, right_cam), CV_STORAGE_READ);
+	cv::FileStorage fs(generate_intrinsics_filename(left_cam, right_cam), CV_STORAGE_READ);
     if (fs.isOpened())
     {
         fs["M1"] >> cameraMatrix[0];
@@ -648,8 +657,8 @@ void Reconstruct3D::create_rectification_map() {
     stereoRectify(cameraMatrix[0], distCoeffs[0],
         cameraMatrix[1], distCoeffs[1],
         imageSize, R, T, R1, R2, P1, P2, Q,
-        CALIB_ZERO_DISPARITY, 1, imageSize, &validRoi[0], &validRoi[1]);
-        //0, 1, imageSize, &validRoi[0], &validRoi[1]);
+        //CALIB_ZERO_DISPARITY, 1, imageSize, &validRoi[0], &validRoi[1]);
+        0, 1, imageSize, &validRoi[0], &validRoi[1]);
     
     initUndistortRectifyMap(cameraMatrix[0], distCoeffs[0], R1, P1, imageSize, CV_16SC2, rmap[0][0], rmap[0][1]);
     initUndistortRectifyMap(cameraMatrix[1], distCoeffs[1], R2, P2, imageSize, CV_16SC2, rmap[1][0], rmap[1][1]);
@@ -974,6 +983,129 @@ void Reconstruct3D::fit_gaussians(CameraImgMap& camera_img_map, int cam_no, std:
 
 }
 
+void Reconstruct3D::convert(const WPts& world_pts, pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
+	for (auto img = 0u; img < world_pts.size(); ++img) {
+		for (auto i = 0u; i < world_pts[img].size(); ++i) {
+			pcl::PointXYZ pt;
+			pt.x = world_pts[img][i][0];
+			pt.y = world_pts[img][i][1];
+			pt.z = world_pts[img][i][2];
+			cloud->push_back(pt);
+		}
+	}
+}
+
+void Reconstruct3D::convert(const pcl::PointCloud<pcl::PointNormal>& cloud, WPts& world_pts) {
+		world_pts.clear();
+		world_pts.resize(1);
+
+		for (auto i = 0u; i < cloud.size(); ++i) {
+			pcl::PointNormal pt = (cloud)[i];
+			cv::Vec3d vec_pt(pt.x, pt.y, pt.z);
+			world_pts[0].push_back(vec_pt);
+		}
+}
+
+void Reconstruct3D::remesh_with_smoothing(WPts& world_pts) {
+	// Load input file into a PointCloud<T> with an appropriate type
+  pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ> ());
+
+
+  // Load bun0.pcd -- should be available with the PCL archive in test 
+//  pcl::io::loadPCDFile ("bun0.pcd", *cloud);
+  convert(world_pts, cloud);
+
+  // Create a KD-Tree
+  pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+
+  // Output has the PointNormal type in order to store the normals calculated by MLS
+  pcl::PointCloud<pcl::PointNormal> mls_points;
+
+  // Init object (second point type is for the normals, even if unused)
+  pcl::MovingLeastSquares<pcl::PointXYZ, pcl::PointNormal> mls;
+ 
+  mls.setComputeNormals (true);
+
+  // Set parameters
+  mls.setInputCloud (cloud);
+  mls.setPolynomialFit (true);
+  mls.setSearchMethod (tree);
+//  mls.setSearchRadius (0.03);
+  mls.setSearchRadius (10);
+
+  // Reconstruct
+  mls.process (mls_points);
+
+
+  convert(mls_points, world_pts);
+  // Save output
+//  pcl::io::savePCDFile ("bun0-mls.pcd", mls_points);
+	
+}
+
+
+bool Reconstruct3D::non_consecutive_points_exists(unsigned img, unsigned row, const cv::Mat& left_non_zero_points, const cv::Mat& right_non_zero_points) {
+	bool found_anomaly = false;
+	cv::Vec2i prev_row;
+	for (auto i = 0u; i < left_non_zero_points.rows; ++i) {
+		cv::Vec2i curr_row = left_non_zero_points.at<cv::Vec2i>(i, 0);
+		if (i > 0) {
+			if (curr_row[0] - prev_row[0] > 1) {
+				found_anomaly = true;
+				break;
+			}
+		}
+		prev_row = curr_row;
+	}
+							
+	if (found_anomaly) {
+#ifdef DEBUG
+		std::cout << "Found anomaly in left img : " << img << " row : " << row << std::endl;
+#endif
+		return true;
+	}
+
+	//							cv::Vec2i prev_row;
+	for (auto i = 0u; i < right_non_zero_points.rows; ++i) {
+		cv::Vec2i curr_row = right_non_zero_points.at<cv::Vec2i>(i, 0);
+		if (i > 0) {
+			if (curr_row[0] - prev_row[0] > 1) {
+				found_anomaly = true;
+				break;
+			}
+		}
+		prev_row = curr_row;
+	}
+
+	if (found_anomaly) {
+#ifdef DEBUG
+		std::cout << "Found anomaly in right img : " << img << " row : " << row << std::endl;
+#endif
+		return true;
+	}
+	return false;
+}
+
+bool Reconstruct3D::anomaly_exists_in_vertical_points(std::vector<cv::Point2d>& points) {
+	if (points.size() < 3) {
+		return true;
+	}
+
+	for (auto i = 1; i < points.size() - 1; ++i) {
+		cv::Point2d top_point = points[i -  1];
+		cv::Point2d middle_point = points[i];
+		cv::Point2d bottom_point = points[i + 1];
+
+		int pixel_tolerance = 1;
+
+		if ((std::abs(top_point.x - middle_point.x) > pixel_tolerance)
+			&& (std::abs(bottom_point.x - middle_point.x) > pixel_tolerance)) {
+				return true;
+		}
+	}
+	return false;
+}
+
 void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int left_cam_no, int right_cam_no, 
 											 IPts& img_pts1, IPts& img_pts2, Intensities& left_intensities, Intensities& right_intensities) {
 
@@ -1008,16 +1140,42 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 
 		const int image_width = left_img.cols;
 		const int width_threshold_percentage = 10;
-		const int std_dev_threhsold = image_width * 0.01 * 10;
+		const int std_dev_threhsold = image_width * 0.01 * 1 * 0.5;
 
+		// noise reduction
 
-		for (auto row = 0u; row < left_row_sum.rows; ++row) {
+		std::vector<cv::Mat> non_zero_rows;
+		// for top, current, bottom
+		non_zero_rows.resize(3); 
+
+		std::vector<cv::Point2d> temp_left_points;
+		std::vector<cv::Point2d> temp_right_points;
+
+		for (auto row = 1u; row < left_row_sum.rows - 1; ++row) {
 			if ((left_row_sum.at<int>(row, 0) >= threshold)
 				&& (right_row_sum.at<int>(row, 0) >= threshold)) {
 
 					double left_mid_point;
 					cv::Mat left_non_zero_points;
 					cv::findNonZero(left_img.row(row), left_non_zero_points);
+
+					double right_mid_point;
+					cv::Mat right_non_zero_points;
+					cv::findNonZero(right_img.row(row), right_non_zero_points);
+
+					// let's do some basic noise filtering
+					bool found_anomaly = false;
+					if (left_non_zero_points.rows > 0
+						&& right_non_zero_points.rows > 0) {
+						if (non_consecutive_points_exists(img, row, left_non_zero_points, right_non_zero_points)) {
+							continue;
+						}
+
+					} else {
+						// no point going further, skip this row
+						continue;
+					}
+
 
 					//cv::Mat left_mid_point_estimate_mat;
 					//cv::reduce(cv::Mat(left_non_zero_points), left_mid_point_estimate_mat, 0, CV_REDUCE_SUM, CV_32S);
@@ -1035,9 +1193,7 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 
 					//left_mid_point = left_avg[0];
 
-					double right_mid_point;
-					cv::Mat right_non_zero_points;
-					cv::findNonZero(right_img.row(row), right_non_zero_points);
+
 
 					//cv::Mat right_mid_point_estimate_mat;
 					//cv::reduce(cv::Mat(right_points), right_mid_point_estimate_mat, 0, CV_REDUCE_AVG, CV_32F);
@@ -1061,6 +1217,14 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 						continue;
 					}
 
+//					if (img > 43 && img < 50) {
+//						std::cout << img << ", " << row << " : " << std::endl;
+//						std::cout << "left mean : " << left_mean << std::endl;
+//						std::cout << "right mean : " << right_mean << std::endl;
+//						std::cout << "left std deviation : " << left_std_dev << std::endl;
+//						std::cout << "right std deviation : " << right_std_dev << std::endl;
+//					}
+
 					// fit gaussians only after checking for weird standard deviations, if points are all over, some error condition has occured
 
 					fit_gauss(left_img, row, left_non_zero_points, left_mean[0], left_mid_point);
@@ -1070,22 +1234,19 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 
 
 					//Rect rect(50, 50, 270, 270);
-					Rect left_rect(validRoi[0]);
-					Rect right_rect(validRoi[1]);
+					cv::Rect left_rect(validRoi[0]);
+					cv::Rect right_rect(validRoi[1]);
 
-					if (left_rect.contains(Point2d(left_mid_point, row))
-						&& (right_rect.contains(Point2d(right_mid_point, row)))) {
-						img_pts1[img].push_back(cv::Point2d(left_mid_point, row));
-						img_pts2[img].push_back(cv::Point2d(right_mid_point, row));
+					if (left_rect.contains(cv::Point2d(left_mid_point, row))
+						&& (right_rect.contains(cv::Point2d(right_mid_point, row)))) {
 
-						double left_intensity = left_img.at<unsigned char>(row, static_cast<int>(left_mid_point + 0.5));
-						double right_intensity = right_img.at<unsigned char>(row, static_cast<int>(right_mid_point + 0.5));
+							// insert temporarily
+//							temp_left_points[row] = cv::Point2d(left_mid_point, row);
+//							temp_right_points[row] = cv::Point2d(right_mid_point, row);
 
-						left_intensities[img].push_back(left_intensity);
-						right_intensities[img].push_back(right_intensity);
+							temp_left_points.push_back(cv::Point2d(left_mid_point, row));
+							temp_right_points.push_back(cv::Point2d(right_mid_point, row));
 
-						left_corr_img.at<cv::Vec3b>(row, left_mid_point) = cv::Vec3b(0, 0, 255);
-						right_corr_img.at<cv::Vec3b>(row, right_mid_point) = cv::Vec3b(0, 0, 255);
 					}
 					//img_pts1.push_back(cv::Point2f(row, left_mid_point));
 					//img_pts2.push_back(cv::Point2f(row, right_mid_point));
@@ -1097,8 +1258,98 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 			}
 		}
 
+		// filter noise
+
+//		for (auto itr = temp_left_points.begin(); itr != temp_left_points.end(); ++itr) {
+
+		double threshold_percentage = 10;
+		int threshold_no = left_img.rows * threshold_percentage * 0.01;
+
+		// skip points all together, if less than threshold
+		if (temp_left_points.size() > threshold_no) {
+		for (auto i = 1; i < temp_left_points.size() - 1; ++i) {
+//			int row = itr->first;
+//
+//			if (temp_right_points.find(row) == temp_right_points.end()) {
+//				throw std::runtime_error("Same row does not exist for left and right points. Img : " + std::to_string(img)
+//					+ " row : " + std::to_string(row));
+//			}
+
+			// skip points if there are not enough points in image
+
+			cv::Point2d left_point = temp_left_points[i];
+			double left_mid_point = left_point.x;
+			int left_row = left_point.y;
+
+
+			cv::Point2d right_point = temp_right_points[i];
+			double right_mid_point = right_point.x;
+			int right_row = right_point.y;
+
+			assert(left_row == right_row);
+			int row = left_row;
+
+			// filter noise
+			std::vector<cv::Point2d> left_vertical_points;
+
+			cv::Point2d top_left_point = temp_left_points[i - 1];
+			cv::Point2d bottom_left_point = temp_left_points[i + 1];
+
+			left_vertical_points.push_back(top_left_point);
+			left_vertical_points.push_back(left_point);
+			left_vertical_points.push_back(bottom_left_point);
+
+			bool anomaly_in_points = false;
+
+			anomaly_in_points = anomaly_exists_in_vertical_points(left_vertical_points);
+
+			if (anomaly_in_points) {
+				// skip points
+#ifdef DEBUG
+				std::cout << "Found vertical anomaly in left img : " << img << " row : " << row << std::endl;
+#endif
+				continue;
+			}
+
+
+			std::vector<cv::Point2d> right_vertical_points;
+
+			cv::Point2d top_right_point = temp_right_points[i - 1];
+			cv::Point2d bottom_right_point = temp_right_points[i + 1];
+
+			right_vertical_points.push_back(top_right_point);
+			right_vertical_points.push_back(right_point);
+			right_vertical_points.push_back(bottom_right_point);
+
+			anomaly_in_points = anomaly_exists_in_vertical_points(right_vertical_points);
+
+			if (anomaly_in_points) {
+				// skip points
+#ifdef DEBUG
+				std::cout << "Found vertical anomaly in right img : " << img << " row : " << row << std::endl;
+#endif
+				continue;
+			}
+
+
+			img_pts1[img].push_back(cv::Point2d(left_mid_point, row));
+			img_pts2[img].push_back(cv::Point2d(right_mid_point, row));
+
+			double left_intensity = left_img.at<unsigned char>(row, static_cast<int>(left_mid_point + 0.5));
+			double right_intensity = right_img.at<unsigned char>(row, static_cast<int>(right_mid_point + 0.5));
+
+			left_intensities[img].push_back(left_intensity);
+			right_intensities[img].push_back(right_intensity);
+
+			left_corr_img.at<cv::Vec3b>(row, left_mid_point) = cv::Vec3b(0, 0, 255);
+			right_corr_img.at<cv::Vec3b>(row, right_mid_point) = cv::Vec3b(0, 0, 255);
+		}
+		}
+
 		cv::imshow("left_gauss_fit", left_corr_img);
 		cv::imshow("right_gauss_fit", right_corr_img);
+		cv::imwrite("left_gauss_fit.png", left_corr_img);
+		cv::imwrite("right_gauss_fit.png", right_corr_img);
 	}
 }
 
@@ -1173,7 +1424,7 @@ void Reconstruct3D::triangulate_pts(const WPts& world_pnts, WPt& triangles,
 	const float t = 1e-4;
 	for (auto i = 0u; i < triangle_list.size(); ++i) {
 		auto vec6 = triangle_list[i];
-		Point2f triangle_pts[3];
+		cv::Point2f triangle_pts[3];
 		std::vector<int> triangle_index;
 		for (int x = 0; x < 3; ++x) {
 			for (int k = 0; k < projected_pts.size(); ++k) {
@@ -1246,10 +1497,58 @@ void Reconstruct3D::alter_img_for_projection(const cv::Mat& img, cv::Mat& remapp
 	cv::remap(img_copy, remapped_img, rmap[is_right][0], rmap[is_right][1], CV_INTER_LINEAR);
 }
 
-void Reconstruct3D::filter_noise(WPts& world_pts, const Intensities& left_intensities, const Intensities& right_intensities) {
-	for (auto img = 0u; img < world_pts.size(); ++img) {
-		optimize_smoothness(world_pts[img], left_intensities[img], right_intensities[img]);
+void Reconstruct3D::smooth_points(WPts& world_pts, const Intensities& left_intensities, const Intensities& right_intensities) {
+
+//	for (auto img = 0u; img < world_pts.size(); ++img) {
+//		optimize_smoothness(world_pts[img], left_intensities[img], right_intensities[img]);
+//	}
+
+	// simple laplacian
+
+	for (auto iter = 0u; iter < 1000000; ++iter ) {
+		for (auto img = 0u; img < world_pts.size(); ++img) {
+			//		optimize_smoothness(world_pts[img], left_intensities[img], right_intensities[img]);
+			double lambda = 0.1;
+			if (world_pts[img].size() >= 3) {
+				for (auto i = 1; i < world_pts[img].size() - 1; ++i) {
+					double old_z = world_pts[img][i][2];
+					double top_z = world_pts[img][i-1][2];
+					double bottom_z = world_pts[img][i+1][2];
+					double length_top_old_z = std::abs(top_z - old_z);
+					double length_bottom_old_z = std::abs(bottom_z - old_z);
+
+					if (length_top_old_z < 1e-6 || length_bottom_old_z < 1e-6) {
+						// skip this point, nothing to smooth
+						continue;
+					}
+
+					double weights_top = 1.0 / length_top_old_z;
+					double weights_bottom = 1.0 / length_bottom_old_z;
+					double total_weights = weights_top + weights_bottom;
+					double laplacian = ((weights_top * top_z + weights_bottom * bottom_z) / total_weights) - old_z;
+					double new_z = old_z + lambda * (laplacian);
+					if (new_z > 1e5 || new_z < -1e5) {
+						std::cout << new_z << std::endl;
+					}
+					world_pts[img][i][2] = new_z;
+				}
+			}
+		}
 	}
+#ifdef DEBUG
+		for (auto img = 0u; img < world_pts.size(); ++img) {
+			double z_diff_avg = 0.0;
+			if (world_pts[img].size() >= 3) {
+				for (auto i = 1; i < world_pts[img].size() - 1; ++i) {
+					double old_z = world_pts[img][i][2];
+					double top_z = world_pts[img][i-1][2];
+					double bottom_z = world_pts[img][i+1][2];
+					z_diff_avg += top_z - old_z; 
+				}
+			}
+			std::cout << "img # : " << img << " z difference : " << z_diff_avg / world_pts[img].size() << std::endl;
+		}
+#endif
 }
 
 cv::Vec3d Reconstruct3D::calculate_3D_point(const cv::Vec2d& left_image_point, const cv::Vec2d& right_image_point, 
@@ -1273,7 +1572,7 @@ cv::Vec3d Reconstruct3D::calculate_3D_point(const cv::Vec2d& left_image_point, c
 				row_B.row(0).copyTo(b.row(x + 2));
 			}
 			cv::Mat XYZ(3, 1, CV_64F);
-			cv::solve(D, b, XYZ, DECOMP_SVD);
+			cv::solve(D, b, XYZ, cv::DECOMP_SVD);
 			//cv::Mat D_inv = D.inv(DECOMP_SVD);
 			//cv::Mat XYZ = D_inv * b;
 
@@ -1448,8 +1747,9 @@ void Reconstruct3D::project_points_on_to_img(WPts& world_pts, WPts& world_point_
 }
 
 void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
+
 	try {
-		
+
 		int min = (no_of_images < 0) ? INT_MAX : no_of_images;
 		//int min = INT_MAX;
 		for (auto i = 0u; i < camera_img_map_.size();++i)
@@ -1500,36 +1800,42 @@ void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 			pre_process_img(right_texture_img, right_texture_img, true);
 		}
 
-		for (auto i = 0; i < 15; ++i) {
-			std::cout << "original points : " << img_pts1[0][i][0] << ", " << img_pts1[0][i][1] << std::endl;
-		}
-		std::cout << std::endl;
-
-		for (auto i = 0; i < 15; ++i) {
-			std::cout << "original points : " << img_pts2[0][i][0] << ", " << img_pts2[0][i][1] << std::endl;
-		}
-		std::cout << std::endl;
+//		for (auto i = 0; i < 15; ++i) {
+//			std::cout << "original points : " << img_pts1[0][i][0] << ", " << img_pts1[0][i][1] << std::endl;
+//		}
+//		std::cout << std::endl;
+//
+//		for (auto i = 0; i < 15; ++i) {
+//			std::cout << "original points : " << img_pts2[0][i][0] << ", " << img_pts2[0][i][1] << std::endl;
+//		}
+//		std::cout << std::endl;
 
 	
 		//correct_img_coordinates(img_pts1, img_pts2);
 
-		for (auto i = 0; i < 15; ++i) {
-			std::cout << "corrected points : " << img_pts1[0][i][0] << ", " << img_pts1[0][i][1] << std::endl;
-		}
-		std::cout << std::endl;
-
-		for (auto i = 0; i < 15; ++i) {
-			std::cout << "corrected points : " << img_pts2[0][i][0] << ", " << img_pts2[0][i][1] << std::endl;
-		}
-		std::cout << std::endl;
+//		for (auto i = 0; i < 15; ++i) {
+//			std::cout << "corrected points : " << img_pts1[0][i][0] << ", " << img_pts1[0][i][1] << std::endl;
+//		}
+//		std::cout << std::endl;
+//
+//		for (auto i = 0; i < 15; ++i) {
+//			std::cout << "corrected points : " << img_pts2[0][i][0] << ", " << img_pts2[0][i][1] << std::endl;
+//		}
+//		std::cout << std::endl;
 
 		recon_obj(img_pts1, img_pts2, world_pts);
-
-		filter_noise(world_pts, left_intensities, right_intensities);
-
 		project_points_on_to_img(world_pts, world_point_colors, left_texture_img, right_texture_img, img_pts1, img_pts2);
 
 		triangulate_pts(world_pts, triangles, texture_coordinates, left_img);
+//		for (auto i = 0; i < 15; ++i) {
+//		smooth_points(world_pts, left_intensities, right_intensities);
+		remesh_with_smoothing(world_pts);
+//		}
+
+//		project_points_on_to_img(world_pts, world_point_colors, left_texture_img, right_texture_img, img_pts1, img_pts2);
+//
+//		recon_obj(img_pts1, img_pts2, world_pts);
+
 	
 
 		emit finished_reconstruction_with_triangles(world_pts, world_point_colors, triangles, texture_coordinates, left_texture_img);
@@ -1585,7 +1891,7 @@ void Reconstruct3D::re_reconstruct(CameraPairs& camera_pairs, int no_of_images) 
 			if (z++ < 4) {
 				std::cout << filename << std::endl;
 			}
-			cv::Mat img = imread(filename, 0);
+			cv::Mat img = cv::imread(filename, 0);
 			camera_img_map_[i].push_back(img);
 		}
 	}

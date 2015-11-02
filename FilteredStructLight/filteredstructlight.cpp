@@ -348,7 +348,7 @@ void FilteredStructLight::setupUi() {
 	QLabel* no_of_images = new QLabel("No. of images to use (-1 = all)", reconstruction_group_);
 	recon_no_of_images_spin_box_ = new QSpinBox(reconstruction_group_);
 	recon_no_of_images_spin_box_->setMinimum(-1);
-	recon_no_of_images_spin_box_->setMaximum(100);
+	recon_no_of_images_spin_box_->setMaximum(1000);
 	recon_no_of_images_spin_box_->setValue(-1);
 
 	QVBoxLayout* reconstruction_group_layout = new QVBoxLayout(left_panel_);

@@ -10,10 +10,11 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/core.hpp>
 #include <opencv2/core/core.hpp>
+#include <pcl/common/common.h>
+#include <pcl/point_types.h>
 
 using namespace FlyCapture2;
 using namespace std;
-using namespace cv;
 
 typedef std::unordered_map<int, std::vector<cv::Mat>> CameraImgMap;
 typedef std::vector<std::pair<int, int>> CameraPairs;
@@ -64,7 +65,7 @@ public:
 	void run_reconstruction(std::vector<std::pair<int, int>> camera_pairs, int no_of_images);
 
 	void stereo_calibrate(CameraImgMap& camera_img_map, int left_cam, int right_cam,
-	                      Size boardSize, bool useCalibrated, bool write_images = true);
+	                      cv::Size boardSize, bool useCalibrated, bool write_images = true);
 
 	void recalibrate(std::vector<std::pair<int, int>> camera_pairs);
 	
@@ -80,7 +81,8 @@ public:
 		IPts& img_pts1, IPts& img_pts, CameraImgMap& camera_img_map, int left_cam, int right_cam);
 
 	void fit_gaussians(CameraImgMap& camera_img_map, int cam_no, std::unordered_map<int, std::pair<int, int>> mid_points);
-
+	bool non_consecutive_points_exists(unsigned img, unsigned row, const cv::Mat& left_non_zero_points, const cv::Mat& right_non_zero_points);
+	bool anomaly_exists_in_vertical_points(std::vector<cv::Point2d>& points);
 	void correpond_with_gaussians(CameraImgMap& camera_img_map, int left_cam_no, int right_cam_no,
 		IPts& img_pts1, IPts& img_pts2, Intensities& left_intensities, Intensities& right_intensities);
 
@@ -100,6 +102,8 @@ public:
 	void read_file(const std::string& file_name, IPts& img_pts1, IPts& img_pts2);
 	void write_file(const std::string& file_name, const IPts& img_pts1, const IPts& img_pts2);
 
+	void convert(const WPts& world_pts, pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
+
 	void triangulate_pts(const WPts& pnts, WPt& triangles, 
 		IPt& texture_coords, cv::Mat& remapped_img);
 	void gen_texture(GLuint& texture_id, cv::Mat& remapped_img_for_texture) const;
@@ -109,6 +113,7 @@ public:
 	std::string generate_intrinsics_filename(int left_num, int right_num);
 	std::string generate_extrinsics_filename(int left_num, int right_num);
 
+	void remesh_with_smoothing(WPts& world_pts);
 
 	cv::Vec3d Reconstruct3D::calculate_3D_point(const cv::Vec2d& left_image_point, const cv::Vec2d& right_image_point, 
 		const cv::Mat& proj1, const cv::Mat& proj2) const;
@@ -124,8 +129,9 @@ public:
 	void reconstruct(CameraPairs& camera_pairs, int no_of_images);
 	//void gen_texture(GLuint& texture_id_, cv::Mat& remapped_img_for_texture) const;
 	void re_reconstruct(CameraPairs& camera_pairs, int no_of_images);
-	void filter_noise(WPts& world_pts, const Intensities& left_intensities, const Intensities& right_intensities);
+	void smooth_points(WPts& world_pts, const Intensities& left_intensities, const Intensities& right_intensities);
 
+	void convert(const pcl::PointCloud<pcl::PointNormal>& cloud, WPts& world_pts);
 
 	Reconstruct3D(int no_of_cams, QObject* parent);
 	~Reconstruct3D();
