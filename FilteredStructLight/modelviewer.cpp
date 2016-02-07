@@ -485,6 +485,10 @@ void ModelViewer::update_model_with_triangles(WPts world_pnts, WPts world_pt_col
 	//GLint texture_used_loc = m_shader.uniformLocation("is_texture_used");
 	//glUniform1i(texture_used_loc, is_draw_triangles_);
 
+	if (world_pt_single_array.size() < 1) {
+		std::cout << "No points to display" << std::endl;
+		return;
+	}
 
 	change_world_pts(world_pt_single_array);
 

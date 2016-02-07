@@ -22,6 +22,7 @@
 #include <pcl/io/vtk_io.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/filters/bilateral.h>
 
 
 
@@ -411,10 +412,10 @@ void Reconstruct3D::stereo_calibrate(CameraImgMap& camera_img_map, int left_cam,
 		cv::TermCriteria(CV_TERMCRIT_ITER + CV_TERMCRIT_EPS, 555, 1e-5),
 		CV_CALIB_USE_INTRINSIC_GUESS +
 		//CV_CALIB_FIX_ASPECT_RATIO +
-//		CV_CALIB_ZERO_TANGENT_DIST +
+		CV_CALIB_ZERO_TANGENT_DIST +
 		//CV_CALIB_SAME_FOCAL_LENGTH +
 		CV_CALIB_RATIONAL_MODEL +
-//		CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + 
+		CV_CALIB_FIX_K3 + CV_CALIB_FIX_K4 + 
 		CV_CALIB_FIX_K5);
 	std::cout << "done with RMS error=" << rms << " px" << std::endl;
 
@@ -995,12 +996,37 @@ void Reconstruct3D::convert(const WPts& world_pts, pcl::PointCloud<pcl::PointXYZ
 	}
 }
 
+void Reconstruct3D::convert(const WPts& world_pts, const Intensities& intensities, pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud) {
+	for (auto img = 0u; img < world_pts.size(); ++img) {
+		for (auto i = 0u; i < world_pts[img].size(); ++i) {
+			pcl::PointXYZI pt;
+			pt.x = world_pts[img][i][0];
+			pt.y = world_pts[img][i][1];
+			pt.z = world_pts[img][i][2];
+			pt.intensity = intensities[img][i];
+
+			cloud->push_back(pt);
+		}
+	}
+}
+
 void Reconstruct3D::convert(const pcl::PointCloud<pcl::PointNormal>& cloud, WPts& world_pts) {
 		world_pts.clear();
 		world_pts.resize(1);
 
 		for (auto i = 0u; i < cloud.size(); ++i) {
 			pcl::PointNormal pt = (cloud)[i];
+			cv::Vec3d vec_pt(pt.x, pt.y, pt.z);
+			world_pts[0].push_back(vec_pt);
+		}
+}
+
+void Reconstruct3D::convert(const pcl::PointCloud<pcl::PointXYZI>& cloud, WPts& world_pts) {
+		world_pts.clear();
+		world_pts.resize(1);
+
+		for (auto i = 0u; i < cloud.size(); ++i) {
+			pcl::PointXYZI pt = (cloud)[i];
 			cv::Vec3d vec_pt(pt.x, pt.y, pt.z);
 			world_pts[0].push_back(vec_pt);
 		}
@@ -1042,6 +1068,32 @@ void Reconstruct3D::remesh_with_smoothing(WPts& world_pts) {
 //  pcl::io::savePCDFile ("bun0-mls.pcd", mls_points);
 	
 }
+
+void Reconstruct3D::bilateral_smooth(WPts& world_pts, const Intensities& left_intensities) {
+		
+	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZI> ());
+	convert(world_pts, left_intensities, cloud);
+
+
+	pcl::search::KdTree<pcl::PointXYZI>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZI>);
+
+//	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZI> ());
+	pcl::PointCloud<pcl::PointXYZI> cloud_filtered;
+
+	pcl::BilateralFilter<pcl::PointXYZI> fbFilter; 
+	fbFilter.setInputCloud(cloud); 
+	fbFilter.setHalfSize(1.0);
+	fbFilter.setStdDev(0.2);
+//	fbFilter.setSearchMethod(tree);
+
+//	fbFilter.setHalfSize
+//	fbFilter.setSigmaR(15.0f); 
+//	fbFilter.setSigmaS(0.2f); 
+	fbFilter.applyFilter(cloud_filtered); 
+
+	convert(cloud_filtered, world_pts);
+}
+
 
 
 bool Reconstruct3D::non_consecutive_points_exists(unsigned img, unsigned row, const cv::Mat& left_non_zero_points, const cv::Mat& right_non_zero_points) {
@@ -1104,6 +1156,16 @@ bool Reconstruct3D::anomaly_exists_in_vertical_points(std::vector<cv::Point2d>& 
 		}
 	}
 	return false;
+}
+
+void estimate_plane(const cv::Vec3d& p, const cv::Vec3d& q, const cv::Vec3d& r, 
+					cv::Vec3d& n, double d) {
+
+						cv::Vec3d pq = q - p;
+						cv::Vec3d qr = r - q;
+						n = pq.cross(qr);
+						d = n.dot(p);
+	
 }
 
 void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int left_cam_no, int right_cam_no, 
@@ -1175,6 +1237,14 @@ void Reconstruct3D::correpond_with_gaussians(CameraImgMap& camera_img_map, int l
 						// no point going further, skip this row
 						continue;
 					}
+
+
+#ifdef DEBUG
+					for (auto i = 0; i < left_non_zero_points.rows; ++i) {
+						cv::Vec2i non_zero_point = left_non_zero_points.at<cv::Vec2i>(i, 0);
+						std::cout << "row : " << row << " (" << row << ", " << non_zero_point[0] << ") : " << static_cast<int>(left_img.at<unsigned char>(row, non_zero_point[0])) << std::endl;
+					}
+#endif
 
 
 					//cv::Mat left_mid_point_estimate_mat;
@@ -1396,7 +1466,7 @@ void Reconstruct3D::triangulate_pts(const WPts& world_pnts, WPt& triangles,
 		return (left.y < right.y);
 	};
 
-	if (world_pnts.size() == 0) {
+	if (world_pt_single_array.size() == 0) {
 		std::cout << "No points to triangulate" << std::endl;
 		return;
 	}
@@ -1830,6 +1900,8 @@ void Reconstruct3D::reconstruct(CameraPairs& camera_pairs, int no_of_images) {
 //		for (auto i = 0; i < 15; ++i) {
 //		smooth_points(world_pts, left_intensities, right_intensities);
 		remesh_with_smoothing(world_pts);
+//		bilateral_smooth(world_pts, left_intensities);
+		
 //		}
 
 //		project_points_on_to_img(world_pts, world_point_colors, left_texture_img, right_texture_img, img_pts1, img_pts2);

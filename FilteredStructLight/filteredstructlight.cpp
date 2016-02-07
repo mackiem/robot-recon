@@ -2,6 +2,7 @@
 #include <QGLFormat>
 #include "modelviewer.h"
 
+
 FilteredStructLight::FilteredStructLight(QWidget *parent)
 	: QMainWindow(parent)
 {
@@ -147,18 +148,69 @@ void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vecto
 	tab_widget->addTab(camera_info_tab_, "Camera Info");
 }
 
-void FilteredStructLight::setupUi() {
-	central_widget_ = new QWidget(this);
-	setCentralWidget(central_widget_);
+void FilteredStructLight::add_robot_calibration_tab(QTabWidget* tab_widget) {
+	robot_calibration_tab_ = new QWidget();
 
-	QHBoxLayout *main_layout = new QHBoxLayout();
-	central_widget_->setLayout(main_layout);
+	QHBoxLayout* robot_calibration_tab_layout = new QHBoxLayout();
+	QVBoxLayout* settings_layout = new QVBoxLayout();
 
+	QWidget* settings_widget = new QWidget(robot_calibration_tab_);
 
-	QTabWidget* tab_widget = new QTabWidget();
+	calibrate_intrinsic_with_video_ = new QPushButton("Calibrate Intrinsic Using Video");
+
+	calibrate_extrinsic_with_video_ = new QPushButton("Calibrate Extrinsic Using Video");
+
+	find_line_with_video_ = new QPushButton("Find Line Using Video");
+
+	interpolate_line_ = new QPushButton("Calculate Light Position");
+
+	settings_layout->addWidget(calibrate_intrinsic_with_video_);
+	settings_layout->addWidget(calibrate_extrinsic_with_video_);
+	settings_layout->addWidget(find_line_with_video_);
+	settings_layout->addWidget(interpolate_line_);
+
+	QVBoxLayout* image_layout = new QVBoxLayout();
+	image_viewer_ = new ImageViewer(robot_calibration_tab_);
+
+	robot_calibration_tab_->setLayout(robot_calibration_tab_layout);
+	settings_widget->setLayout(settings_layout);
+
+	robot_calibration_tab_layout->addWidget(settings_widget);
+	robot_calibration_tab_layout->addWidget(image_viewer_);
 	
-	main_layout->addWidget(tab_widget);
+	tab_widget->addTab(robot_calibration_tab_, "Robot Calibration");
 
+	robot_reconstruction_ = new RobotReconstruction();
+
+	connect(robot_reconstruction_, &RobotReconstruction::display_image, image_viewer_, &ImageViewer::display_image);
+
+	connect(calibrate_intrinsic_with_video_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		robot_reconstruction_->calibrate_intrinsic_from_video("intrinsic-calib.h264");
+	});
+
+	connect(calibrate_extrinsic_with_video_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		//robot_reconstruction_->calibrate_extrinsic_from_video("light-stripe-calib-checkerboard.h264");
+		robot_reconstruction_->calibrate_extrinsic_from_video("light-stripe-calib-checkerboard_1.h264");
+	});
+
+	connect(find_line_with_video_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		robot_reconstruction_->identify_line_from_video("light-stripe-calib-stripe_1.h264");
+	});
+
+	connect(interpolate_line_, &QPushButton::clicked, this, 
+		[&]()
+	{
+		robot_reconstruction_->calculate_light_position();
+	});
+}
+
+void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {
 	camera_tab_ = new QWidget();
 	QHBoxLayout* camera_tab_layout = new QHBoxLayout();
 
@@ -370,8 +422,23 @@ void FilteredStructLight::setupUi() {
 	connect(threshold_toggle_checkbox_, &QCheckBox::stateChanged, opengl_widget_, &GLWidget::toggle_thresholding);
 
 	cam_thread_->start();
-	central_widget_->adjustSize();
+}
 
+void FilteredStructLight::setupUi() {
+	central_widget_ = new QWidget(this);
+	setCentralWidget(central_widget_);
+
+	QHBoxLayout *main_layout = new QHBoxLayout();
+	central_widget_->setLayout(main_layout);
+
+
+	QTabWidget* tab_widget = new QTabWidget();
+	
+	main_layout->addWidget(tab_widget);
+	add_robot_calibration_tab(tab_widget);
+	
+	central_widget_->adjustSize();
+	showMaximized();
 }
 
 void FilteredStructLight::keyReleaseEvent(QKeyEvent* e) {
