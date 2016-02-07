@@ -6,9 +6,11 @@
 #include <QtWidgets>
 #include "camthread.h"
 #include "reconstruct.h"
+#include "robotreconstruction.h"
 
 #define CAM_CALIB_PAIRS 6
 #include "modelviewer.h"
+#include "imageviewer.h"
 
 
 class FilteredStructLight : public QMainWindow
@@ -27,6 +29,8 @@ protected:
 private:
 	CamThread* cam_thread_;
 	Reconstruct3D* reconstructor_;
+
+	RobotReconstruction* robot_reconstruction_;
 
 	QWidget* central_widget_;
 
@@ -60,11 +64,23 @@ private:
 	QGroupBox* camera_uuids_group_box_;
 	QPushButton* reset_orientation_button_;
 	QSpinBox* recon_no_of_images_spin_box_;
+
+	QWidget* robot_calibration_tab_;
+	ImageViewer* image_viewer_;
+	QPushButton* calibrate_intrinsic_with_video_;
+	QPushButton* calibrate_extrinsic_with_video_;
+	QPushButton* find_line_extrinsic_with_video_;
+	QPushButton* find_line_with_video_;
+	QPushButton* interpolate_line_;
 	void shutdown_cam_thread();
 	void create_camera_pairs(CameraPairs& pairs);
 
 	void add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget);
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
+
+	void add_camera_calibration_tab(QTabWidget* tab_widget);
+	
+	void add_robot_calibration_tab(QTabWidget* tab_widget);
 };
 
 #endif // FILTEREDSTRUCTLIGHT_H

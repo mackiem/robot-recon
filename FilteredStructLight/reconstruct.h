@@ -103,6 +103,7 @@ public:
 	void write_file(const std::string& file_name, const IPts& img_pts1, const IPts& img_pts2);
 
 	void convert(const WPts& world_pts, pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
+	void convert(const WPts& world_pts, const Intensities& intensities, pcl::PointCloud<pcl::PointXYZI>::Ptr& cloud);
 
 	void triangulate_pts(const WPts& pnts, WPt& triangles, 
 		IPt& texture_coords, cv::Mat& remapped_img);
@@ -132,6 +133,10 @@ public:
 	void smooth_points(WPts& world_pts, const Intensities& left_intensities, const Intensities& right_intensities);
 
 	void convert(const pcl::PointCloud<pcl::PointNormal>& cloud, WPts& world_pts);
+	void convert(const pcl::PointCloud<pcl::PointXYZI>& cloud, WPts& world_pts);
+
+
+	void bilateral_smooth(WPts& world_pts, const Intensities& left_intensities);
 
 	Reconstruct3D(int no_of_cams, QObject* parent);
 	~Reconstruct3D();
