@@ -1,6 +1,7 @@
 #include "robotreconstruction.h"
 #include <unordered_map>
 #include <fstream>
+#include "planefit.h"
 
 RobotReconstruction::RobotReconstruction(void) {
 }
@@ -633,8 +634,26 @@ std::vector<cv::Point3f> RobotReconstruction::calculate_stripe_3d_points_in_came
 	return line_3d_points;
 }
 
-void RobotReconstruction::calculate_light_position() {
-	load_calibration();
+void RobotReconstruction::visualize_3d_points(const std::vector<cv::Point3f>& line_3d_points,
+	const Ray& ray,
+	const std::string& video_filename, const std::string& output_image_filename) {
+
+	auto line_stripe_frame = get_first_video_frame(video_filename);
+
+	auto line_image_coordinates = find_line(line_stripe_frame);
+
+	cv::Mat drawing = line_stripe_frame.clone();
+
+	cv::Vec3b original_edge_color = cv::Vec3b(0, 255, 0);
+	cv::Vec3b projected_edge_color = cv::Vec3b(0, 255, 255);
+
+	cv::Rect rect(0, 0, drawing.cols, drawing.rows);
+	for (auto& line_pt : line_image_coordinates) {
+		//projected_pt = cv::Point2f(projected_pt.y, projected_pt.x);
+		if (rect.contains(line_pt)) {
+			drawing.at<cv::Vec3b>(line_pt) = original_edge_color;
+		}
+	}
 
 	cv::Mat null_rotation_matrix = cv::Mat::eye(3, 3, CV_64F);
 	cv::Mat null_rvec;
@@ -642,31 +661,89 @@ void RobotReconstruction::calculate_light_position() {
 	cv::Vec3f null_tvec(0, 0, 0);
 
 	std::vector<cv::Point2f> projected_image_points;
-
-	auto line_3d_points = calculate_stripe_3d_points_in_camera_space(
-		"light-stripe-calib-checkerboard_1.h264",
-		"light-stripe-calib-stripe_1.h264");
-
-	line_3d_points = calculate_stripe_3d_points_in_camera_space(
-		"light-stripe-calib-checkerboard_2.h264",
-		"light-stripe-calib-stripe_2.h264");
-
 	cv::projectPoints(line_3d_points, null_rvec, null_tvec,
 		camera_matrix_, dist_coeffs_, projected_image_points);
 
-	auto line_stripe_frame = get_first_video_frame("light-stripe-calib-stripe_2.h264");
-
-	cv::Mat drawing = line_stripe_frame.clone();
-
-	cv::Rect rect(0, 0, drawing.cols, drawing.rows);
 	for (auto& projected_pt : projected_image_points) {
 		//projected_pt = cv::Point2f(projected_pt.y, projected_pt.x);
 		if (rect.contains(projected_pt)) {
-			drawing.at<cv::Vec3b>(projected_pt) = cv::Vec3b(0, 255, 255);
+			drawing.at<cv::Vec3b>(projected_pt) = projected_edge_color;
 		}
 	}
 
+
+	// project line
+
+	std::vector<cv::Point3d> fitted_line;
+	fitted_line.push_back(ray.a);
+	fitted_line.push_back(ray.b);
+	std::vector<cv::Point2d> projected_line_points;
+
+	cv::projectPoints(fitted_line, null_rvec, null_tvec,
+		camera_matrix_, dist_coeffs_, projected_line_points);
+
+	cv::line(drawing, projected_line_points[0], projected_line_points[1], cv::Scalar(255.0, 0.0, 0.0), 1);
+
+	cv::imwrite(output_image_filename, drawing);
 	emit display_image(drawing);
+}
+
+cv::Vec3f convert(cv::Vec3d& pt) {
+	cv::Vec3f new_pt(static_cast<float>(pt[0]), static_cast<float>(pt[1]), static_cast<float>(pt[2]));
+	return new_pt;
+}
+
+std::vector<cv::Vec3f> convert_vec(const std::vector<cv::Point3f>& point_vec) {
+	std::vector<cv::Vec3f> vec_vec(point_vec.size());
+	for (auto i = 0u; i < point_vec.size(); ++i) {
+		vec_vec[i] = cv::Vec3f(point_vec[i].x, point_vec[i].y, point_vec[i].z);
+	}
+	return vec_vec;
+}
+	
+
+void RobotReconstruction::calculate_light_position() {
+	load_calibration();
+
+
+
+	auto line_3d_points_1 = calculate_stripe_3d_points_in_camera_space(
+		"light-stripe-calib-checkerboard_1.h264",
+		"light-stripe-calib-stripe_1.h264");
+
+	Ray ray1;
+	fit_line(line_3d_points_1, ray1);
+
+	visualize_3d_points(line_3d_points_1, ray1, "light-stripe-calib-stripe_1.h264", "projected_line_1.png");
+
+	auto line_3d_points_2 = calculate_stripe_3d_points_in_camera_space(
+		"light-stripe-calib-checkerboard_2.h264",
+		"light-stripe-calib-stripe_2.h264");
+
+
+	Ray ray2;
+	fit_line(line_3d_points_2, ray2);
+
+	visualize_3d_points(line_3d_points_2, ray2, "light-stripe-calib-stripe_2.h264", "projected_line_2.png");
+
+	Plane calibrated_plane;
+	std::vector<Ray> rays;
+	rays.push_back(ray1);
+	rays.push_back(ray2);
+	fit_plane(rays, calibrated_plane);
+
+
+	std::cout << "Plane : " << " normal : " << calibrated_plane.n << std::endl;
+	std::cout << "d : " << calibrated_plane.d << std::endl;
+
+	double error = calculate_error(calibrated_plane, line_3d_points_1);
+	std::cout << "Error from plane fit  - line 1: " << error << std::endl;
+
+	error = calculate_error(calibrated_plane, line_3d_points_2);
+	std::cout << "Error from plane fit - line 2: " << error << std::endl;
+
+	create_plane_with_points_and_lines(convert_vec(line_3d_points_1), 
+		convert(ray1.a), convert(ray1.b), convert(calibrated_plane.n), calibrated_plane.d);
 
 	//auto interpolated_points = interpolate_edge(rvec, tvec, calib_3d_points, calib_2d_points, line_points);
 	//std::cout << "Interpolated Points : " << std::endl;
@@ -763,4 +840,26 @@ Plane RobotReconstruction::construct_plane(const std::vector<cv::Point3f>& point
 
 	return plane;
 
+}
+
+double RobotReconstruction::point_to_plane_distance(const Plane& plane, const cv::Point3f & point) const {
+	cv::Vec3d double_point(point.x, point.y, point.z);
+
+	double n_length = cv::norm(plane.n);
+	double distance = (plane.n.dot(double_point) - plane.d) / n_length;
+
+	return distance;
+}
+
+double RobotReconstruction::calculate_error(const Plane& plane, 
+	const std::vector<cv::Point3f> & lines_3d) const {
+	double error = 0.0;
+	if (lines_3d.size() > 0) {
+		for (auto& pt : lines_3d) {
+			error += std::pow(point_to_plane_distance(plane, pt), 2);
+		}
+		error /= lines_3d.size();
+		error = std::sqrt(error);
+	}
+	return error;
 }

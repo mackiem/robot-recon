@@ -11,6 +11,7 @@
 #define CAM_CALIB_PAIRS 6
 #include "modelviewer.h"
 #include "imageviewer.h"
+#include "robotviewer.h"
 
 
 class FilteredStructLight : public QMainWindow
@@ -72,10 +73,13 @@ private:
 	QPushButton* find_line_extrinsic_with_video_;
 	QPushButton* find_line_with_video_;
 	QPushButton* interpolate_line_;
+	QWidget* robot_viewer_tab_;
+	RobotViewer* robot_viewer_;
 	void shutdown_cam_thread();
 	void create_camera_pairs(CameraPairs& pairs);
 
 	void add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget);
+	void add_robot_viewer_tab(QTabWidget* tab_widget);
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
 
 	void add_camera_calibration_tab(QTabWidget* tab_widget);

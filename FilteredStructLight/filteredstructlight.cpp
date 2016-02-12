@@ -1,6 +1,7 @@
 #include "filteredstructlight.h"
 #include <QGLFormat>
 #include "modelviewer.h"
+#include "robotviewer.h"
 
 
 FilteredStructLight::FilteredStructLight(QWidget *parent)
@@ -119,6 +120,42 @@ void FilteredStructLight::add_reconstruction_tab(CameraPairs& camera_pairs, QTab
 	color_solid_color_radio_button->click();
 	draw_points_radio_button->click();
 	scale_slider->setValue(100);
+}
+
+void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
+	robot_viewer_tab_ = new QWidget();
+	QHBoxLayout* robot_viewer_layout = new QHBoxLayout();
+	// Specify an OpenGL 3.3 format using the Core profile.
+	// That is, no old-school fixed pipeline functionality
+	QGLFormat glFormat;
+	glFormat.setVersion(3, 3);
+	glFormat.setProfile(QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
+	glFormat.setSampleBuffers(true);
+	//glFormat.setSwapInterval(1);
+
+	QWidget* robot_viewer_left_panel_ = new QWidget(robot_viewer_tab_);
+	QVBoxLayout* robot_viewer_left_panel_layout = new QVBoxLayout();
+
+	QGroupBox* draw_method_group_box = new QGroupBox("View", robot_viewer_tab_);
+	QVBoxLayout* draw_method_box_layout = new QVBoxLayout();
+	QPushButton* draw_points_push_button = new QPushButton("Points", draw_method_group_box);	
+	draw_method_box_layout->addWidget(draw_points_push_button);
+	draw_method_group_box->setLayout(draw_method_box_layout);
+	robot_viewer_left_panel_layout->addWidget(draw_method_group_box);
+
+	robot_viewer_left_panel_->setLayout(robot_viewer_left_panel_layout);
+
+	robot_viewer_layout->addWidget(robot_viewer_left_panel_);
+
+	robot_viewer_ = new RobotViewer(glFormat, robot_viewer_tab_);
+	robot_viewer_layout->addWidget(robot_viewer_);
+
+	robot_viewer_tab_->setLayout(robot_viewer_layout);
+
+	tab_widget->addTab(robot_viewer_tab_, "Robot View");
+
+	connect(draw_points_push_button, &QPushButton::clicked, robot_viewer_, &RobotViewer::draw_points);
+
 }
 
 void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids) {
@@ -436,6 +473,10 @@ void FilteredStructLight::setupUi() {
 	
 	main_layout->addWidget(tab_widget);
 	add_robot_calibration_tab(tab_widget);
+	add_robot_viewer_tab(tab_widget);
+
+	connect(robot_reconstruction_, &RobotReconstruction::create_plane_with_points_and_lines,
+		robot_viewer_, &RobotViewer::create_plane_with_points_and_lines);
 	
 	central_widget_->adjustSize();
 	showMaximized();

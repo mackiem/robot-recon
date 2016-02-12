@@ -55,11 +55,16 @@ public:
 	void calibrate_intrinsic(const std::vector<cv::Mat>& frames, cv::Mat& camera_matrix, cv::Mat& dist_coeffs);
 	void load_calibration();
 	std::vector<cv::Point3f> calculate_stripe_3d_points_in_camera_space(const std::string& checkerboard_video_filename, const std::string& stripe_video_filename);
+	void visualize_3d_points(const std::vector<cv::Point3f>& line_3d_points, const Ray& ray, const std::string& video_filename, const std::string& output_image_filename);
 	void calculate_light_position();
 
 	Ray construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate) const;
 	cv::Point3f ray_plane_intersect(const Plane& plane, const Ray& ray) const;
 	Plane construct_plane(const std::vector<cv::Point3f>& points) const;
+
+	double point_to_plane_distance(const Plane& plane, const cv::Point3f & point) const;
+
+	double calculate_error(const Plane& plane, const std::vector<cv::Point3f> & lines_3d) const;
 
 
 private:
@@ -72,5 +77,8 @@ private:
 
 signals:
 	void display_image(const cv::Mat mat);
+	void create_plane_with_points_and_lines(std::vector<cv::Vec3f> points_3d,
+		cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d);
+	void create_points(std::vector<cv::Vec3f> points_3d, cv::Vec3f point_color);
 };
 
