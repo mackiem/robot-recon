@@ -75,16 +75,27 @@ private:
 	QPushButton* interpolate_line_;
 	QWidget* robot_viewer_tab_;
 	RobotViewer* robot_viewer_;
+	
+	QLineEdit* velocity_line_edit_;
+	QLineEdit* video_filename_;
+	QPushButton* browse_button_;
+	QLineEdit* nframe_line_edit_;
+	QCheckBox* draw_planes_check_box_;
+	QCheckBox* draw_points_check_box_;
+	QCheckBox* draw_lines_check_box_;
+	QCheckBox* draw_default_check_box_;
 	void shutdown_cam_thread();
 	void create_camera_pairs(CameraPairs& pairs);
 
 	void add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget);
+	void add_reconstruction_options(QGroupBox* recon_options_group_box);
+	void add_display_options(QGroupBox* display_options_group_box);
 	void add_robot_viewer_tab(QTabWidget* tab_widget);
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
 
 	void add_camera_calibration_tab(QTabWidget* tab_widget);
-	
 	void add_robot_calibration_tab(QTabWidget* tab_widget);
+
 };
 
 #endif // FILTEREDSTRUCTLIGHT_H

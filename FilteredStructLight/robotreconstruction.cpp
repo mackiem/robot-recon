@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <fstream>
 #include "planefit.h"
+#include <random>
 
 RobotReconstruction::RobotReconstruction(void) {
 }
@@ -596,7 +597,7 @@ void RobotReconstruction::load_calibration() {
 
 std::vector<cv::Point3f> RobotReconstruction::calculate_stripe_3d_points_in_camera_space
 	(const std::string& checkerboard_video_filename,
-	const std::string& stripe_video_filename) {
+	 const std::string& stripe_video_filename, Plane& checkerboard_plane) {
 
 	auto checkerboard_frames = get_subset_of_video_frames(checkerboard_video_filename, 100);
 	//auto frame = get_image("calib-checkerboard.png");
@@ -616,14 +617,14 @@ std::vector<cv::Point3f> RobotReconstruction::calculate_stripe_3d_points_in_came
 	std::vector<cv::Point3f> calib_3d_point_camera_origin =
 		convert_to_camera_reference_frame(calib_3d_points, rvec, tvec);
 
-	Plane plane = construct_plane(calib_3d_point_camera_origin);
+	checkerboard_plane = construct_plane(calib_3d_point_camera_origin);
 
 	// get 3d point
 	std::vector<cv::Point3f> line_3d_points;
 	for (auto& line_image_coordinate : line_image_coordinates) {
 		try {
 			Ray ray = construct_ray(camera_matrix_, line_image_coordinate);
-			auto intersection_point = ray_plane_intersect(plane, ray);
+			auto intersection_point = ray_plane_intersect(checkerboard_plane, ray);
 			line_3d_points.push_back(intersection_point);
 		}
 		catch (RRException& ex) {
@@ -688,6 +689,35 @@ void RobotReconstruction::visualize_3d_points(const std::vector<cv::Point3f>& li
 	emit display_image(drawing);
 }
 
+void RobotReconstruction::save_calibrated_plane(const Plane& plane) {
+
+	cv::FileStorage fs("plane.yml", CV_STORAGE_WRITE);
+	if (fs.isOpened())
+	{
+		fs << "n" << plane.n << "d" << plane.d;
+		fs.release();
+	}
+	else {
+		std::cout << "Error: can not save the intrinsic parameters\n";
+	}
+
+}
+
+void RobotReconstruction::load_calibrated_plane() {
+	cv::FileStorage fs("plane.yml", CV_STORAGE_READ);
+    if (fs.isOpened())
+    {
+        fs["n"] >> calibrated_plane_.n;
+        fs["d"] >> calibrated_plane_.d;
+        fs.release();
+    }
+    else {
+        std::cout << "Error: can not load the calibrated plane\n";
+        return;
+    }
+
+}
+
 cv::Vec3f convert(cv::Vec3d& pt) {
 	cv::Vec3f new_pt(static_cast<float>(pt[0]), static_cast<float>(pt[1]), static_cast<float>(pt[2]));
 	return new_pt;
@@ -705,45 +735,61 @@ std::vector<cv::Vec3f> convert_vec(const std::vector<cv::Point3f>& point_vec) {
 void RobotReconstruction::calculate_light_position() {
 	load_calibration();
 
+	std::vector<std::string> checkerboard_filenames;
+	std::vector<std::string> stripe_filenames;
+
+	for (int i = 1; i < 6; ++i) {
+		std::stringstream light_stripe_filename;
+		light_stripe_filename << "light-stripe-calib-stripe_" << i << ".h264";
+		stripe_filenames.push_back(light_stripe_filename.str());
+
+		std::stringstream checkerboard_filename;
+		checkerboard_filename << "light-stripe-calib-checkerboard_" << i << ".h264";
+		checkerboard_filenames.push_back(checkerboard_filename.str());
+	}
+
+	std::vector<Ray> rays;
+	std::vector<std::vector<cv::Point3f>> lines_3d_points;
+	for (auto i = 0; i < checkerboard_filenames.size(); ++i) {
+		Plane checkerboard_plane;
+		auto line_3d_points = calculate_stripe_3d_points_in_camera_space(
+			checkerboard_filenames[i],
+			stripe_filenames[i], checkerboard_plane);
+
+		lines_3d_points.push_back(line_3d_points);
+		Ray ray;
+		fit_line(line_3d_points, ray);
+
+		std::stringstream projected_line_filename;
+		projected_line_filename << "projected_line_" << (i + 1) << ".png";
+		visualize_3d_points(line_3d_points, ray, stripe_filenames[i], projected_line_filename.str());
 
 
-	auto line_3d_points_1 = calculate_stripe_3d_points_in_camera_space(
-		"light-stripe-calib-checkerboard_1.h264",
-		"light-stripe-calib-stripe_1.h264");
+		rays.push_back(ray);
 
-	Ray ray1;
-	fit_line(line_3d_points_1, ray1);
+		// visualize 3d
+		create_plane_with_points_and_lines(convert_vec(line_3d_points),
+			convert(ray.a), convert(ray.b), convert(checkerboard_plane.n), checkerboard_plane.d);
 
-	visualize_3d_points(line_3d_points_1, ray1, "light-stripe-calib-stripe_1.h264", "projected_line_1.png");
+	}
 
-	auto line_3d_points_2 = calculate_stripe_3d_points_in_camera_space(
-		"light-stripe-calib-checkerboard_2.h264",
-		"light-stripe-calib-stripe_2.h264");
-
-
-	Ray ray2;
-	fit_line(line_3d_points_2, ray2);
-
-	visualize_3d_points(line_3d_points_2, ray2, "light-stripe-calib-stripe_2.h264", "projected_line_2.png");
 
 	Plane calibrated_plane;
-	std::vector<Ray> rays;
-	rays.push_back(ray1);
-	rays.push_back(ray2);
 	fit_plane(rays, calibrated_plane);
-
 
 	std::cout << "Plane : " << " normal : " << calibrated_plane.n << std::endl;
 	std::cout << "d : " << calibrated_plane.d << std::endl;
 
-	double error = calculate_error(calibrated_plane, line_3d_points_1);
-	std::cout << "Error from plane fit  - line 1: " << error << std::endl;
+	
+	for (auto i = 0; i < lines_3d_points.size(); ++i) {
+		double error = calculate_error(calibrated_plane, lines_3d_points[i]);
+		std::cout << "Error from plane fit  - line " << (i+1) << " : " << error << std::endl;
+	}
 
-	error = calculate_error(calibrated_plane, line_3d_points_2);
-	std::cout << "Error from plane fit - line 2: " << error << std::endl;
+	create_plane(calibrated_plane.n, calibrated_plane.d, cv::Vec4f(1.f, 0.f, 0.f, 0.6f));
 
-	create_plane_with_points_and_lines(convert_vec(line_3d_points_1), 
-		convert(ray1.a), convert(ray1.b), convert(calibrated_plane.n), calibrated_plane.d);
+	save_calibrated_plane(calibrated_plane);
+
 
 	//auto interpolated_points = interpolate_edge(rvec, tvec, calib_3d_points, calib_2d_points, line_points);
 	//std::cout << "Interpolated Points : " << std::endl;
@@ -758,28 +804,95 @@ void RobotReconstruction::calculate_light_position() {
 
 Ray RobotReconstruction::construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate) const {
 
+	cv::Mat R = cv::Mat::eye(3, 3, CV_64F);
+	Ray ray = construct_ray(camera_matrix_, image_coordinate, R, cv::Vec3d(0.f, 0.f, 0.f));
+
+	return ray;
+}
+
+Ray RobotReconstruction::construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate, 
+	const cv::Mat& rotation, const cv::Vec3d& translation) const {
+
+	const double pixelSize = 1.4 / 1000.0;
+	const double sensor_width = 3.76;
+	const double sensor_height = 2.74;
+	//const double screen_width = 2592;
+	//const double screen_height = 1944;
+	const double screen_width = 1920;
+	const double screen_height = 1080;
+
 	// ******************
 	// ******************
-	double z = camera_matrix.at<double>(0, 0);
+	double focal_length_px = camera_matrix.at<double>(0, 0);
 	// ******************
 	// ******************
 
 	double u_0 = camera_matrix.at<double>(0, 2);
 	double v_0 = camera_matrix.at<double>(1, 2);
 
-	double x = image_coordinate.x - u_0;
+	cv::Vec3d principal_point(u_0, v_0, focal_length_px);
+	cv::Vec3d origin(0, 0, 0);
+
+	cv::Vec3d principal_point_mm;
+	principal_point_mm[0] = principal_point[0] * (sensor_width / screen_width);
+	principal_point_mm[1] = principal_point[1] * (sensor_height / screen_height);
+	principal_point_mm[2] = focal_length_px * sensor_width / screen_width;
+
+
+	cv::Point2d image_coordinate_mm;
+	image_coordinate_mm.x = image_coordinate.x * (sensor_width / screen_width);
+	image_coordinate_mm.y = image_coordinate.y * (sensor_height / screen_height);
+
+	cv::Vec3d transformed_principal_point = transform(principal_point_mm, rotation, translation);
+	cv::Vec3d transformed_origin = transform(origin, rotation, translation);
+
+	//cv::Point2d image_coordinate_mm(image_coordinate.x * pixelSize, image_coordinate.y * pixelSize);
+
+	double x = image_coordinate_mm.x - transformed_principal_point[0];
 
 	// ******************
 	// ******************
-	double y = image_coordinate.y - v_0;
+	double y = image_coordinate_mm.y - transformed_principal_point[1];
 	// ******************
 	// ******************
+
+	double transformed_focal_length = transformed_principal_point[2];
 
 	Ray ray;
-	ray.a = cv::Vec3d(0, 0, 0);
-	ray.b = cv::Vec3d(x, y, z);
+	ray.a = (transformed_origin);
+	ray.b = cv::Vec3d(x, y, transformed_focal_length);
 
 	return ray;
+}
+
+Plane RobotReconstruction::transform_plane(const Plane& plane, const cv::Mat& rotation, const cv::Vec3d& translation) const {
+	double x = 0;
+	double y = 0;
+	
+	// find point on plane
+	cv::Vec3d calc_point(0, 0, 0);
+	double z = 0.f;
+	float c_component = plane.n[2];
+	if (std::abs(c_component) > 1e-6) {
+		z = (plane.d - plane.n.dot(calc_point)) / c_component;
+	}
+
+	cv::Vec3d point_on_plane(x, y, z);
+	cv::Vec3d normalized_n = cv::normalize(plane.n);
+
+	Plane transformed_plane;
+	cv::Vec3d null_translation(0.0, 0.0, 0.0);
+	transformed_plane.n = cv::normalize(transform(normalized_n, rotation, null_translation));
+	cv::Vec3d transformed_point = transform(point_on_plane, rotation, translation);
+	transformed_plane.d = transformed_plane.n.dot(transformed_point);
+	return transformed_plane;
+	
+}
+
+cv::Vec3d RobotReconstruction::transform(const cv::Vec3d& point, 
+	const cv::Mat& rotation, const cv::Vec3d& translation) const {
+	cv::Mat transformed_point = rotation * cv::Mat(point) + cv::Mat(translation);
+	return cv::Vec3d(transformed_point);
 }
 
 cv::Point3f RobotReconstruction::ray_plane_intersect(const Plane& plane, const Ray& ray) const {
@@ -789,17 +902,19 @@ cv::Point3f RobotReconstruction::ray_plane_intersect(const Plane& plane, const R
 	double numerator = plane.d - (plane.n.dot(ray.a));
 	double denominator = v.dot(plane.n);
 
-	if (denominator < 1e-6) {
+	if (std::abs(denominator) < 1e-6) {
 		// line is parallel to plain
+		std::cout << "Line is parallel to plane" << std::endl;
 		throw RRException();
 	}
 
 	double t = numerator / denominator;
 
-	if (t < 0) {
-		// ray intersects on opposite direction
-		throw RRException();
-	}
+	//if (t < 0) {
+	//	// ray intersects on opposite direction
+	//	std::cout << "ray interesects on opposite direction" << std::endl;
+	//	throw RRException();
+	//}
 
 	cv::Point3f intersection_pt = ray.a + t * v;
 
@@ -862,4 +977,51 @@ double RobotReconstruction::calculate_error(const Plane& plane,
 		error = std::sqrt(error);
 	}
 	return error;
+}
+
+void RobotReconstruction::reconstruct_from_video(const std::string& video_filename, int frame_no, 
+	float velocity, cv::Vec3f direction) {
+
+	load_calibration();
+	load_calibrated_plane();
+
+	std::vector<cv::Mat> video_frames = get_subset_of_video_frames(video_filename, frame_no);
+
+	float fps = 24.f;
+
+	std::random_device rd;
+	std::mt19937 e2(rd());
+	std::uniform_real_distribution<> dist(0.3, 1);
+
+
+	for (auto i = 0u; i < video_frames.size(); ++i) {
+		cv::Mat& frame = video_frames[i];
+
+		std::vector<cv::Point> line_2d = find_line(frame);
+		std::vector<cv::Vec3f> reconstructed_points;
+		
+		if (line_2d.size() > 0) {
+			
+			cv::Vec3f translation = i * (1.f / fps) * velocity * direction;
+			cv::Mat R = cv::Mat::eye(3, 3, CV_64F);
+			Plane transformed_plane = transform_plane(calibrated_plane_, R, translation);
+
+			for (auto& line_pt : line_2d) {
+				try {
+					Ray ray = construct_ray(camera_matrix_, line_pt, R, translation);
+					cv::Vec3f reconstructed_point = ray_plane_intersect(transformed_plane, ray);
+					reconstructed_points.push_back(reconstructed_point);
+				}
+				catch (RRException& exception) {
+					// ignore
+				}
+			}
+			if (reconstructed_points.size() > 0) {
+				cv::Vec4f common_color(dist(e2), dist(e2), dist(e2), 0.3f);
+				emit create_plane(transformed_plane.n, transformed_plane.d, common_color);
+				emit create_points(reconstructed_points, common_color);
+				QCoreApplication::processEvents();
+			}
+		}
+	}
 }

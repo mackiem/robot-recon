@@ -122,8 +122,103 @@ void FilteredStructLight::add_reconstruction_tab(CameraPairs& camera_pairs, QTab
 	scale_slider->setValue(100);
 }
 
+void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_group_box) {
+	// reconstruction options start//
+
+	QVBoxLayout* reconstruction_options_layout = new QVBoxLayout();
+
+	QHBoxLayout* reconstruct_file_layout = new QHBoxLayout();
+	QLabel* video_file_label = new QLabel("Video Filename:", recon_options_group_box);
+	video_filename_ = new QLineEdit("", recon_options_group_box);
+	browse_button_ = new QPushButton("Browse", recon_options_group_box);
+	reconstruct_file_layout->addWidget(video_file_label);
+	reconstruct_file_layout->addWidget(video_filename_);
+	reconstruct_file_layout->addWidget(browse_button_);
+
+	QHBoxLayout* velocity_layout = new QHBoxLayout();
+	QLabel* velocity = new QLabel("Velocity", recon_options_group_box);
+	velocity_line_edit_ = new QLineEdit("70", recon_options_group_box);
+	velocity_line_edit_->setAlignment(Qt::AlignRight);
+	velocity_layout->addWidget(velocity);
+	velocity_layout->addWidget(velocity_line_edit_);
+
+	QHBoxLayout* nth_frame_layout = new QHBoxLayout();
+	QLabel* nframe_label = new QLabel("Nth Frame", recon_options_group_box);
+	nframe_line_edit_ = new QLineEdit("1", recon_options_group_box);
+	nframe_line_edit_->setAlignment(Qt::AlignRight);
+	nth_frame_layout->addWidget(nframe_label);
+	nth_frame_layout->addWidget(nframe_line_edit_);
+
+	QPushButton* reconstruct_from_video_push_button = new QPushButton("Reconstruct from Video", recon_options_group_box);
+
+	QPushButton* draw_points_push_button = new QPushButton("Clear Points", recon_options_group_box);	
+
+	reconstruction_options_layout->addWidget(draw_points_push_button);
+	reconstruction_options_layout->addLayout(reconstruct_file_layout);
+	reconstruction_options_layout->addLayout(velocity_layout);
+	reconstruction_options_layout->addLayout(nth_frame_layout);
+	reconstruction_options_layout->addWidget(reconstruct_from_video_push_button);
+
+	recon_options_group_box->setLayout(reconstruction_options_layout);
+	recon_options_group_box->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+
+	connect(draw_points_push_button, &QPushButton::clicked, this, 
+		[&]()
+	{
+		robot_viewer_->clear_models();
+	});
+
+	connect(browse_button_, &QPushButton::clicked, this,
+		[&]()
+	{
+		QString filename = QFileDialog::getOpenFileName(this, QString("Open Video"), QDir::currentPath(),
+			"Video Files(*.h264 *.avi)");
+		video_filename_->setText(filename);
+	});
+
+
+
+	connect(reconstruct_from_video_push_button, &QPushButton::clicked,  this, 
+		[&]()
+	{
+		robot_reconstruction_->reconstruct_from_video(video_filename_->text().toStdString(), 
+			std::stoi(nframe_line_edit_->text().toStdString()), 
+			std::stof(velocity_line_edit_->text().toStdString()), cv::Vec3f(-1.f, 0.f,0.f));
+	});
+	
+}
+
+void FilteredStructLight::add_display_options(QGroupBox* display_options_group_box) {
+	// checkboxes of options
+	QVBoxLayout* display_options_layout = new QVBoxLayout();
+
+	//QLabel* draw_planes_label = new QLabel("Show Planes", display_options_group_box);
+	draw_planes_check_box_ = new QCheckBox("Planes", display_options_group_box);
+	draw_points_check_box_ = new QCheckBox("Points", display_options_group_box);
+	draw_lines_check_box_ = new QCheckBox("Lines", display_options_group_box);
+	draw_default_check_box_ = new QCheckBox("Camera Setup", display_options_group_box);
+
+	display_options_layout->addWidget(draw_planes_check_box_);
+	display_options_layout->addWidget(draw_points_check_box_);
+	display_options_layout->addWidget(draw_lines_check_box_);
+	display_options_layout->addWidget(draw_default_check_box_);
+
+	display_options_group_box->setLayout(display_options_layout);
+
+	connect(draw_points_check_box_, &QCheckBox::stateChanged, robot_viewer_, &RobotViewer::toggle_draw_points);
+	connect(draw_planes_check_box_, &QCheckBox::stateChanged, robot_viewer_, &RobotViewer::toggle_draw_planes);
+	connect(draw_lines_check_box_, &QCheckBox::stateChanged, robot_viewer_, &RobotViewer::toggle_draw_lines);
+	connect(draw_default_check_box_, &QCheckBox::stateChanged, robot_viewer_, &RobotViewer::toggle_draw_default);
+
+	draw_planes_check_box_->setChecked(true);
+	draw_points_check_box_->setChecked(true);
+	draw_lines_check_box_->setChecked(true);
+	draw_default_check_box_->setChecked(true);
+}
+
 void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 	robot_viewer_tab_ = new QWidget();
+
 	QHBoxLayout* robot_viewer_layout = new QHBoxLayout();
 	// Specify an OpenGL 3.3 format using the Core profile.
 	// That is, no old-school fixed pipeline functionality
@@ -132,29 +227,36 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 	glFormat.setProfile(QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
 	glFormat.setSampleBuffers(true);
 	//glFormat.setSwapInterval(1);
+	robot_viewer_ = new RobotViewer(glFormat, robot_viewer_tab_);
 
 	QWidget* robot_viewer_left_panel_ = new QWidget(robot_viewer_tab_);
 	QVBoxLayout* robot_viewer_left_panel_layout = new QVBoxLayout();
 
-	QGroupBox* draw_method_group_box = new QGroupBox("View", robot_viewer_tab_);
-	QVBoxLayout* draw_method_box_layout = new QVBoxLayout();
-	QPushButton* draw_points_push_button = new QPushButton("Points", draw_method_group_box);	
-	draw_method_box_layout->addWidget(draw_points_push_button);
-	draw_method_group_box->setLayout(draw_method_box_layout);
-	robot_viewer_left_panel_layout->addWidget(draw_method_group_box);
+	QGroupBox* recon_options_group_box = new QGroupBox("Recon. Options", robot_viewer_tab_);
+	add_reconstruction_options(recon_options_group_box);
+
+	QGroupBox* display_options_group_box = new QGroupBox("Display Options", robot_viewer_tab_);
+	add_display_options(display_options_group_box);
+
+
+	robot_viewer_left_panel_layout->addWidget(recon_options_group_box);
+	robot_viewer_left_panel_layout->addWidget(display_options_group_box);
+
 
 	robot_viewer_left_panel_->setLayout(robot_viewer_left_panel_layout);
+	robot_viewer_left_panel_->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
 	robot_viewer_layout->addWidget(robot_viewer_left_panel_);
 
-	robot_viewer_ = new RobotViewer(glFormat, robot_viewer_tab_);
 	robot_viewer_layout->addWidget(robot_viewer_);
+	robot_viewer_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
 	robot_viewer_tab_->setLayout(robot_viewer_layout);
 
 	tab_widget->addTab(robot_viewer_tab_, "Robot View");
 
-	connect(draw_points_push_button, &QPushButton::clicked, robot_viewer_, &RobotViewer::draw_points);
+
+
 
 }
 
@@ -224,7 +326,7 @@ void FilteredStructLight::add_robot_calibration_tab(QTabWidget* tab_widget) {
 	connect(calibrate_intrinsic_with_video_, &QPushButton::clicked, this, 
 		[&]()
 	{
-		robot_reconstruction_->calibrate_intrinsic_from_video("intrinsic-calib.h264");
+		robot_reconstruction_->calibrate_intrinsic_from_video("light-stripe-calib-checkerboard_1.h264");
 	});
 
 	connect(calibrate_extrinsic_with_video_, &QPushButton::clicked, this, 
@@ -245,6 +347,7 @@ void FilteredStructLight::add_robot_calibration_tab(QTabWidget* tab_widget) {
 	{
 		robot_reconstruction_->calculate_light_position();
 	});
+
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {
@@ -478,6 +581,9 @@ void FilteredStructLight::setupUi() {
 	connect(robot_reconstruction_, &RobotReconstruction::create_plane_with_points_and_lines,
 		robot_viewer_, &RobotViewer::create_plane_with_points_and_lines);
 	
+	connect(robot_reconstruction_, &RobotReconstruction::create_points, robot_viewer_, &RobotViewer::create_points);
+	connect(robot_reconstruction_, &RobotReconstruction::create_plane, robot_viewer_, &RobotViewer::create_plane);
+
 	central_widget_->adjustSize();
 	showMaximized();
 }
