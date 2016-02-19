@@ -46,6 +46,7 @@ public:
 	std::vector<cv::Mat> get_subset_of_video_frames(const std::string& video_filename, const int nth_frame);
 	void calc_camera_pos(const std::vector<cv::Mat>& frames, cv::Mat& rotation_mat, cv::Mat& translation_mat, std::vector<cv::Point3f>& calib_3d_points, std::vector<cv::Point2f> & calib_2d_points);
 	std::vector<cv::Point> find_line(const cv::Mat& frame);
+	std::vector<cv::Point> find_line(const cv::Mat& frame, cv::Mat& drawing);
 	std::vector<cv::Point3f> convert_to_camera_reference_frame(const std::vector<cv::Point3f>& point_3f, const cv::Mat& rotation_mat, const cv::Mat& translation_mat);
 	std::vector<cv::Point3f> interpolate_edge(cv::Mat& rotation_mat, cv::Mat& translation_mat,
 	                                          const std::vector<cv::Point3f>& checkerboard_3d_points,
@@ -80,6 +81,8 @@ public:
 	// reconstruct from video
 	void reconstruct_from_video(const std::string& video_filename, int frame_no, float velocity, cv::Vec3f direction);
 
+	cv::Mat createRT(cv::Mat& R, cv::Vec3f& T);
+
 private:
 
 	cv::Mat camera_matrix_;
@@ -96,5 +99,10 @@ signals:
 		cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d);
 	void create_points(std::vector<cv::Vec3f> points_3d, cv::Vec4f point_color);
 	void create_plane(cv::Vec3f normal, double d, cv::Vec4f plane_color);
+
+	void start_reconstruction_sequence();
+	void create_reconstruction_frame(std::vector<cv::Vec3f> points_3d,
+		cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d, cv::Mat RT);
+	void create_reconstruction_image_list(std::vector<std::string> image_list);
 };
 

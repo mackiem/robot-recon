@@ -12,6 +12,8 @@ int main(int argc, char *argv[])
 	qRegisterMetaType<FlyCapture2::Error>("FlyCapture2::Error");
 	qRegisterMetaType<cv::Vec3f>("cv::Vec3f");
 	qRegisterMetaType<std::vector<cv::Vec3f>>("std::vector<cv::Vec3f>");
+	qRegisterMetaType<cv::Mat>("cv::Mat");
+	qRegisterMetaType<std::vector<std::string>>("std::vector<std::string>");
 
 	FilteredStructLight w;
 	w.show();

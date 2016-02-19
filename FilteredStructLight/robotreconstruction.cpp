@@ -166,7 +166,15 @@ void RobotReconstruction::calc_camera_pos(const std::vector<cv::Mat>& frames, cv
 // interpolate line in 3D
 // optimize light position
 
+
 std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame) {
+
+	cv::Mat drawing;
+	return find_line(frame, drawing);
+}
+
+std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame,
+	cv::Mat& drawing) {
 	cv::RNG rng(12345);
 	cv::Mat yuv_frame;
 	cv::cvtColor(frame, yuv_frame, CV_BGR2GRAY);
@@ -266,7 +274,7 @@ std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame) {
 		rightmost_edge.push_back(cv::Point(extreme_right_edge_col, row));
 	}
 
-	cv::Mat drawing = frame.clone();
+	drawing = frame.clone();
 	cv::Vec3b color(255, 255, 0);
 	for (auto& point : rightmost_edge) {
 		drawing.at<cv::Vec3b>(point) = color;
@@ -836,31 +844,36 @@ Ray RobotReconstruction::construct_ray(const cv::Mat& camera_matrix, const cv::P
 	cv::Vec3d principal_point_mm;
 	principal_point_mm[0] = principal_point[0] * (sensor_width / screen_width);
 	principal_point_mm[1] = principal_point[1] * (sensor_height / screen_height);
-	principal_point_mm[2] = focal_length_px * sensor_width / screen_width;
+	principal_point_mm[2] = focal_length_px * (sensor_width / screen_width);
 
 
 	cv::Point2d image_coordinate_mm;
 	image_coordinate_mm.x = image_coordinate.x * (sensor_width / screen_width);
 	image_coordinate_mm.y = image_coordinate.y * (sensor_height / screen_height);
 
-	cv::Vec3d transformed_principal_point = transform(principal_point_mm, rotation, translation);
+	double x = image_coordinate_mm.x - principal_point_mm[0];
+	double y = image_coordinate_mm.y - principal_point_mm[1];
+
+	cv::Vec3d point_in_image_plane(x, y, principal_point_mm[2]);
+
+	cv::Vec3d transformed_point_in_image_plane = transform(point_in_image_plane, rotation, translation);
 	cv::Vec3d transformed_origin = transform(origin, rotation, translation);
 
 	//cv::Point2d image_coordinate_mm(image_coordinate.x * pixelSize, image_coordinate.y * pixelSize);
 
-	double x = image_coordinate_mm.x - transformed_principal_point[0];
+	//double x = image_coordinate_mm.x - transformed_principal_point[0];
 
-	// ******************
-	// ******************
-	double y = image_coordinate_mm.y - transformed_principal_point[1];
-	// ******************
-	// ******************
+	//// ******************
+	//// ******************
+	//double y = image_coordinate_mm.y - transformed_principal_point[1];
+	//// ******************
+	//// ******************
 
-	double transformed_focal_length = transformed_principal_point[2];
+	//double transformed_focal_length = transformed_principal_point[2];
 
 	Ray ray;
-	ray.a = (transformed_origin);
-	ray.b = cv::Vec3d(x, y, transformed_focal_length);
+	ray.a = transformed_origin;
+	ray.b = transformed_point_in_image_plane;
 
 	return ray;
 }
@@ -979,6 +992,19 @@ double RobotReconstruction::calculate_error(const Plane& plane,
 	return error;
 }
 
+cv::Mat RobotReconstruction::createRT(cv::Mat& R, cv::Vec3f& T) {
+	cv::Mat RT = cv::Mat::eye(4, 4, CV_64F);
+	for (int row = 0; row < 3; ++row) {
+		for (int col = 0; col < 3; ++col) {
+			RT.at<double>(row, col) = R.at<double>(row, col);
+		}
+	}
+	for (int row = 0; row < 3; ++row) {
+		RT.at<double>(row, 3) = (T[row]);
+	}
+	return RT;
+}
+
 void RobotReconstruction::reconstruct_from_video(const std::string& video_filename, int frame_no, 
 	float velocity, cv::Vec3f direction) {
 
@@ -993,22 +1019,28 @@ void RobotReconstruction::reconstruct_from_video(const std::string& video_filena
 	std::mt19937 e2(rd());
 	std::uniform_real_distribution<> dist(0.3, 1);
 
+	emit start_reconstruction_sequence();
+
+	std::vector<std::string> frame_filenames;
 
 	for (auto i = 0u; i < video_frames.size(); ++i) {
 		cv::Mat& frame = video_frames[i];
 
-		std::vector<cv::Point> line_2d = find_line(frame);
+		cv::Mat drawing;
+		std::vector<cv::Point> line_2d = find_line(frame, drawing);
 		std::vector<cv::Vec3f> reconstructed_points;
 		
 		if (line_2d.size() > 0) {
-			
 			cv::Vec3f translation = i * (1.f / fps) * velocity * direction;
 			cv::Mat R = cv::Mat::eye(3, 3, CV_64F);
 			Plane transformed_plane = transform_plane(calibrated_plane_, R, translation);
 
+			cv::Mat RT = createRT(R, translation);
+			Ray ray;
+
 			for (auto& line_pt : line_2d) {
 				try {
-					Ray ray = construct_ray(camera_matrix_, line_pt, R, translation);
+					ray = construct_ray(camera_matrix_, line_pt, R, translation);
 					cv::Vec3f reconstructed_point = ray_plane_intersect(transformed_plane, ray);
 					reconstructed_points.push_back(reconstructed_point);
 				}
@@ -1018,10 +1050,22 @@ void RobotReconstruction::reconstruct_from_video(const std::string& video_filena
 			}
 			if (reconstructed_points.size() > 0) {
 				cv::Vec4f common_color(dist(e2), dist(e2), dist(e2), 0.3f);
-				emit create_plane(transformed_plane.n, transformed_plane.d, common_color);
-				emit create_points(reconstructed_points, common_color);
+				//emit create_plane(transformed_plane.n, transformed_plane.d, common_color);
+				//emit create_points(reconstructed_points, common_color);
+
+				// need the plane, ray (first ray), R, T ofn of camera, 3d points 
+				
+				emit create_reconstruction_frame(reconstructed_points, ray.a, ray.b, transformed_plane.n,
+					transformed_plane.d, RT);
+
+				std::stringstream filename_ss;
+				filename_ss << "result_frames\\" << "frame_" << i << ".png";
+				cv::imwrite(filename_ss.str(), drawing);
+				frame_filenames.push_back(filename_ss.str());
+
 				QCoreApplication::processEvents();
 			}
 		}
 	}
+	emit create_reconstruction_image_list(frame_filenames);
 }

@@ -144,7 +144,7 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 
 	QHBoxLayout* nth_frame_layout = new QHBoxLayout();
 	QLabel* nframe_label = new QLabel("Nth Frame", recon_options_group_box);
-	nframe_line_edit_ = new QLineEdit("1", recon_options_group_box);
+	nframe_line_edit_ = new QLineEdit("100", recon_options_group_box);
 	nframe_line_edit_->setAlignment(Qt::AlignRight);
 	nth_frame_layout->addWidget(nframe_label);
 	nth_frame_layout->addWidget(nframe_line_edit_);
@@ -168,12 +168,13 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 		robot_viewer_->clear_models();
 	});
 
+	
 	connect(browse_button_, &QPushButton::clicked, this,
 		[&]()
 	{
-		QString filename = QFileDialog::getOpenFileName(this, QString("Open Video"), QDir::currentPath(),
+		selected_filename_ = QFileDialog::getOpenFileName(this, QString("Open Video"), QDir::currentPath(),
 			"Video Files(*.h264 *.avi)");
-		video_filename_->setText(filename);
+		video_filename_->setText(selected_filename_);
 	});
 
 
@@ -181,9 +182,16 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 	connect(reconstruct_from_video_push_button, &QPushButton::clicked,  this, 
 		[&]()
 	{
-		robot_reconstruction_->reconstruct_from_video(video_filename_->text().toStdString(), 
-			std::stoi(nframe_line_edit_->text().toStdString()), 
-			std::stof(velocity_line_edit_->text().toStdString()), cv::Vec3f(-1.f, 0.f,0.f));
+		if (selected_filename_.compare(QString("")) == 0) {
+			QMessageBox no_file_warning(QMessageBox::Icon::Warning, "No files selected!", "Please select a valid video file...",
+				QMessageBox::Ok, this);
+			no_file_warning.exec();
+		} else {
+			robot_reconstruction_->reconstruct_from_video(video_filename_->text().toStdString(),
+				std::stoi(nframe_line_edit_->text().toStdString()),
+				std::stof(velocity_line_edit_->text().toStdString()), cv::Vec3f(-1.f, 0.f, 0.f));
+			
+		}
 	});
 	
 }
@@ -216,6 +224,52 @@ void FilteredStructLight::add_display_options(QGroupBox* display_options_group_b
 	draw_default_check_box_->setChecked(true);
 }
 
+
+void FilteredStructLight::add_frame_analysis_options(QGroupBox* frame_analysis_group_box) {
+
+	QVBoxLayout* frame_analysis_group_box_layout = new QVBoxLayout();
+
+	QHBoxLayout* frame_selection_layout = new QHBoxLayout();
+	QLabel* frame_no_label = new QLabel("Frame #");
+	frame_selection_spin_box_ = new QSpinBox(frame_analysis_group_box);
+	frame_selection_spin_box_->setMinimum(0);
+	frame_selection_spin_box_->setMaximum(0);
+
+	frame_selection_layout->addWidget(frame_no_label);
+	frame_selection_layout->addWidget(frame_selection_spin_box_);
+
+	view_frame_by_frame_ = new QCheckBox("Frame by Frame", frame_analysis_group_box);
+
+	display_large_frame_ = new QCheckBox("Large Frame", frame_analysis_group_box);
+
+	//view_all_frames_ = new QCheckBox("View All Frames", frame_analysis_group_box);
+
+	image_preview_ = new QLabel();
+	image_preview_->setBaseSize(320, 180);
+	image_preview_->setScaledContents(true);
+	image_preview_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+
+	frame_analysis_group_box_layout->addLayout(frame_selection_layout);
+	frame_analysis_group_box_layout->addWidget(view_frame_by_frame_);
+	frame_analysis_group_box_layout->addWidget(display_large_frame_);
+	frame_analysis_group_box_layout->addWidget(image_preview_);
+
+
+
+	frame_analysis_group_box->setLayout(frame_analysis_group_box_layout);
+
+	connect(display_large_frame_, &QCheckBox::stateChanged, large_preview_widget_, &QWidget::setVisible);
+	connect(view_frame_by_frame_, &QCheckBox::stateChanged, robot_viewer_, &RobotViewer::toggle_frame_by_frame);
+	connect(frame_selection_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		robot_viewer_, &RobotViewer::set_current_frame_to_draw);
+	connect(frame_selection_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		this, &FilteredStructLight::update_images);
+
+	display_large_frame_->setChecked(false);
+	emit display_large_frame_->stateChanged(false);
+	view_frame_by_frame_->setChecked(true);
+}
+
 void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 	robot_viewer_tab_ = new QWidget();
 
@@ -228,6 +282,24 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 	glFormat.setSampleBuffers(true);
 	//glFormat.setSwapInterval(1);
 	robot_viewer_ = new RobotViewer(glFormat, robot_viewer_tab_);
+
+	large_preview_widget_ = new QWidget(robot_viewer_tab_);
+	QVBoxLayout* large_preview_layout = new QVBoxLayout();
+
+	large_image_preview_ = new QLabel(robot_viewer_tab_);
+	large_image_preview_->setFixedSize(640, 360);
+	large_image_preview_->setScaledContents(true);
+	QSizePolicy size_policy;
+	size_policy.setHorizontalStretch(1);
+	size_policy.setHorizontalPolicy(QSizePolicy::Ignored);
+	size_policy.setVerticalPolicy(QSizePolicy::Fixed);
+	large_image_preview_->setSizePolicy(size_policy);
+
+	QSpacerItem* spacer = new QSpacerItem(640, 360);
+
+	large_preview_layout->addWidget(large_image_preview_);
+	large_preview_layout->addSpacerItem(spacer);
+	large_preview_widget_->setLayout(large_preview_layout);
 
 	QWidget* robot_viewer_left_panel_ = new QWidget(robot_viewer_tab_);
 	QVBoxLayout* robot_viewer_left_panel_layout = new QVBoxLayout();
@@ -247,9 +319,21 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 	robot_viewer_left_panel_->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
 	robot_viewer_layout->addWidget(robot_viewer_left_panel_);
+	robot_viewer_layout->addWidget(large_preview_widget_);
+
+
+	QGroupBox* frame_analysis_group_box = new QGroupBox("Frame Options", robot_viewer_tab_);
+	add_frame_analysis_options(frame_analysis_group_box);
+
+	robot_viewer_left_panel_layout->addWidget(frame_analysis_group_box);
+
 
 	robot_viewer_layout->addWidget(robot_viewer_);
-	robot_viewer_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+	QSizePolicy robot_viewer_size_policy;
+	robot_viewer_size_policy.setHorizontalStretch(2);
+	robot_viewer_size_policy.setHorizontalPolicy(QSizePolicy::Preferred);
+	robot_viewer_size_policy.setVerticalPolicy(QSizePolicy::Preferred);
+	robot_viewer_->setSizePolicy(robot_viewer_size_policy);
 
 	robot_viewer_tab_->setLayout(robot_viewer_layout);
 
@@ -348,6 +432,27 @@ void FilteredStructLight::add_robot_calibration_tab(QTabWidget* tab_widget) {
 		robot_reconstruction_->calculate_light_position();
 	});
 
+}
+
+void FilteredStructLight::update_images(int frame_no) {
+	if ((frame_no >= 0) && (frame_no < (frame_filenames_.size()))) {
+		QPixmap pixmap(frame_filenames_[frame_no].c_str());
+		image_preview_->setPixmap(pixmap);
+		large_image_preview_->setPixmap(pixmap);
+	}
+}
+
+void FilteredStructLight::start_reconstruction_sequence() {
+	frame_filenames_.clear();
+}
+
+void FilteredStructLight::handle_frame_filenames(std::vector<std::string> image_list) {
+	frame_filenames_ = image_list;
+	frame_selection_spin_box_->setMinimum(0);
+	int max_value = (image_list.size() > 0) ? image_list.size() - 1 : 0;
+	frame_selection_spin_box_->setMaximum(max_value);
+	frame_selection_spin_box_->setValue(0);
+	emit frame_selection_spin_box_->valueChanged(0);
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {
@@ -575,14 +680,26 @@ void FilteredStructLight::setupUi() {
 	QTabWidget* tab_widget = new QTabWidget();
 	
 	main_layout->addWidget(tab_widget);
-	add_robot_calibration_tab(tab_widget);
 	add_robot_viewer_tab(tab_widget);
+	add_robot_calibration_tab(tab_widget);
 
 	connect(robot_reconstruction_, &RobotReconstruction::create_plane_with_points_and_lines,
 		robot_viewer_, &RobotViewer::create_plane_with_points_and_lines);
 	
 	connect(robot_reconstruction_, &RobotReconstruction::create_points, robot_viewer_, &RobotViewer::create_points);
 	connect(robot_reconstruction_, &RobotReconstruction::create_plane, robot_viewer_, &RobotViewer::create_plane);
+
+	connect(robot_reconstruction_, &RobotReconstruction::start_reconstruction_sequence, robot_viewer_, 
+		&RobotViewer::start_reconstruction_sequence);
+	connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_frame, robot_viewer_, 
+		&RobotViewer::create_reconstruction_frame);
+
+	connect(robot_reconstruction_, &RobotReconstruction::start_reconstruction_sequence, this, 
+		&FilteredStructLight::start_reconstruction_sequence);
+	connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_image_list, this, 
+		&FilteredStructLight::handle_frame_filenames);
+
+
 
 	central_widget_->adjustSize();
 	showMaximized();

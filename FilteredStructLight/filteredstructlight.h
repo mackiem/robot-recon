@@ -84,17 +84,36 @@ private:
 	QCheckBox* draw_points_check_box_;
 	QCheckBox* draw_lines_check_box_;
 	QCheckBox* draw_default_check_box_;
+	QString selected_filename_;
+
+	// frame by frame
+	QLabel* large_image_preview_;
+	QSpinBox* frame_selection_spin_box_;
+	QCheckBox* view_frame_by_frame_;
+	QCheckBox* display_large_frame_;
+	QLabel* image_preview_;
+	QWidget* large_preview_widget_;
 	void shutdown_cam_thread();
 	void create_camera_pairs(CameraPairs& pairs);
 
 	void add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget);
 	void add_reconstruction_options(QGroupBox* recon_options_group_box);
 	void add_display_options(QGroupBox* display_options_group_box);
+	void add_frame_analysis_options(QGroupBox* frame_analysis_group_box);
 	void add_robot_viewer_tab(QTabWidget* tab_widget);
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
 
 	void add_camera_calibration_tab(QTabWidget* tab_widget);
 	void add_robot_calibration_tab(QTabWidget* tab_widget);
+
+	std::vector<std::string> frame_filenames_;
+
+private slots:
+	void update_images(int frame_no);
+
+public slots:
+	void start_reconstruction_sequence();
+	void handle_frame_filenames(std::vector<std::string> image_list);
 
 };
 

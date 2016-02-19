@@ -8,6 +8,12 @@
 #include <random>
 
 
+const std::string RobotViewer::CAMERA = "camera";
+const std::string RobotViewer::IMAGE_PLANE = "image_plane";
+const std::string RobotViewer::ROBOT = "robot";
+const std::string RobotViewer::FLOOR_GRID = "floor_grid";
+
+
 RobotViewer::RobotViewer(const QGLFormat& format, QWidget* parent)
 	:  QGLWidget(format, parent),
 	m_vertexBuffer(QGLBuffer::VertexBuffer), no_of_pts_(0), angle_(0), is_draw_triangles_(true), is_texture_on_(false),
@@ -77,8 +83,8 @@ void RobotViewer::initializeGL()
 
 	camera_distance_ = -100.f;
 
-	look_at_x_ = 45.f;
-	look_at_y_ = -145.f;
+	look_at_x_ = 145.f;
+	look_at_y_ = -245.f;
 
 	glm::mat4 projection = glm::perspective(zoom_, static_cast<float>(sizeHint().width())/static_cast<float>(sizeHint().height()), 0.1f, 1000.0f);
 
@@ -130,10 +136,16 @@ void RobotViewer::initializeGL()
 	//	glBindTexture(GL_TEXTURE_2D, NULL);
 	//}
 
-	draw_camera();
-	draw_table_top();
-	draw_robot();
+	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
 
+	draw_camera(unit_matrix);
+	draw_table_top(unit_matrix);
+	draw_robot(unit_matrix);
+
+	// create default scene
+	default_scene_.push_back(assets_[ROBOT]);
+	default_scene_.push_back(assets_[CAMERA]);
+	default_scene_.push_back(assets_[FLOOR_GRID]);
 }
 
 bool RobotViewer::prepareShaderProgram(const QString& vertexShaderPath,
@@ -174,6 +186,37 @@ void RobotViewer::wheelEvent(QWheelEvent* event) {
 	update();
 }
 
+void RobotViewer::draw_mesh(RenderMesh& mesh) {
+	GLuint model_loc = m_shader.uniformLocation("model");
+	for (auto& entity : mesh) {
+		RenderEntity::Type entity_type = entity.get_type();
+		bool draw = true;
+		switch (entity_type) {
+		case RenderEntity::Plane: {
+			draw = draw_planes_;
+			break;
+		}
+		case RenderEntity::Points: draw = draw_points_; break;
+		case RenderEntity::Lines: draw = draw_lines_; break;
+		case RenderEntity::Default: draw = draw_default_; break;
+		default: break;
+		}
+
+		if (draw) {
+			glm::mat4 transformed_model = model_ * entity.model_;
+			glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(transformed_model));
+			//entity.model_ = entity.model_ * model_ ;
+			entity.draw();
+		}
+	}
+}
+
+void RobotViewer::draw_scene(Scene& scene) {
+	for (auto& rendermesh : scene) {
+		draw_mesh(rendermesh);
+	}
+}
+
 void RobotViewer::paintGL()
 {
 	// Clear the buffer with the current clearing color
@@ -208,9 +251,10 @@ void RobotViewer::paintGL()
 	glm::vec3 up = up_;
 	glm::vec3 zoom = camera_distance_ * glm::normalize(center_ - eye_);
 	glm::vec3 eye = eye_ - zoom;
+	glm::vec3 center = center_ - zoom;
 
 	eye += glm::vec3(look_at_x_, look_at_y_, 0.f);
-	glm::vec3 center = center_ + glm::vec3(look_at_x_, look_at_y_, 0.f);
+	center += glm::vec3(look_at_x_, look_at_y_, 0.f);
 
 	//direction = glm::mat3(model_) * direction;
 	//direction = glm::mat3(model_) * direction;
@@ -244,26 +288,21 @@ void RobotViewer::paintGL()
 	//	glUniform1i(texture_used_loc, is_texture_on_);
 	//}
 
-	for (auto& entity : entities_) {
-		RenderEntity::Type entity_type = entity.get_type();
-		bool draw = true;
-		switch (entity_type) {
-		case RenderEntity::Plane: {
-			draw = draw_planes_;
-			break;
+	if (frames_.size() > 0) {
+		if (draw_frame_by_frame_) {
+			if ((current_frame_to_draw_ >= 0) 
+				&& (current_frame_to_draw_ <= (frames_.size() - 1))) {
+				Scene scene = frames_[current_frame_to_draw_];
+				draw_scene(scene);
+			}
+		} else {
+			for (auto& scene : frames_) {
+				draw_scene(scene);
+			}
 		}
-		case RenderEntity::Points: draw = draw_points_; break;
-		case RenderEntity::Lines: draw = draw_lines_; break;
-		case RenderEntity::Default: draw = draw_default_; break;
-		default: break;
-		}
-
-		if (draw) {
-			glm::mat4 transformed_model = model_ * entity.model_;
-			glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(transformed_model));
-			//entity.model_ = entity.model_ * model_ ;
-			entity.draw();
-		}
+	} else {
+		// always draw the default scene, if nothing is there
+		draw_scene(default_scene_);
 	}
 
 
@@ -296,55 +335,15 @@ void RobotViewer::change_world_pts(WPt& world_pts) {
 
 
 void RobotViewer::create_plane(cv::Vec3f normal, double d, cv::Vec4f plane_color) {
-	makeCurrent();
-	int dist_x = 200, dist_y = 200;
-
-	std::vector<cv::Vec3f> plane_points;
-	std::vector<cv::Vec4f> plane_colors;
-	for (int x = 0; x < 2; ++x)  {
-		for (int y = 0; y < 2; ++y) {
-			float x_mul = (x % 2 == 0) ? 1.f : -1.f;
-			float y_mul = (y % 2 == 0) ? 1.f : -1.f;
-
-			float plane_x = x_mul * dist_x;
-			float plane_y = y_mul * dist_y;
-			cv::Vec3f calc_point(plane_x, plane_y, 0);
-
-			float z = 0.f;
-			float c_component = normal[2];
-			if (std::abs(c_component) > 1e-6) {
-				z = (d - normal.dot(calc_point)) / c_component;
-			}
-
-			cv::Vec3f plane_point(plane_x, plane_y, z);
-			plane_points.push_back(plane_point);
-			plane_colors.push_back(plane_color);
-		}
-	}
-
-	RenderEntity plane(GL_TRIANGLE_STRIP, m_shader);
-	plane.set_type(RenderEntity::Plane);
-	std::vector<cv::Vec3f> normals;
-	plane.upload_data_to_gpu(plane_points, plane_colors, normals);
+	RenderEntity plane = get_plane_entity(normal, d, plane_color);
 	entities_.push_back(plane);
 
 }
 
 
 void RobotViewer::create_points(std::vector<cv::Vec3f> points_3d, cv::Vec4f point_color) {
-	makeCurrent();
-
-	std::vector<cv::Vec4f> point_colors;
-	for (int i = 0; i < points_3d.size(); ++i) {
-		point_colors.push_back(point_color);
-	}
-
-	RenderEntity points(GL_POINTS, m_shader);
-	points.set_type(RenderEntity::Points);
-	std::vector<cv::Vec3f> normals;
-	points.upload_data_to_gpu(points_3d, point_colors, normals);
+	RenderEntity points = get_points_entity(points_3d, point_color);
 	entities_.push_back(points);
-	
 }
 
 void RobotViewer::toggle_draw_points(int check_state) {
@@ -367,7 +366,12 @@ void RobotViewer::toggle_draw_default(int check_state) {
 	update();
 }
 
-void RobotViewer::create_line(cv::Vec3f a, cv::Vec3f b, cv::Vec4f line_color, RenderEntity::Type type) {
+void RobotViewer::toggle_frame_by_frame(int check_state) {
+	draw_frame_by_frame_ = (check_state == 0) ? false : true;
+	update();
+}
+
+void RobotViewer::create_line(cv::Vec3f a, cv::Vec3f b, cv::Vec4f line_color, cv::Mat& model, RenderEntity::Type type) {
 	makeCurrent();
 
 	std::vector<cv::Vec4f> line_colors;
@@ -379,13 +383,15 @@ void RobotViewer::create_line(cv::Vec3f a, cv::Vec3f b, cv::Vec4f line_color, Re
 	line_points.push_back(a);
 	line_points.push_back(b);
 
-	RenderEntity points(GL_LINES, m_shader);
+	RenderEntity points(GL_LINES, &m_shader);
 	points.set_type(type);
+	points.set_model(convert(model));
 	std::vector<cv::Vec3f> normals;
 	points.upload_data_to_gpu(line_points, line_colors, normals);
 	entities_.push_back(points);
 	
 }
+
 
 void RobotViewer::create_plane_with_points_and_lines(std::vector<cv::Vec3f> points_3d, cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d) {
 
@@ -405,15 +411,15 @@ void RobotViewer::create_plane_with_points_and_lines(std::vector<cv::Vec3f> poin
 	//cv::Vec3f line_color = point_color;
 
 
-	create_line(line_a, line_b, line_color);
+	//create_line(line_a, line_b, line_color, );
 
 	create_points(points_3d, point_color);
 
 }
 
-RenderEntity::RenderEntity(GLenum primitive, QGLShaderProgram& shader) : primitive_(primitive), shader_(shader), vao_(0) {
+RenderEntity::RenderEntity(GLenum primitive, QGLShaderProgram* shader) : primitive_(primitive), shader_(shader), vao_(0) {
 	model_ = glm::mat4(1.f);
-	model_loc_ = shader_.uniformLocation("model");
+	model_loc_ = shader_->uniformLocation("model");
 }
 
 void RenderEntity::set_type(Type type) {
@@ -428,10 +434,14 @@ void RenderEntity::set_model(glm::mat4 model) {
 	model_ = model;
 }
 
+glm::mat4 RenderEntity::get_model() {
+	return model_;
+}
+
 void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vector<cv::Vec4f>& colors,
 	std::vector<cv::Vec3f>& normals) {
 
-	shader_.bind();
+	shader_->bind();
 
 	glGenVertexArrays(1, &vao_);
 	glBindVertexArray(vao_);
@@ -443,7 +453,7 @@ void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vec
 	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(cv::Vec3f), &vertices[0], GL_STATIC_DRAW);
 
 
-	GLuint vert_pos_attr = shader_.attributeLocation("vertex");
+	GLuint vert_pos_attr = shader_->attributeLocation("vertex");
 
 	glEnableVertexAttribArray(vert_pos_attr);
 	glVertexAttribPointer(vert_pos_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
@@ -451,7 +461,7 @@ void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vec
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_[1]);
 	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(cv::Vec4f), &colors[0], GL_STATIC_DRAW);
 
-	GLuint vert_color_attr = shader_.attributeLocation("vertColor");
+	GLuint vert_color_attr = shader_->attributeLocation("vertColor");
 
 	glEnableVertexAttribArray(vert_color_attr);
 	glVertexAttribPointer(vert_color_attr, 4, GL_FLOAT, GL_FALSE, sizeof(cv::Vec4f), NULL);
@@ -467,7 +477,7 @@ void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vec
 }
 
 void RenderEntity::draw() {
-	shader_.bind();
+	shader_->bind();
 	glBindVertexArray(vao_);
 	glDrawArrays(primitive_, 0, count_);
 }
@@ -639,6 +649,58 @@ void RobotViewer::set_scale(int value) {
 	update();
 }
 
+void RobotViewer::start_reconstruction_sequence() {
+	frames_.clear();
+}
+
+void RobotViewer::create_reconstruction_frame(std::vector<cv::Vec3f> points_3d, 
+	cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d, cv::Mat RT) {
+
+	std::random_device rd;
+	std::mt19937 e2(rd());
+	std::uniform_real_distribution<> dist(0.3, 1);
+
+	cv::Vec4f common_color(dist(e2), dist(e2), dist(e2), 0.2f);
+
+	RenderEntity laser_line_plane = get_plane_entity(normal, d, common_color);
+
+	float elongation_length = 200.f;
+	cv::Vec3f elongated_line_b = line_a + elongation_length * (line_b - line_a);
+	cv::Vec3f elongated_line_a = line_a - elongation_length * (line_b - line_a);
+	RenderEntity camera_ray = get_line_entity(elongated_line_a, elongated_line_b, common_color);
+
+	RenderEntity line_3d_points = get_points_entity(points_3d, common_color);
+
+	RenderMesh reconstruction;
+	reconstruction.push_back(laser_line_plane);
+	reconstruction.push_back(line_3d_points);
+	reconstruction.push_back(camera_ray);
+
+	// make copies not references
+	RenderMesh camera = assets_[CAMERA];
+	update_model(camera, RT);
+
+	RenderMesh robot = assets_[ROBOT];
+	update_model(robot, RT);
+
+	RenderMesh floor_grid = assets_[FLOOR_GRID];
+	//update_model(floor_grid, RT);
+
+	std::vector<RenderMesh> scene;
+	scene.push_back(reconstruction);
+	scene.push_back(camera);
+	scene.push_back(robot);
+	scene.push_back(floor_grid);
+
+	frames_.push_back(scene);
+
+}
+
+void RobotViewer::set_current_frame_to_draw(int frame_no) {
+	current_frame_to_draw_ = frame_no;
+	update();
+}
+
 void RobotViewer::load_obj(std::string filename, std::vector<cv::Vec3f>& vertices, std::vector<cv::Vec3f>& normals) {
 	std::vector<glm::vec3> glm_vertices;
 	std::vector<glm::vec2> uvs;
@@ -655,12 +717,112 @@ void RobotViewer::load_obj(std::string filename, std::vector<cv::Vec3f>& vertice
 		normals.push_back(cv::Vec3f(static_cast<float>(out_vertice[0]), static_cast<float>(out_vertice[1])
 			, static_cast<float>(out_vertice[2])));
 	}
+}
+
+glm::mat4 RobotViewer::convert(cv::Mat& input_mat) {
+	cv::Mat float_mat;
+	input_mat.convertTo(float_mat, CV_32F);
+	std::vector<float> array;
+	if (float_mat.isContinuous()) {
+		array.assign((float*)float_mat.datastart, (float*)float_mat.dataend);
+	}
+	else {
+		for (int i = 0; i < float_mat.rows; ++i) {
+			array.insert(array.end(), (float*)float_mat.ptr<uchar>(i), (float*)float_mat.ptr<uchar>(i)+float_mat.cols);
+		}
+	}
+	glm::mat4 model = glm::transpose(glm::make_mat4(&array[0]));
+	return model;
+}
+
+RenderEntity RobotViewer::get_line_entity(cv::Vec3f a, cv::Vec3f b, cv::Vec4f line_color, cv::Mat& model, RenderEntity::Type type) {
+	makeCurrent();
+
+	std::vector<cv::Vec4f> line_colors;
+	for (int i = 0; i < 2; ++i) {
+		line_colors.push_back(line_color);
+	}
+
+	std::vector<cv::Vec3f> line_points;
+	line_points.push_back(a);
+	line_points.push_back(b);
+
+	RenderEntity points(GL_LINES, &m_shader);
+	points.set_type(type);
+	points.set_model(convert(model));
+	std::vector<cv::Vec3f> normals;
+	points.upload_data_to_gpu(line_points, line_colors, normals);
+
+	return points;
+}
+
+RenderEntity RobotViewer::get_line_entity(cv::Vec3f a, cv::Vec3f b, cv::Vec4f line_color, RenderEntity::Type type) {
+	cv::Mat identity = cv::Mat::eye(4, 4, CV_64F);
+	RenderEntity line_entity = get_line_entity(a, b, line_color, identity, type);
+	return line_entity;
+}
+
+RenderEntity RobotViewer::get_plane_entity(cv::Vec3f normal, double d, cv::Vec4f plane_color) {
+	makeCurrent();
+	int dist_x = 200, dist_y = 200;
+
+	std::vector<cv::Vec3f> plane_points;
+	std::vector<cv::Vec4f> plane_colors;
+	for (int x = 0; x < 2; ++x)  {
+		for (int y = 0; y < 2; ++y) {
+			float x_mul = (x % 2 == 0) ? 1.f : -1.f;
+			float y_mul = (y % 2 == 0) ? 1.f : -1.f;
+
+			float plane_x = x_mul * dist_x;
+			float plane_y = y_mul * dist_y;
+			cv::Vec3f calc_point(plane_x, plane_y, 0);
+
+			float z = 0.f;
+			float c_component = normal[2];
+			if (std::abs(c_component) > 1e-6) {
+				z = (d - normal.dot(calc_point)) / c_component;
+			}
+
+			cv::Vec3f plane_point(plane_x, plane_y, z);
+			plane_points.push_back(plane_point);
+			plane_colors.push_back(plane_color);
+		}
+	}
+
+	RenderEntity plane(GL_TRIANGLE_STRIP, &m_shader);
+	plane.set_type(RenderEntity::Plane);
+	std::vector<cv::Vec3f> normals;
+	plane.upload_data_to_gpu(plane_points, plane_colors, normals);
+
+	return plane;
 
 }
 
-void RobotViewer::draw_camera() {
+RenderEntity RobotViewer::get_points_entity(std::vector<cv::Vec3f> points_3d, cv::Vec4f point_color) {
 	makeCurrent();
-	RenderEntity camera(GL_TRIANGLES, m_shader);
+
+	std::vector<cv::Vec4f> point_colors;
+	for (int i = 0; i < points_3d.size(); ++i) {
+		point_colors.push_back(point_color);
+	}
+
+	RenderEntity points(GL_POINTS, &m_shader);
+	points.set_type(RenderEntity::Points);
+	std::vector<cv::Vec3f> normals;
+	points.upload_data_to_gpu(points_3d, point_colors, normals);
+
+	return points;
+}
+
+void RobotViewer::update_model(RenderMesh& mesh, cv::Mat RT) {
+	for (auto& entity : mesh) {
+		entity.set_model(convert(RT) * entity.get_model());
+	}
+}
+
+void RobotViewer::draw_camera(cv::Mat& model) {
+	makeCurrent();
+	RenderEntity camera(GL_TRIANGLES, &m_shader);
 	camera.set_type(RenderEntity::Default);
 
 	std::vector<cv::Vec3f> vertices;
@@ -676,10 +838,11 @@ void RobotViewer::draw_camera() {
 	}
 
 	float scale = 50.f;
-	glm::mat4 model = glm::scale(glm::mat4(1.f), glm::vec3(scale, scale, scale));
-	camera.set_model(model);
+	glm::mat4 converted_mat = convert(model);
+	glm::mat4 final_model = glm::scale(glm::mat4(converted_mat), glm::vec3(scale, scale, scale));
+	camera.set_model(final_model);
 	camera.upload_data_to_gpu(vertices, colors, normals);
-	entities_.push_back(camera);
+	//entities_.push_back(camera);
 
 	// draw x, y, z lines
 	cv::Vec3f origin(0.f, 0.f, 0.f);
@@ -694,13 +857,21 @@ void RobotViewer::draw_camera() {
 	cv::Vec3f z_point(0.f, 0.f, multiplier * 1.f);
 	cv::Vec4f z_color(0.f, 0.f, 1.f, 1.f);
 
-	create_line(origin, x_point, x_color, RenderEntity::Default);
-	create_line(origin, y_point, y_color, RenderEntity::Default);
-	create_line(origin, z_point, z_color, RenderEntity::Default);
+	RenderEntity xline = get_line_entity(origin, x_point, x_color, model, RenderEntity::Default);
+	RenderEntity yline = get_line_entity(origin, y_point, y_color, model, RenderEntity::Default);
+	RenderEntity zline = get_line_entity(origin, z_point, z_color, model, RenderEntity::Default);
+
+	RenderMesh mesh;
+	mesh.push_back(camera);
+	mesh.push_back(xline);
+	mesh.push_back(yline);
+	mesh.push_back(zline);
+
+	assets_[CAMERA] = mesh;
 
 }
 
-void RobotViewer::draw_table_top() {
+void RobotViewer::draw_table_top(cv::Mat& model) {
 	makeCurrent();
 
 	cv::Vec4f green(0.f, 1.f, 0.f, 1.f);
@@ -736,14 +907,17 @@ void RobotViewer::draw_table_top() {
 		colors.push_back(green);
 	}
 
-	RenderEntity grid_floor(GL_LINES, m_shader);
+	RenderEntity grid_floor(GL_LINES, &m_shader);
 	grid_floor.set_type(RenderEntity::Default);
 	grid_floor.upload_data_to_gpu(points, colors, normals);
 
-	entities_.push_back(grid_floor);
+	RenderMesh mesh;
+	mesh.push_back(grid_floor);
+
+	assets_[FLOOR_GRID] = mesh;
 }
 
-void RobotViewer::draw_robot() {
+void RobotViewer::draw_robot(cv::Mat& world) {
 	makeCurrent();
 	std::vector<cv::Vec3f> vertices;
 	std::vector<cv::Vec4f> colors;
@@ -759,16 +933,21 @@ void RobotViewer::draw_robot() {
 		colors.push_back(color);
 	}
 
-	RenderEntity robot(GL_TRIANGLES, m_shader);
+	RenderEntity robot(GL_TRIANGLES, &m_shader);
 	robot.set_type(RenderEntity::Default);
 	float scale = 50.f;
-	glm::mat4 model;
-	model = glm::translate(model, glm::vec3(0.f, 60.f, 0.f));
-	model = glm::scale(model, glm::vec3(scale, scale, scale));
-	robot.set_model(model);
+	glm::mat4 model_transform;
+	model_transform = glm::translate(model_transform, glm::vec3(0.f, 60.f, 0.f));
+	model_transform = glm::scale(model_transform, glm::vec3(scale, scale, scale));
+	robot.set_model(convert(world) * model_transform);
 
 	robot.upload_data_to_gpu(vertices, colors, normals);
-	entities_.push_back(robot);
+	//entities_.push_back(robot);
+	
+	RenderMesh mesh;
+	mesh.push_back(robot);
+
+	assets_[ROBOT] = mesh;
 }
 
 void RobotViewer::clear_models() {
