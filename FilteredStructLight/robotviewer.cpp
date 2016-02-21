@@ -653,6 +653,76 @@ void RobotViewer::start_reconstruction_sequence() {
 	frames_.clear();
 }
 
+
+void RobotViewer::create_calibration_frame(std::vector<cv::Vec3f> points_3d,
+	cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d) {
+
+	std::random_device rd;
+	std::mt19937 e2(rd());
+	std::uniform_real_distribution<> dist(0.3, 1);
+
+	cv::Vec4f common_color(dist(e2), dist(e2), dist(e2), 0.2f);
+
+	RenderEntity checkerboard_plane = get_plane_entity(normal, d, common_color);
+
+	float elongation_length = 200.f;
+	cv::Vec3f elongated_line_b = line_a + elongation_length * (line_b - line_a);
+	cv::Vec3f elongated_line_a = line_a - elongation_length * (line_b - line_a);
+	RenderEntity fitted_line = get_line_entity(elongated_line_a, elongated_line_b, common_color);
+
+	RenderEntity line_3d_points = get_points_entity(points_3d, common_color);
+
+	RenderMesh calibration;
+	calibration.push_back(checkerboard_plane);
+	calibration.push_back(line_3d_points);
+	calibration.push_back(fitted_line);
+	// make copies not references
+	RenderMesh camera = assets_[CAMERA];
+
+	RenderMesh robot = assets_[ROBOT];
+
+	RenderMesh floor_grid = assets_[FLOOR_GRID];
+	//update_model(floor_grid, RT);
+
+	std::vector<RenderMesh> scene;
+	scene.push_back(calibration);
+	scene.push_back(camera);
+	scene.push_back(robot);
+	scene.push_back(floor_grid);
+
+	frames_.push_back(scene);
+}
+
+void RobotViewer::create_final_calibration_frame(cv::Vec3f normal, double d) {
+
+	std::random_device rd;
+	std::mt19937 e2(rd());
+	std::uniform_real_distribution<> dist(0.3, 1);
+
+	cv::Vec4f common_color(dist(e2), dist(e2), dist(e2), 0.2f);
+
+	RenderEntity scanline_plane = get_plane_entity(normal, d, common_color);
+
+	RenderMesh calibration;
+	calibration.push_back(scanline_plane);
+
+	// make copies not references
+	RenderMesh camera = assets_[CAMERA];
+
+	RenderMesh robot = assets_[ROBOT];
+
+	RenderMesh floor_grid = assets_[FLOOR_GRID];
+	//update_model(floor_grid, RT);
+
+	std::vector<RenderMesh> scene;
+	scene.push_back(calibration);
+	scene.push_back(camera);
+	scene.push_back(robot);
+	scene.push_back(floor_grid);
+
+	frames_.push_back(scene);
+}
+
 void RobotViewer::create_reconstruction_frame(std::vector<cv::Vec3f> points_3d, 
 	cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d, cv::Mat RT) {
 

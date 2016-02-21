@@ -178,6 +178,10 @@ public:
 	void set_current_frame_to_draw(int frame_no);
 
 
+	void create_calibration_frame(std::vector<cv::Vec3f> points_3d,
+		cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d);
+
+	void create_final_calibration_frame(cv::Vec3f normal, double d);
 	//void set_camera_pair();
 };
 

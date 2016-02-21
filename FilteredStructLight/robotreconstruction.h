@@ -39,6 +39,7 @@ public:
 	RobotReconstruction(void);
 	~RobotReconstruction(void);
 	void calibrate_intrinsic_from_video(const std::string& video_filename);
+	void calibrate_intrinsic_from_multiple_video(const std::vector<std::string>& calibration_videos);
 	void identify_line_from_video(const std::string& video_filename);
 	void calibrate_extrinsic_from_video(const std::string& video_filename);
 	cv::Mat get_first_video_frame(const std::string& video_filename);
@@ -56,10 +57,12 @@ public:
 	void calibrate_intrinsic(const std::vector<cv::Mat>& frames, cv::Mat& camera_matrix, cv::Mat& dist_coeffs);
 	void load_calibration();
 	std::vector<cv::Point3f> calculate_stripe_3d_points_in_camera_space(const std::string& checkerboard_video_filename, const std::string& stripe_video_filename, Plane& checkerboard_plane);
-	void visualize_3d_points(const std::vector<cv::Point3f>& line_3d_points, const Ray& ray, const std::string& video_filename, const std::string& output_image_filename);
+	void visualize_3d_points(const std::vector<cv::Point3f>& line_3d_points, 
+		const Ray& ray, const std::string& video_filename, cv::Mat& drawing);
 	void save_calibrated_plane(const Plane& plane);
 	void load_calibrated_plane();
-	void calculate_light_position();
+	void calculate_light_position(const std::vector<std::string>& checkerboard_filenames, 
+		const std::vector<std::string>& scanline_filenames);
 
 	Ray construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate) const;
 	Ray construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate, 
@@ -104,5 +107,11 @@ signals:
 	void create_reconstruction_frame(std::vector<cv::Vec3f> points_3d,
 		cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d, cv::Mat RT);
 	void create_reconstruction_image_list(std::vector<std::string> image_list);
+
+
+	void create_calibration_frame(std::vector<cv::Vec3f> points_3d,
+		cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d);
+
+	void create_final_calibration_frame(cv::Vec3f normal, double d);
 };
 

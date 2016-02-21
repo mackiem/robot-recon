@@ -14,6 +14,23 @@
 #include "robotviewer.h"
 
 
+class QArrayPushButton : public QPushButton {
+	Q_OBJECT
+
+protected:
+	int id_;
+	
+public:
+	QArrayPushButton(QString& text, int id, QWidget* parent = 0);
+	int get_id() const;
+
+private slots:
+	void intercept_clicked();
+signals:
+	void clicked_with_id(int id);
+
+};
+
 class FilteredStructLight : public QMainWindow
 {
 	Q_OBJECT
@@ -28,6 +45,15 @@ protected:
 	void onClose(QKeyEvent* e);
 
 private:
+	// labels
+	static const char* RECONSTRUCTION_VIDEO_FILENAME_LABEL;
+	static const char* CHECKERBOARD_VIDEO_FILENAME_LABEL;
+	static const char* SCANLINE_VIDEO_FILENAME_LABEL;
+	static const char* VELOCITY_LABEL;
+	static const int MAX_VIDEO_NO;
+
+	QString settings_filepath_;
+
 	CamThread* cam_thread_;
 	Reconstruct3D* reconstructor_;
 
@@ -77,7 +103,7 @@ private:
 	RobotViewer* robot_viewer_;
 	
 	QLineEdit* velocity_line_edit_;
-	QLineEdit* video_filename_;
+	QLineEdit* reconstruction_video_filename_;
 	QPushButton* browse_button_;
 	QLineEdit* nframe_line_edit_;
 	QCheckBox* draw_planes_check_box_;
@@ -93,15 +119,29 @@ private:
 	QCheckBox* display_large_frame_;
 	QLabel* image_preview_;
 	QWidget* large_preview_widget_;
+
+
+	QLineEdit** calibration_video_filename_;
+	QArrayPushButton** calibration_video_browse_;
+
+	QLineEdit** scanline_video_filename_;
+	QArrayPushButton** scanline_video_browse_;
+
+	void load_settings();
+
 	void shutdown_cam_thread();
+
 	void create_camera_pairs(CameraPairs& pairs);
 
 	void add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget);
 	void add_reconstruction_options(QGroupBox* recon_options_group_box);
+	void connect_line_edits_to_save_settings();
 	void add_display_options(QGroupBox* display_options_group_box);
 	void add_frame_analysis_options(QGroupBox* frame_analysis_group_box);
 	void add_robot_viewer_tab(QTabWidget* tab_widget);
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
+
+	void add_calibration_options(QGroupBox* calibration_group_box);
 
 	void add_camera_calibration_tab(QTabWidget* tab_widget);
 	void add_robot_calibration_tab(QTabWidget* tab_widget);
@@ -110,6 +150,7 @@ private:
 
 private slots:
 	void update_images(int frame_no);
+	void save_settings();
 
 public slots:
 	void start_reconstruction_sequence();

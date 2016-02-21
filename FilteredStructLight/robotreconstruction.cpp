@@ -18,6 +18,20 @@ void RobotReconstruction::calibrate_intrinsic_from_video(const std::string& vide
 
 }
 
+void RobotReconstruction::calibrate_intrinsic_from_multiple_video(const std::vector<std::string>& calibration_videos) {
+	std::vector<cv::Mat> calibration_frames;
+	for (int i = 0; i < calibration_videos.size(); ++i) {
+		auto frames = get_subset_of_video_frames(calibration_videos[i], 100);
+		for (auto& frame : frames) {
+			calibration_frames.push_back(frame);
+			
+		}
+	}
+    // the camera will be deinitialized automatically in VideoCapture destructor
+	calibrate_intrinsic(calibration_frames, camera_matrix_, dist_coeffs_);
+
+}
+
 void RobotReconstruction::identify_line_from_video(const std::string& video_filename) {
 	auto frame = get_first_video_frame(video_filename);
 	find_line(frame);
@@ -603,6 +617,7 @@ void RobotReconstruction::load_calibration() {
 
 }
 
+
 std::vector<cv::Point3f> RobotReconstruction::calculate_stripe_3d_points_in_camera_space
 	(const std::string& checkerboard_video_filename,
 	 const std::string& stripe_video_filename, Plane& checkerboard_plane) {
@@ -618,8 +633,12 @@ std::vector<cv::Point3f> RobotReconstruction::calculate_stripe_3d_points_in_came
 	std::cout << "Rotation : " << rvec << std::endl;
 	std::cout << "Translation : " << tvec << std::endl;
 
-	auto line_stripe_frame = get_first_video_frame(stripe_video_filename);
-	auto line_image_coordinates = find_line(line_stripe_frame);
+	auto distorted_line_stripe_frame = get_first_video_frame(stripe_video_filename);
+
+	cv::Mat undistorted_line_stripe_frame;
+	cv::undistort(distorted_line_stripe_frame, undistorted_line_stripe_frame, camera_matrix_, dist_coeffs_);
+
+	auto line_image_coordinates = find_line(undistorted_line_stripe_frame);
 
 	// construct plane
 	std::vector<cv::Point3f> calib_3d_point_camera_origin =
@@ -645,13 +664,13 @@ std::vector<cv::Point3f> RobotReconstruction::calculate_stripe_3d_points_in_came
 
 void RobotReconstruction::visualize_3d_points(const std::vector<cv::Point3f>& line_3d_points,
 	const Ray& ray,
-	const std::string& video_filename, const std::string& output_image_filename) {
+	const std::string& video_filename, cv::Mat& drawing) {
 
 	auto line_stripe_frame = get_first_video_frame(video_filename);
 
 	auto line_image_coordinates = find_line(line_stripe_frame);
 
-	cv::Mat drawing = line_stripe_frame.clone();
+	drawing = line_stripe_frame.clone();
 
 	cv::Vec3b original_edge_color = cv::Vec3b(0, 255, 0);
 	cv::Vec3b projected_edge_color = cv::Vec3b(0, 255, 255);
@@ -693,8 +712,8 @@ void RobotReconstruction::visualize_3d_points(const std::vector<cv::Point3f>& li
 
 	cv::line(drawing, projected_line_points[0], projected_line_points[1], cv::Scalar(255.0, 0.0, 0.0), 1);
 
-	cv::imwrite(output_image_filename, drawing);
-	emit display_image(drawing);
+	//cv::imwrite(output_image_filename, drawing);
+	//emit display_image(drawing);
 }
 
 void RobotReconstruction::save_calibrated_plane(const Plane& plane) {
@@ -740,45 +759,68 @@ std::vector<cv::Vec3f> convert_vec(const std::vector<cv::Point3f>& point_vec) {
 }
 	
 
-void RobotReconstruction::calculate_light_position() {
-	load_calibration();
+void RobotReconstruction::calculate_light_position(
+	const std::vector<std::string>& checkerboard_filenames, 
+	const std::vector<std::string>& scanline_filenames) {
 
-	std::vector<std::string> checkerboard_filenames;
-	std::vector<std::string> stripe_filenames;
+	//if (calculate_intrinsic) {
+	//	
+	//}
+	//load_calibration();
 
-	for (int i = 1; i < 6; ++i) {
-		std::stringstream light_stripe_filename;
-		light_stripe_filename << "light-stripe-calib-stripe_" << i << ".h264";
-		stripe_filenames.push_back(light_stripe_filename.str());
+	//std::vector<std::string> checkerboard_filenames;
+	//std::vector<std::string> scanline_filenames;
 
-		std::stringstream checkerboard_filename;
-		checkerboard_filename << "light-stripe-calib-checkerboard_" << i << ".h264";
-		checkerboard_filenames.push_back(checkerboard_filename.str());
-	}
+	//for (int i = 1; i < 6; ++i) {
+	//	std::stringstream light_stripe_filename;
+	//	light_stripe_filename << "light-stripe-calib-stripe_" << i << ".h264";
+	//	scanline_filenames.push_back(light_stripe_filename.str());
+
+	//	std::stringstream checkerboard_filename;
+	//	checkerboard_filename << "light-stripe-calib-checkerboard_" << i << ".h264";
+	//	checkerboard_filenames.push_back(checkerboard_filename.str());
+	//}
+
+	calibrate_intrinsic_from_multiple_video(checkerboard_filenames);
+
+
+	emit start_reconstruction_sequence();
 
 	std::vector<Ray> rays;
 	std::vector<std::vector<cv::Point3f>> lines_3d_points;
+
+	std::vector<std::string> frame_filenames;
+
 	for (auto i = 0; i < checkerboard_filenames.size(); ++i) {
 		Plane checkerboard_plane;
 		auto line_3d_points = calculate_stripe_3d_points_in_camera_space(
 			checkerboard_filenames[i],
-			stripe_filenames[i], checkerboard_plane);
+			scanline_filenames[i], checkerboard_plane);
 
 		lines_3d_points.push_back(line_3d_points);
 		Ray ray;
 		fit_line(line_3d_points, ray);
 
-		std::stringstream projected_line_filename;
-		projected_line_filename << "projected_line_" << (i + 1) << ".png";
-		visualize_3d_points(line_3d_points, ray, stripe_filenames[i], projected_line_filename.str());
+		//std::stringstream projected_line_filename;
+		//projected_line_filename << "projected_line_" << (i + 1) << ".png";
+		cv::Mat drawing;
+		visualize_3d_points(line_3d_points, ray, scanline_filenames[i], drawing);
 
 
 		rays.push_back(ray);
 
 		// visualize 3d
-		create_plane_with_points_and_lines(convert_vec(line_3d_points),
-			convert(ray.a), convert(ray.b), convert(checkerboard_plane.n), checkerboard_plane.d);
+		//create_plane_with_points_and_lines(convert_vec(line_3d_points),
+		//	convert(ray.a), convert(ray.b), convert(checkerboard_plane.n), checkerboard_plane.d);
+		emit create_calibration_frame(convert_vec(line_3d_points), ray.a, ray.b, checkerboard_plane.n,
+			checkerboard_plane.d);
 
+		std::stringstream filename_ss;
+		filename_ss << "calibration_frames\\" << "frame_" << i << ".png";
+		cv::imwrite(filename_ss.str(), drawing);
+		frame_filenames.push_back(filename_ss.str());
+
+		QCoreApplication::processEvents();
 	}
 
 
@@ -794,10 +836,15 @@ void RobotReconstruction::calculate_light_position() {
 		std::cout << "Error from plane fit  - line " << (i+1) << " : " << error << std::endl;
 	}
 
-	create_plane(calibrated_plane.n, calibrated_plane.d, cv::Vec4f(1.f, 0.f, 0.f, 0.6f));
+	//create_plane(calibrated_plane.n, calibrated_plane.d, cv::Vec4f(1.f, 0.f, 0.f, 0.6f));
+	emit create_final_calibration_frame(calibrated_plane.n, calibrated_plane.d);
 
 	save_calibrated_plane(calibrated_plane);
 
+	// insert a duplicate image so we can see the final plane seperately, in frame by frame view
+	frame_filenames.push_back(frame_filenames[frame_filenames.size() - 1]);
+
+	emit create_reconstruction_image_list(frame_filenames);
 
 	//auto interpolated_points = interpolate_edge(rvec, tvec, calib_3d_points, calib_2d_points, line_points);
 	//std::cout << "Interpolated Points : " << std::endl;
@@ -1024,10 +1071,13 @@ void RobotReconstruction::reconstruct_from_video(const std::string& video_filena
 	std::vector<std::string> frame_filenames;
 
 	for (auto i = 0u; i < video_frames.size(); ++i) {
-		cv::Mat& frame = video_frames[i];
+		cv::Mat& distorted_scanline_frame = video_frames[i];
+
+		cv::Mat undistorted_scanline_frame;
+		cv::undistort(distorted_scanline_frame, undistorted_scanline_frame, camera_matrix_, dist_coeffs_);
 
 		cv::Mat drawing;
-		std::vector<cv::Point> line_2d = find_line(frame, drawing);
+		std::vector<cv::Point> line_2d = find_line(undistorted_scanline_frame, drawing);
 		std::vector<cv::Vec3f> reconstructed_points;
 		
 		if (line_2d.size() > 0) {

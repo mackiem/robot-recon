@@ -3,16 +3,62 @@
 #include "modelviewer.h"
 #include "robotviewer.h"
 
+const int FilteredStructLight::MAX_VIDEO_NO = 5;
+const char* FilteredStructLight::RECONSTRUCTION_VIDEO_FILENAME_LABEL = "reconstruction_video_filename";
+const char* FilteredStructLight::CHECKERBOARD_VIDEO_FILENAME_LABEL = "checkerboard_video_filename";
+const char* FilteredStructLight::SCANLINE_VIDEO_FILENAME_LABEL = "scanline_video_filename";
+const char* FilteredStructLight::VELOCITY_LABEL = "velocity";
 
 FilteredStructLight::FilteredStructLight(QWidget *parent)
 	: QMainWindow(parent)
 {
 	//ui.setupUi(this);
+	//settings_filepath_ = ":/FilteredStructLight/settings.ini";
+	settings_filepath_ = QDir::currentPath() + "/settings.ini";
 	setupUi();
 }
 
 FilteredStructLight::~FilteredStructLight()
 {
+}
+
+void FilteredStructLight::load_settings() {
+	QSettings settings(settings_filepath_, QSettings::IniFormat);
+	
+	reconstruction_video_filename_->setText(settings.value(RECONSTRUCTION_VIDEO_FILENAME_LABEL, "").toString());
+	std::string calibration_checkerboard_video_filename = CHECKERBOARD_VIDEO_FILENAME_LABEL;
+	std::string calibration_scanline_video_filename = SCANLINE_VIDEO_FILENAME_LABEL;
+
+	for (int i = 0; i < MAX_VIDEO_NO; ++i) {
+		std::stringstream checkerboard_ss;
+		checkerboard_ss << calibration_checkerboard_video_filename << "_" << (i + 1);
+
+		std::stringstream scanline_ss;
+		scanline_ss << calibration_scanline_video_filename << "_" << (i + 1);
+		calibration_video_filename_[i]->setText(settings.value(QString(checkerboard_ss.str().c_str()), "").toString());
+		scanline_video_filename_[i]->setText(settings.value(QString(scanline_ss.str().c_str()), "").toString());
+	}
+
+	velocity_line_edit_->setText(settings.value(VELOCITY_LABEL, "").toString());
+}
+
+void FilteredStructLight::save_settings() {
+	QSettings settings(settings_filepath_, QSettings::IniFormat);
+
+	settings.setValue(RECONSTRUCTION_VIDEO_FILENAME_LABEL, reconstruction_video_filename_->text());
+
+	for (int i = 0; i < MAX_VIDEO_NO; ++i) {
+		std::stringstream checkerboard_ss;
+		checkerboard_ss << CHECKERBOARD_VIDEO_FILENAME_LABEL << "_" << (i + 1);
+
+		std::stringstream scanline_ss;
+		scanline_ss << SCANLINE_VIDEO_FILENAME_LABEL << "_" << (i + 1);
+
+		settings.setValue(QString(checkerboard_ss.str().c_str()), calibration_video_filename_[i]->text());
+		settings.setValue(QString(scanline_ss.str().c_str()), scanline_video_filename_[i]->text());
+	}
+
+	settings.setValue(VELOCITY_LABEL, velocity_line_edit_->text());
 }
 
 void FilteredStructLight::shutdown_cam_thread() {
@@ -129,10 +175,10 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 
 	QHBoxLayout* reconstruct_file_layout = new QHBoxLayout();
 	QLabel* video_file_label = new QLabel("Video Filename:", recon_options_group_box);
-	video_filename_ = new QLineEdit("", recon_options_group_box);
-	browse_button_ = new QPushButton("Browse", recon_options_group_box);
+	reconstruction_video_filename_ = new QLineEdit("", recon_options_group_box);
+	browse_button_ = new QArrayPushButton(QString("..."), 0, recon_options_group_box);
 	reconstruct_file_layout->addWidget(video_file_label);
-	reconstruct_file_layout->addWidget(video_filename_);
+	reconstruct_file_layout->addWidget(reconstruction_video_filename_);
 	reconstruct_file_layout->addWidget(browse_button_);
 
 	QHBoxLayout* velocity_layout = new QHBoxLayout();
@@ -174,7 +220,7 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 	{
 		selected_filename_ = QFileDialog::getOpenFileName(this, QString("Open Video"), QDir::currentPath(),
 			"Video Files(*.h264 *.avi)");
-		video_filename_->setText(selected_filename_);
+		reconstruction_video_filename_->setText(selected_filename_);
 	});
 
 
@@ -182,18 +228,29 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 	connect(reconstruct_from_video_push_button, &QPushButton::clicked,  this, 
 		[&]()
 	{
-		if (selected_filename_.compare(QString("")) == 0) {
+		if (reconstruction_video_filename_->text().compare(QString("")) == 0) {
 			QMessageBox no_file_warning(QMessageBox::Icon::Warning, "No files selected!", "Please select a valid video file...",
 				QMessageBox::Ok, this);
 			no_file_warning.exec();
 		} else {
-			robot_reconstruction_->reconstruct_from_video(video_filename_->text().toStdString(),
+			robot_reconstruction_->reconstruct_from_video(reconstruction_video_filename_->text().toStdString(),
 				std::stoi(nframe_line_edit_->text().toStdString()),
 				std::stof(velocity_line_edit_->text().toStdString()), cv::Vec3f(-1.f, 0.f, 0.f));
 			
 		}
 	});
+
 	
+}
+
+void FilteredStructLight::connect_line_edits_to_save_settings() {
+	connect(reconstruction_video_filename_, &QLineEdit::textChanged, this, &FilteredStructLight::save_settings);
+	connect(velocity_line_edit_, &QLineEdit::textChanged, this, &FilteredStructLight::save_settings);
+
+	for (int i = 0; i < (MAX_VIDEO_NO); ++i) {
+		connect(calibration_video_filename_[i], &QLineEdit::textChanged, this, &FilteredStructLight::save_settings);
+		connect(scanline_video_filename_[i], &QLineEdit::textChanged, this, &FilteredStructLight::save_settings);
+	}
 }
 
 void FilteredStructLight::add_display_options(QGroupBox* display_options_group_box) {
@@ -245,9 +302,10 @@ void FilteredStructLight::add_frame_analysis_options(QGroupBox* frame_analysis_g
 	//view_all_frames_ = new QCheckBox("View All Frames", frame_analysis_group_box);
 
 	image_preview_ = new QLabel();
+	image_preview_->setFixedSize(320, 180);
 	image_preview_->setBaseSize(320, 180);
 	image_preview_->setScaledContents(true);
-	image_preview_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+	image_preview_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Fixed);
 
 	frame_analysis_group_box_layout->addLayout(frame_selection_layout);
 	frame_analysis_group_box_layout->addWidget(view_frame_by_frame_);
@@ -301,7 +359,11 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 	large_preview_layout->addSpacerItem(spacer);
 	large_preview_widget_->setLayout(large_preview_layout);
 
+	QScrollArea* left_panel_scroll_area = new QScrollArea(robot_viewer_tab_);
+	left_panel_scroll_area->setWidgetResizable(true);
+
 	QWidget* robot_viewer_left_panel_ = new QWidget(robot_viewer_tab_);
+	robot_viewer_left_panel_->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
 	QVBoxLayout* robot_viewer_left_panel_layout = new QVBoxLayout();
 
 	QGroupBox* recon_options_group_box = new QGroupBox("Recon. Options", robot_viewer_tab_);
@@ -318,7 +380,11 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 	robot_viewer_left_panel_->setLayout(robot_viewer_left_panel_layout);
 	robot_viewer_left_panel_->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 
-	robot_viewer_layout->addWidget(robot_viewer_left_panel_);
+	//robot_viewer_layout->addWidget(robot_viewer_left_panel_);
+	left_panel_scroll_area->setWidget(robot_viewer_left_panel_);
+	robot_viewer_layout->addWidget(left_panel_scroll_area);
+
+
 	robot_viewer_layout->addWidget(large_preview_widget_);
 
 
@@ -327,6 +393,10 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 
 	robot_viewer_left_panel_layout->addWidget(frame_analysis_group_box);
 
+	QGroupBox* calibration_group_box = new QGroupBox("Calibration", robot_viewer_tab_);
+	add_calibration_options(calibration_group_box);
+
+	robot_viewer_left_panel_layout->addWidget(calibration_group_box);
 
 	robot_viewer_layout->addWidget(robot_viewer_);
 	QSizePolicy robot_viewer_size_policy;
@@ -369,6 +439,127 @@ void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vecto
 
 	
 	tab_widget->addTab(camera_info_tab_, "Camera Info");
+}
+
+QArrayPushButton::QArrayPushButton(QString& text, int id, QWidget* parent) : id_(id) {
+	QPushButton(text, parent);
+	setText(text);
+	setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+	setMaximumSize(30, 30);
+	connect(this, &QPushButton::clicked, this, &QArrayPushButton::intercept_clicked);
+}
+
+void QArrayPushButton::intercept_clicked() {
+	emit clicked_with_id(id_);
+}
+
+int QArrayPushButton::get_id() const {
+	return id_;
+}
+
+void FilteredStructLight::add_calibration_options(QGroupBox* calibration_group_box) {
+
+	QGridLayout* calib_grid_layout = new QGridLayout();
+	std::stringstream checkerboard_filename_ss;
+	checkerboard_filename_ss << "Checkerboard";
+	QLabel* checkerboard_video = new QLabel("CheckerBoard Videos", calibration_group_box);
+	QLabel* scanline_video = new QLabel("Scanline Videos", calibration_group_box);
+	
+	calib_grid_layout->addWidget(checkerboard_video, 1, 2);
+	calib_grid_layout->addWidget(scanline_video, 1, 4);
+
+	QLabel** video_no_label = new QLabel*[MAX_VIDEO_NO];
+	calibration_video_filename_ = new QLineEdit*[MAX_VIDEO_NO];
+	calibration_video_browse_ = new QArrayPushButton*[MAX_VIDEO_NO];
+
+	scanline_video_filename_ = new QLineEdit*[MAX_VIDEO_NO];
+	scanline_video_browse_ = new QArrayPushButton*[MAX_VIDEO_NO];
+
+	for (int i = 0; i < (MAX_VIDEO_NO); ++i) {
+		std::stringstream video_name;
+		video_name << "#" << (i + 1);
+		video_no_label[i] = new QLabel(video_name.str().c_str(), calibration_group_box);
+
+		QString browse_button_text("...");
+
+		calibration_video_filename_[i] = new QLineEdit(calibration_group_box);
+		calibration_video_browse_[i] = new QArrayPushButton(browse_button_text, i, calibration_group_box);
+		calibration_video_browse_[i]->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+		calibration_video_browse_[i]->setMaximumSize(30, 30);
+
+		scanline_video_filename_[i] = new QLineEdit(calibration_group_box);
+		scanline_video_browse_[i] = new QArrayPushButton(browse_button_text, i, calibration_group_box);
+		scanline_video_browse_[i]->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+		scanline_video_browse_[i]->setMaximumSize(30, 30);
+
+		connect(calibration_video_browse_[i], &QArrayPushButton::clicked_with_id, this, 
+			[&](int id) {
+			QString selected_filename_ = QFileDialog::getOpenFileName(this, QString("Open Video"), QDir::currentPath(),
+				"Video Files(*.h264 *.avi)");
+			calibration_video_filename_[id]->setText(selected_filename_);
+		});
+
+		connect(scanline_video_browse_[i], &QArrayPushButton::clicked_with_id, this, 
+			[&](int id) {
+			QString selected_filename_ = QFileDialog::getOpenFileName(this, QString("Open Video"), QDir::currentPath(),
+				"Video Files(*.h264 *.avi)");
+			scanline_video_filename_[id]->setText(selected_filename_);
+		});
+
+
+		calib_grid_layout->addWidget(video_no_label[i], i + 2, 1);
+		calib_grid_layout->addWidget(calibration_video_filename_[i], i + 2, 2);
+		calib_grid_layout->addWidget(calibration_video_browse_[i], i + 2, 3);
+		calib_grid_layout->addWidget(scanline_video_filename_[i], i + 2, 4);
+		calib_grid_layout->addWidget(scanline_video_browse_[i], i + 2, 5);
+	}
+
+	QVBoxLayout* calib_main_layout = new QVBoxLayout();
+	calib_main_layout->addLayout(calib_grid_layout);
+	
+
+	QPushButton* calibrate = new QPushButton("Calibrate");
+
+	calib_main_layout->addWidget(calibrate);
+	calibration_group_box->setLayout(calib_main_layout);
+
+	connect(calibrate, &QPushButton::clicked, this, [&] {
+		bool are_videos_selected = true;
+		const int MIN_NO_VIDEOS_NEEDED = 2;
+		for (int i = 0; i < MIN_NO_VIDEOS_NEEDED; ++i) {
+			if (calibration_video_filename_[i]->text().compare("") == 0
+				|| scanline_video_filename_[i]->text().compare("") == 0) {
+				are_videos_selected = false;
+				break;
+			}
+		}
+
+		if (!are_videos_selected) {
+			QMessageBox no_file_warning(QMessageBox::Icon::Warning, 
+				"No files selected!", "Please select at least 2 calibration videos and 2 scanline videos...",
+				QMessageBox::Ok, this);
+			no_file_warning.exec();
+		} else {
+			// do the calibration
+			std::vector<std::string> checkerboard_video_filenames;
+			std::vector<std::string> scanline_video_filenames;
+			
+			for (int i = 0; i < MAX_VIDEO_NO; ++i) {
+				std::string checkerboard_filename = calibration_video_filename_[i]->text().toStdString();
+				std::string scanline_filename = scanline_video_filename_[i]->text().toStdString();
+
+				if (checkerboard_filename.compare("") == 0) {
+					// reached the end
+					break;
+				}
+				checkerboard_video_filenames.push_back(checkerboard_filename);
+				scanline_video_filenames.push_back(scanline_filename);
+			}
+			robot_reconstruction_->calculate_light_position(checkerboard_video_filenames, scanline_video_filenames);
+		}
+
+	});
+
 }
 
 void FilteredStructLight::add_robot_calibration_tab(QTabWidget* tab_widget) {
@@ -429,7 +620,7 @@ void FilteredStructLight::add_robot_calibration_tab(QTabWidget* tab_widget) {
 	connect(interpolate_line_, &QPushButton::clicked, this, 
 		[&]()
 	{
-		robot_reconstruction_->calculate_light_position();
+		//robot_reconstruction_->calculate_light_position(,,);
 	});
 
 }
@@ -678,6 +869,7 @@ void FilteredStructLight::setupUi() {
 
 
 	QTabWidget* tab_widget = new QTabWidget();
+	tab_widget->setTabPosition(QTabWidget::West);
 	
 	main_layout->addWidget(tab_widget);
 	add_robot_viewer_tab(tab_widget);
@@ -694,12 +886,20 @@ void FilteredStructLight::setupUi() {
 	connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_frame, robot_viewer_, 
 		&RobotViewer::create_reconstruction_frame);
 
+	connect(robot_reconstruction_, &RobotReconstruction::create_calibration_frame, robot_viewer_, 
+		&RobotViewer::create_calibration_frame);
+	connect(robot_reconstruction_, &RobotReconstruction::create_final_calibration_frame, robot_viewer_, 
+		&RobotViewer::create_final_calibration_frame);
+
 	connect(robot_reconstruction_, &RobotReconstruction::start_reconstruction_sequence, this, 
 		&FilteredStructLight::start_reconstruction_sequence);
 	connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_image_list, this, 
 		&FilteredStructLight::handle_frame_filenames);
 
 
+	load_settings();
+
+	connect_line_edits_to_save_settings();
 
 	central_widget_->adjustSize();
 	showMaximized();
