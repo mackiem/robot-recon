@@ -155,6 +155,15 @@
     <ClCompile Include="GeneratedFiles\Release\moc_robotviewer.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="lsqrfit.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="swarmviewer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="renderentity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="filteredstructlight.h">
@@ -185,6 +194,9 @@
       <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="robotviewer.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="swarmviewer.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>
@@ -219,6 +231,15 @@
     <ClInclude Include="planefit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="lsqrfit.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="smoothopt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="renderentity.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="FilteredStructLight.rc" />
@@ -231,5 +252,7 @@
     <None Include="camera_vert.glsl" />
     <None Include="model_frag.glsl" />
     <None Include="model_vert.glsl" />
+    <None Include="swarm_vert.glsl" />
+    <None Include="swarm_frag.glsl" />
   </ItemGroup>
 </Project>

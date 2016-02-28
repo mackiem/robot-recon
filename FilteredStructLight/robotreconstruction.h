@@ -46,8 +46,8 @@ public:
 	cv::Mat get_image(const std::string& video_filename);
 	std::vector<cv::Mat> get_subset_of_video_frames(const std::string& video_filename, const int nth_frame);
 	void calc_camera_pos(const std::vector<cv::Mat>& frames, cv::Mat& rotation_mat, cv::Mat& translation_mat, std::vector<cv::Point3f>& calib_3d_points, std::vector<cv::Point2f> & calib_2d_points);
-	std::vector<cv::Point> find_line(const cv::Mat& frame);
-	std::vector<cv::Point> find_line(const cv::Mat& frame, cv::Mat& drawing);
+	std::vector<cv::Point2d> find_line(const cv::Mat& frame);
+	std::vector<cv::Point2d> find_line(const cv::Mat& frame, cv::Mat& drawing);
 	std::vector<cv::Point3f> convert_to_camera_reference_frame(const std::vector<cv::Point3f>& point_3f, const cv::Mat& rotation_mat, const cv::Mat& translation_mat);
 	std::vector<cv::Point3f> interpolate_edge(cv::Mat& rotation_mat, cv::Mat& translation_mat,
 	                                          const std::vector<cv::Point3f>& checkerboard_3d_points,
@@ -64,8 +64,8 @@ public:
 	void calculate_light_position(const std::vector<std::string>& checkerboard_filenames, 
 		const std::vector<std::string>& scanline_filenames);
 
-	Ray construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate) const;
-	Ray construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate, 
+	Ray construct_ray(const cv::Mat& camera_matrix, const cv::Point2d& image_coordinate) const;
+	Ray construct_ray(const cv::Mat& camera_matrix, const cv::Point2d& image_coordinate, 
 		const cv::Mat& rotation, const cv::Vec3d& translation) const;
 
 	Plane transform_plane(const Plane& plane, 
@@ -104,6 +104,8 @@ signals:
 	void create_plane(cv::Vec3f normal, double d, cv::Vec4f plane_color);
 
 	void start_reconstruction_sequence();
+	void end_reconstruction_sequence();
+
 	void create_reconstruction_frame(std::vector<cv::Vec3f> points_3d,
 		cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d, cv::Mat RT);
 	void create_reconstruction_image_list(std::vector<std::string> image_list);

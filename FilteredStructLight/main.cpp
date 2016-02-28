@@ -1,4 +1,4 @@
-#define QT_QML_DEBUG
+//#define QT_QML_DEBUG
 #include "filteredstructlight.h"
 #include "projectorwindow.h"
 #include <QtWidgets/QApplication>
@@ -21,10 +21,10 @@ int main(int argc, char *argv[])
 	//ProjectorWndow projector_window;
 	//projector_window.show();
 
-	QQuickView view; 
-	view.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
-	view.showFullScreen();
-	view.setPosition(QPoint(2960, 0));
+	//QQuickView view; 
+	//view.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
+	//view.showFullScreen();
+	//view.setPosition(QPoint(2960, 0));
 
 	//QQuickView view_2;
 	//view_2.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));

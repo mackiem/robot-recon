@@ -3,6 +3,7 @@
 #include <fstream>
 #include "planefit.h"
 #include <random>
+#include "lsqrfit.h"
 
 RobotReconstruction::RobotReconstruction(void) {
 }
@@ -181,19 +182,19 @@ void RobotReconstruction::calc_camera_pos(const std::vector<cv::Mat>& frames, cv
 // optimize light position
 
 
-std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame) {
+std::vector<cv::Point2d> RobotReconstruction::find_line(const cv::Mat& frame) {
 
 	cv::Mat drawing;
 	return find_line(frame, drawing);
 }
 
-std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame,
+std::vector<cv::Point2d> RobotReconstruction::find_line(const cv::Mat& frame,
 	cv::Mat& drawing) {
 	cv::RNG rng(12345);
 	cv::Mat yuv_frame;
 	cv::cvtColor(frame, yuv_frame, CV_BGR2GRAY);
 
-	cv::imwrite("before_edge_detection.png", frame);
+	//cv::imwrite("before_edge_detection.png", frame);
 	// throttle to red
 	//cv::inRange(yuv_frame, cv::Scalar(), cv::Scalar(), yuv_frame);
 
@@ -205,6 +206,8 @@ std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame,
 	// for each row
 	// order is important
 	std::map<int, int> edge_value;
+
+	std::map<int, double> optimized_edge_value;
 
 	for (int y = 0; y < yuv_frame.rows; ++y) {
 		if ((row_sum.at<int>(y, 0) >= row_threshold)) {
@@ -221,13 +224,27 @@ std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame,
 			cv::Mat delta_I(1, row.cols, CV_32F);
 			delta_I = row - cv::Scalar(avg_intensity);
 
-			cv::threshold(delta_I, delta_I, 0, 255, CV_THRESH_BINARY);
+			cv::Mat thresholded;
+			cv::threshold(delta_I, thresholded, 0, 255, CV_THRESH_BINARY);
 
-			for (int x = delta_I.cols - 1; x >= 0; --x) {
-				if (delta_I.at<float>(0, x) >= 254) {
+			for (int x = thresholded.cols - 1; x >= 0; --x) {
+				if (thresholded.at<float>(0, x) >= 254) {
 					edge_value[y] = x;
 					break;
 				}
+			}
+
+			std::vector<cv::Point2f> crossing_points;
+			for (int x = edge_value[y] - 5; x < edge_value[y] + 5; ++x) {
+				if (x >= 0 && x < delta_I.cols) {
+					 crossing_points.push_back(cv::Point2f(x, delta_I.at<float>(0, x)));
+				}
+			}
+
+			double optimal_x = find_optimal_edge_zero_crossing(crossing_points);
+
+			if (optimal_x >= 0) {
+				optimized_edge_value[y] = optimal_x;
 			}
 
 			delta_I.copyTo(yuv_frame.row(y));
@@ -237,7 +254,7 @@ std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame,
 	// create edges
 	std::vector<std::vector<cv::Point>> edges;
 
-	std::vector<cv::Point> rightmost_edge;
+	std::vector<cv::Point2d> rightmost_edge;
 	const int edge_threshold = 50;
 
 	//for (auto itr = edge_value.begin(); itr != edge_value.end(); ++itr) {
@@ -281,18 +298,31 @@ std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame,
 		//}
 	//}
 
-	for (auto itr = edge_value.begin(); itr != edge_value.end(); ++itr) {
+	//for (auto itr = edge_value.begin(); itr != edge_value.end(); ++itr) {
+	//	auto entry = *itr;
+	//	int row = entry.first;
+	//	int extreme_right_edge_col = entry.second;
+	//	rightmost_edge.push_back(cv::Point2d(extreme_right_edge_col, row));
+	//}
+
+	for (auto itr = optimized_edge_value.begin(); itr != optimized_edge_value.end(); ++itr) {
 		auto entry = *itr;
 		int row = entry.first;
-		int extreme_right_edge_col = entry.second;
-		rightmost_edge.push_back(cv::Point(extreme_right_edge_col, row));
+		double extreme_right_edge_col = entry.second;
+		rightmost_edge.push_back(cv::Point2d(extreme_right_edge_col, row));
 	}
 
 	drawing = frame.clone();
 	cv::Vec3b color(255, 255, 0);
 	for (auto& point : rightmost_edge) {
-		drawing.at<cv::Vec3b>(point) = color;
+		cv::Point2i point_2i(static_cast<int>(point.x), static_cast<int>(point.y));
+		if (point_2i.x > 1920 || point_2i.x < 0) {
+			std::cout << "Out of bounds point : " << point_2i << std::endl;
+		}
+		drawing.at<cv::Vec3b>(point_2i) = color;
 	}
+
+	cv::flip(drawing, drawing, 0);
 
 	//drawing = frame.clone();
 	//std::vector<cv::Vec2f> lines;
@@ -315,7 +345,7 @@ std::vector<cv::Point> RobotReconstruction::find_line(const cv::Mat& frame,
 
 
 	// i max + i min / 2
-	cv::imwrite("after_edge_detection.png", drawing);
+	//cv::imwrite("after_edge_detection.png", drawing);
 
 	//// edge detect
 	//float threshold = 100.f;
@@ -845,6 +875,7 @@ void RobotReconstruction::calculate_light_position(
 	frame_filenames.push_back(frame_filenames[frame_filenames.size() - 1]);
 
 	emit create_reconstruction_image_list(frame_filenames);
+	emit end_reconstruction_sequence();
 
 	//auto interpolated_points = interpolate_edge(rvec, tvec, calib_3d_points, calib_2d_points, line_points);
 	//std::cout << "Interpolated Points : " << std::endl;
@@ -857,7 +888,7 @@ void RobotReconstruction::calculate_light_position(
 	//file.close();
 }
 
-Ray RobotReconstruction::construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate) const {
+Ray RobotReconstruction::construct_ray(const cv::Mat& camera_matrix, const cv::Point2d& image_coordinate) const {
 
 	cv::Mat R = cv::Mat::eye(3, 3, CV_64F);
 	Ray ray = construct_ray(camera_matrix_, image_coordinate, R, cv::Vec3d(0.f, 0.f, 0.f));
@@ -865,7 +896,7 @@ Ray RobotReconstruction::construct_ray(const cv::Mat& camera_matrix, const cv::P
 	return ray;
 }
 
-Ray RobotReconstruction::construct_ray(const cv::Mat& camera_matrix, const cv::Point& image_coordinate, 
+Ray RobotReconstruction::construct_ray(const cv::Mat& camera_matrix, const cv::Point2d& image_coordinate, 
 	const cv::Mat& rotation, const cv::Vec3d& translation) const {
 
 	const double pixelSize = 1.4 / 1000.0;
@@ -1058,6 +1089,8 @@ void RobotReconstruction::reconstruct_from_video(const std::string& video_filena
 	load_calibration();
 	load_calibrated_plane();
 
+	std::cout << "Processing frames..." << std::endl;
+
 	std::vector<cv::Mat> video_frames = get_subset_of_video_frames(video_filename, frame_no);
 
 	float fps = 24.f;
@@ -1070,6 +1103,7 @@ void RobotReconstruction::reconstruct_from_video(const std::string& video_filena
 
 	std::vector<std::string> frame_filenames;
 
+
 	for (auto i = 0u; i < video_frames.size(); ++i) {
 		cv::Mat& distorted_scanline_frame = video_frames[i];
 
@@ -1077,7 +1111,7 @@ void RobotReconstruction::reconstruct_from_video(const std::string& video_filena
 		cv::undistort(distorted_scanline_frame, undistorted_scanline_frame, camera_matrix_, dist_coeffs_);
 
 		cv::Mat drawing;
-		std::vector<cv::Point> line_2d = find_line(undistorted_scanline_frame, drawing);
+		std::vector<cv::Point2d> line_2d = find_line(undistorted_scanline_frame, drawing);
 		std::vector<cv::Vec3f> reconstructed_points;
 		
 		if (line_2d.size() > 0) {
@@ -1118,4 +1152,7 @@ void RobotReconstruction::reconstruct_from_video(const std::string& video_filena
 		}
 	}
 	emit create_reconstruction_image_list(frame_filenames);
+	emit end_reconstruction_sequence();
+
+	std::cout << "Processing ended..." << std::endl;
 }

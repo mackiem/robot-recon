@@ -145,10 +145,12 @@
     <ClCompile Include="lmdif.c" />
     <ClCompile Include="lmpar.c" />
     <ClCompile Include="lsqr.c" />
+    <ClCompile Include="lsqrfit.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="modelviewer.cpp" />
     <ClCompile Include="objloader.cpp" />
     <ClCompile Include="planefit.cpp" />
+    <ClCompile Include="renderentity.cpp" />
     <ClCompile Include="robotreconstruction.cpp" />
     <ClCompile Include="robotviewer.cpp" />
     <ClCompile Include="smoothopt.cpp" />
@@ -156,6 +158,7 @@
     <ClCompile Include="qrfac.c" />
     <ClCompile Include="qrsolv.c" />
     <ClCompile Include="reconstruct.cpp" />
+    <ClCompile Include="swarmviewer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="filteredstructlight.h">
@@ -182,6 +185,22 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="renderentity.h" />
+    <ClInclude Include="smoothopt.h" />
+    <CustomBuild Include="swarmviewer.h">
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </Command>
+    </CustomBuild>
     <CustomBuild Include="robotviewer.h">
       <AdditionalInputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(QTDIR)\bin\moc.exe;%(FullPath)</AdditionalInputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Moc%27ing robotviewer.h...</Message>
@@ -248,6 +267,7 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">"$(QTDIR)\bin\moc.exe"  "%(FullPath)" -o ".\GeneratedFiles\$(ConfigurationName)\moc_%(Filename).cpp"  -DUNICODE -DWIN32 -DWIN64 -DQT_DLL -DQT_NO_DEBUG -DNDEBUG -DQT_CORE_LIB -DQT_GUI_LIB -DQT_QML_LIB -DQT_QUICK_LIB -DQT_OPENGL_LIB -DQT_WIDGETS_LIB -DQT_PRINTSUPPORT_LIB "-I.\include" "-I.\GeneratedFiles" "-I." "-I$(QTDIR)\include" "-I.\GeneratedFiles\$(ConfigurationName)\." "-I$(QTDIR)\include\QtCore" "-I$(QTDIR)\include\QtGui" "-I$(QTDIR)\include\QtQml" "-I$(QTDIR)\include\QtQuick" "-I$(QTDIR)\include\QtOpenGL" "-I$(QTDIR)\include\QtWidgets" "-I$(QTDIR)\include\QtPrintSupport" "-I$(PCL_ROOT)\include\pcl-1.7" "-I$(PCL_ROOT)\3rdParty\Boost\include\boost-1_57" "-I$(PCL_ROOT)\3rdParty\Eigen\eigen3" "-I$(PCL_ROOT)\3rdParty\FLANN\include" "-I$(PCL_ROOT)\3rdParty\QHull\include" "-I$(PCL_ROOT)\3rdParty\VTK\include\vtk-6.2"</Command>
     </CustomBuild>
     <ClInclude Include="lsqr.h" />
+    <ClInclude Include="lsqrfit.h" />
     <ClInclude Include="objloader.hpp" />
     <ClInclude Include="planefit.h" />
     <ClInclude Include="projectorwindow.h" />
@@ -287,6 +307,8 @@
     <None Include="model_vert.glsl" />
     <None Include="projector.qml" />
     <None Include="camera_vert.glsl" />
+    <None Include="swarm_frag.glsl" />
+    <None Include="swarm_vert.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

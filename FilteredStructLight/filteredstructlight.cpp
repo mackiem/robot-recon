@@ -190,7 +190,7 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 
 	QHBoxLayout* nth_frame_layout = new QHBoxLayout();
 	QLabel* nframe_label = new QLabel("Nth Frame", recon_options_group_box);
-	nframe_line_edit_ = new QLineEdit("100", recon_options_group_box);
+	nframe_line_edit_ = new QLineEdit("1", recon_options_group_box);
 	nframe_line_edit_->setAlignment(Qt::AlignRight);
 	nth_frame_layout->addWidget(nframe_label);
 	nth_frame_layout->addWidget(nframe_line_edit_);
@@ -257,16 +257,28 @@ void FilteredStructLight::add_display_options(QGroupBox* display_options_group_b
 	// checkboxes of options
 	QVBoxLayout* display_options_layout = new QVBoxLayout();
 
+	QHBoxLayout* draw_toggle_options_layout = new QHBoxLayout();
+	QHBoxLayout* view_position_options_layout = new QHBoxLayout();
+
 	//QLabel* draw_planes_label = new QLabel("Show Planes", display_options_group_box);
 	draw_planes_check_box_ = new QCheckBox("Planes", display_options_group_box);
 	draw_points_check_box_ = new QCheckBox("Points", display_options_group_box);
 	draw_lines_check_box_ = new QCheckBox("Lines", display_options_group_box);
 	draw_default_check_box_ = new QCheckBox("Camera Setup", display_options_group_box);
 
-	display_options_layout->addWidget(draw_planes_check_box_);
-	display_options_layout->addWidget(draw_points_check_box_);
-	display_options_layout->addWidget(draw_lines_check_box_);
-	display_options_layout->addWidget(draw_default_check_box_);
+	draw_toggle_options_layout->addWidget(draw_planes_check_box_);
+	draw_toggle_options_layout->addWidget(draw_points_check_box_);
+	draw_toggle_options_layout->addWidget(draw_lines_check_box_);
+	draw_toggle_options_layout->addWidget(draw_default_check_box_);
+
+	QPushButton* reset_view = new QPushButton("Reset View", display_options_group_box);
+	QPushButton* center_on_points_view = new QPushButton("Center on Pts.", display_options_group_box);
+
+	view_position_options_layout->addWidget(reset_view);
+	view_position_options_layout->addWidget(center_on_points_view);
+
+	display_options_layout->addLayout(draw_toggle_options_layout);
+	display_options_layout->addLayout(view_position_options_layout);
 
 	display_options_group_box->setLayout(display_options_layout);
 
@@ -274,6 +286,9 @@ void FilteredStructLight::add_display_options(QGroupBox* display_options_group_b
 	connect(draw_planes_check_box_, &QCheckBox::stateChanged, robot_viewer_, &RobotViewer::toggle_draw_planes);
 	connect(draw_lines_check_box_, &QCheckBox::stateChanged, robot_viewer_, &RobotViewer::toggle_draw_lines);
 	connect(draw_default_check_box_, &QCheckBox::stateChanged, robot_viewer_, &RobotViewer::toggle_draw_default);
+
+	connect(reset_view, &QPushButton::clicked, robot_viewer_, &RobotViewer::reset_view);
+	connect(center_on_points_view, &QPushButton::clicked, robot_viewer_, &RobotViewer::center_view);
 
 	draw_planes_check_box_->setChecked(true);
 	draw_points_check_box_->setChecked(true);
@@ -329,9 +344,10 @@ void FilteredStructLight::add_frame_analysis_options(QGroupBox* frame_analysis_g
 }
 
 void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
-	robot_viewer_tab_ = new QWidget();
+	QHBoxLayout* robot_viewer_options_layout = new QHBoxLayout();
 
-	QHBoxLayout* robot_viewer_layout = new QHBoxLayout();
+	robot_viewer_tab_ = new QWidget(tab_widget);
+
 	// Specify an OpenGL 3.3 format using the Core profile.
 	// That is, no old-school fixed pipeline functionality
 	QGLFormat glFormat;
@@ -339,7 +355,12 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 	glFormat.setProfile(QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
 	glFormat.setSampleBuffers(true);
 	//glFormat.setSwapInterval(1);
-	robot_viewer_ = new RobotViewer(glFormat, robot_viewer_tab_);
+	robot_viewer_ = new RobotViewer(glFormat, central_widget_);
+	QSizePolicy robot_viewer_size_policy;
+	robot_viewer_size_policy.setHorizontalStretch(2);
+	robot_viewer_size_policy.setHorizontalPolicy(QSizePolicy::Preferred);
+	robot_viewer_size_policy.setVerticalPolicy(QSizePolicy::Preferred);
+	robot_viewer_->setSizePolicy(robot_viewer_size_policy);
 
 	large_preview_widget_ = new QWidget(robot_viewer_tab_);
 	QVBoxLayout* large_preview_layout = new QVBoxLayout();
@@ -382,10 +403,10 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 
 	//robot_viewer_layout->addWidget(robot_viewer_left_panel_);
 	left_panel_scroll_area->setWidget(robot_viewer_left_panel_);
-	robot_viewer_layout->addWidget(left_panel_scroll_area);
+	robot_viewer_options_layout->addWidget(left_panel_scroll_area);
 
 
-	robot_viewer_layout->addWidget(large_preview_widget_);
+	robot_viewer_options_layout->addWidget(large_preview_widget_);
 
 
 	QGroupBox* frame_analysis_group_box = new QGroupBox("Frame Options", robot_viewer_tab_);
@@ -398,19 +419,11 @@ void FilteredStructLight::add_robot_viewer_tab(QTabWidget* tab_widget) {
 
 	robot_viewer_left_panel_layout->addWidget(calibration_group_box);
 
-	robot_viewer_layout->addWidget(robot_viewer_);
-	QSizePolicy robot_viewer_size_policy;
-	robot_viewer_size_policy.setHorizontalStretch(2);
-	robot_viewer_size_policy.setHorizontalPolicy(QSizePolicy::Preferred);
-	robot_viewer_size_policy.setVerticalPolicy(QSizePolicy::Preferred);
-	robot_viewer_->setSizePolicy(robot_viewer_size_policy);
+	robot_viewer_options_layout->addWidget(robot_viewer_);
 
-	robot_viewer_tab_->setLayout(robot_viewer_layout);
+	robot_viewer_tab_->setLayout(robot_viewer_options_layout);
 
 	tab_widget->addTab(robot_viewer_tab_, "Robot View");
-
-
-
 
 }
 
@@ -439,6 +452,62 @@ void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vecto
 
 	
 	tab_widget->addTab(camera_info_tab_, "Camera Info");
+}
+
+void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
+
+	QWidget* swarm_tab = new QWidget(tab_widget);
+
+	QHBoxLayout* swarm_viewer_layout = new QHBoxLayout();
+
+	QVBoxLayout* swarm_left_panel_layout = new QVBoxLayout();
+
+	// Specify an OpenGL 3.3 format using the Core profile.
+	// That is, no old-school fixed pipeline functionality
+	QGLFormat glFormat;
+	glFormat.setVersion(3, 3);
+	glFormat.setProfile(QGLFormat::CoreProfile); // Requires >=Qt-4.8.0
+	glFormat.setSampleBuffers(true);
+	//glFormat.setSwapInterval(1);
+	swarm_viewer_ = new SwarmViewer(glFormat, swarm_tab);
+	QSizePolicy robot_viewer_size_policy;
+	robot_viewer_size_policy.setHorizontalStretch(2);
+	robot_viewer_size_policy.setHorizontalPolicy(QSizePolicy::Preferred);
+	robot_viewer_size_policy.setVerticalPolicy(QSizePolicy::Preferred);
+	swarm_viewer_->setSizePolicy(robot_viewer_size_policy);
+
+	// change room size
+	QGroupBox* interior_group_box = new QGroupBox("Interior", swarm_tab);
+	QHBoxLayout* scale_layout = new QHBoxLayout();
+	QSpinBox* scale_spinbox = new QSpinBox(swarm_tab);
+	scale_spinbox->setRange(1, 50);
+	scale_spinbox->setValue(10);
+	QLabel* scale_label = new QLabel("Scale");
+	scale_layout->addWidget(scale_label);
+	scale_layout->addWidget(scale_spinbox);
+	interior_group_box->setLayout(scale_layout);
+
+	// no of robots
+	QGroupBox* robots_group_box = new QGroupBox("Robots", swarm_tab);
+	QHBoxLayout* robots_layout = new QHBoxLayout();
+	QSpinBox* robots_spinbox = new QSpinBox(swarm_tab);
+	robots_spinbox->setRange(1, 50);
+	robots_spinbox->setValue(10);
+	QLabel* robots_label = new QLabel("# of Robots");
+	robots_layout->addWidget(robots_label);
+	robots_layout->addWidget(robots_spinbox);
+	robots_group_box->setLayout(robots_layout);
+
+	swarm_left_panel_layout->addWidget(interior_group_box);
+	swarm_left_panel_layout->addWidget(robots_group_box);
+
+	swarm_viewer_layout->addLayout(swarm_left_panel_layout);
+	swarm_viewer_layout->addWidget(swarm_viewer_);
+
+	swarm_tab->setLayout(swarm_viewer_layout);
+
+	tab_widget->addTab(swarm_tab, "Swarm Sim");
+
 }
 
 QArrayPushButton::QArrayPushButton(QString& text, int id, QWidget* parent) : id_(id) {
@@ -872,6 +941,13 @@ void FilteredStructLight::setupUi() {
 	tab_widget->setTabPosition(QTabWidget::West);
 	
 	main_layout->addWidget(tab_widget);
+
+
+	QHBoxLayout* robot_viewer_layout = new QHBoxLayout();
+
+	//main_layout->addWidget(robot_viewer_);
+
+	add_swarm_sim_tab(tab_widget);
 	add_robot_viewer_tab(tab_widget);
 	add_robot_calibration_tab(tab_widget);
 
@@ -885,6 +961,9 @@ void FilteredStructLight::setupUi() {
 		&RobotViewer::start_reconstruction_sequence);
 	connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_frame, robot_viewer_, 
 		&RobotViewer::create_reconstruction_frame);
+
+	connect(robot_reconstruction_, &RobotReconstruction::end_reconstruction_sequence, robot_viewer_, 
+		&RobotViewer::end_reconstruction_sequence);
 
 	connect(robot_reconstruction_, &RobotReconstruction::create_calibration_frame, robot_viewer_, 
 		&RobotViewer::create_calibration_frame);

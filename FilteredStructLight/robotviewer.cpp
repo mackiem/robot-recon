@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include "objloader.hpp"
 #include <random>
+#include <tiny_obj_loader.h>
 
 
 const std::string RobotViewer::CAMERA = "camera";
@@ -44,56 +45,38 @@ RobotViewer::~RobotViewer() {
 	//}
 }
 
-void RobotViewer::initializeGL()
-{
-	QGLFormat glFormat = QGLWidget::format();
-	if (!glFormat.sampleBuffers())
-		qWarning() << "Could not enable sample buffers";
+void RobotViewer::set_shader_paths(const char* vertex_shader_path, const char* fragment_shader_path) {
+	vertex_shader_path_ = vertex_shader_path;
+	fragment_shader_path_ = fragment_shader_path;
+}
 
+void RobotViewer::set_shaders() {
+	set_shader_paths(":/FilteredStructLight/model_vert.glsl", ":/FilteredStructLight/model_frag.glsl");
+}
 
-	// enable alpha
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    //glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
-
-	// Set the clear color to black
-	glClearColor(0.1f, 0.1f, 0.1f, 1.f);
-
-
-	// Prepare a complete shader program?
-	if (!prepareShaderProgram(":/FilteredStructLight/model_vert.glsl", ":/FilteredStructLight/model_frag.glsl"))
-		return;
-
-
-	// create model and view p
-
-
-	// Create vertex buffer
-
-
-	if (!m_shader.bind())
-	{
-		qWarning() << "Could not bind shader program to context";
-		return;
-	}
+void RobotViewer::init_camera_params() {
 
 	zoom_ = 45.f;
 
 	camera_distance_ = -100.f;
 
-	look_at_x_ = 145.f;
-	look_at_y_ = -245.f;
+	look_at_z_ = -500.f;
+	look_at_x_ = -245.f;
+	look_at_y_ = 245.f;
 
-	glm::mat4 projection = glm::perspective(zoom_, static_cast<float>(sizeHint().width())/static_cast<float>(sizeHint().height()), 0.1f, 1000.0f);
 
-	up_ = glm::vec3(0.f,-1.f,0.f);
+	up_ = glm::vec3(0.f,1.f,0.f);
 
-	eye_ = glm::vec3(look_at_x_, look_at_y_, camera_distance_);
+	eye_ = glm::vec3(look_at_x_, look_at_y_, look_at_z_);
 	center_ = glm::vec3(0, 0, 0.f);
 
+
+}
+
+void RobotViewer::custom_init_code() {
 	glm::mat4 camera = glm::lookAt(eye_, center_, up_);
+	glm::mat4 projection = glm::perspective(zoom_, static_cast<float>(sizeHint().width())
+		/static_cast<float>(sizeHint().height()), 0.1f, 1000.0f);
 
 	GLint projection_location = m_shader.uniformLocation("projection");
 	glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
@@ -136,16 +119,44 @@ void RobotViewer::initializeGL()
 	//	glBindTexture(GL_TEXTURE_2D, NULL);
 	//}
 
-	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
+}
 
-	draw_camera(unit_matrix);
-	draw_table_top(unit_matrix);
-	draw_robot(unit_matrix);
+void RobotViewer::initializeGL()
+{
+	QGLFormat glFormat = QGLWidget::format();
+	if (!glFormat.sampleBuffers())
+		qWarning() << "Could not enable sample buffers";
 
-	// create default scene
-	default_scene_.push_back(assets_[ROBOT]);
-	default_scene_.push_back(assets_[CAMERA]);
-	default_scene_.push_back(assets_[FLOOR_GRID]);
+
+	// enable alpha
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    //glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+
+	// Set the clear color to black
+	glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+
+
+	set_shaders();
+
+	// Prepare a complete shader program?
+	if (!prepareShaderProgram(vertex_shader_path_, fragment_shader_path_))
+		return;
+
+
+	init_camera_params();
+
+	if (!m_shader.bind())
+	{
+		qWarning() << "Could not bind shader program to context";
+		return;
+	}
+
+	custom_init_code();
+
+	load_inital_models();
 }
 
 bool RobotViewer::prepareShaderProgram(const QString& vertexShaderPath,
@@ -217,30 +228,13 @@ void RobotViewer::draw_scene(Scene& scene) {
 	}
 }
 
-void RobotViewer::paintGL()
-{
-	// Clear the buffer with the current clearing color
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	glBindTexture(GL_TEXTURE_2D, texture_id_);
-	glActiveTexture(GL_TEXTURE0 + active_texture_);
-
-	if (!m_shader.bind())
-	{
-		qWarning() << "Could not bind shader program to context";
-		return;
-	}
-
+void RobotViewer::update_camera() {
 	GLuint model_loc = m_shader.uniformLocation("model");
 
-	//std::cout << translate_x << " " << translate_y << std::endl;
-
-	//glm::mat4 model = glm::rotate(glm::scale(glm::mat4(1.f), glm::vec3(0.1, 0.1, 0.1)), 0.1f * static_cast<float>(angle_++), glm::vec3(0.f, 1.f, 0.f));
-
 	glm::mat4 scale_mat = glm::scale(glm::mat4(1.f), glm::vec3(scale_, scale_, scale_));
-	glm::mat4 rotateX = glm::rotate(scale_mat, ((float)m_xRot), glm::vec3(1.f, 0.f, 1.f));
-	glm::mat4 rotateY = glm::rotate(rotateX, ((float)m_yRot), glm::vec3(0.f, 1.f, 0.f));
-	glm::mat4 rotateZ = glm::rotate(rotateY, ((float)m_zRot), glm::vec3(0.f, 0.f, 1.f));
+	glm::mat4 rotateX = glm::rotate(scale_mat, glm::radians((float)m_xRot), glm::vec3(1.f, 0.f, 0.f));
+	glm::mat4 rotateY = glm::rotate(rotateX, glm::radians((float)m_yRot), glm::vec3(0.f, 1.f, 0.f));
+	glm::mat4 rotateZ = glm::rotate(rotateY,  glm::radians((float)m_zRot), glm::vec3(0.f, 0.f, 1.f));
 	//glm::mat4 rotateX = glm::rotate(glm::mat4(1.f), (float)1.f, glm::vec3(1.f, 0.f, 1.f));
 	//glm::mat4 rotateY = glm::rotate(rotateX, (float)1.f, glm::vec3(0.f, 1.f, 0.f));
 	//glm::mat4 rotateZ = glm::rotate(rotateY, (float)1.f, glm::vec3(0.f, 0.f, 1.f));
@@ -261,25 +255,30 @@ void RobotViewer::paintGL()
 
 	//glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
 
-	glm::mat4 projection = glm::perspective(zoom_, 
+	projection_ = glm::perspective(zoom_, 
 		static_cast<float>(size().width())/static_cast<float>(size().height()), 0.1f, 10000.0f);
 	//glm::mat4 projection = glm::perspective(zoom_, 1.f, 0.1f, 1000.0f);
-	float ratio = static_cast<float>(size().width())/static_cast<float>(size().height());
-	GLint projection_location = m_shader.uniformLocation("projection");
-	glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));
 
 
-
-	glm::mat4 camera = glm::lookAt(eye, 
+	camera_ = glm::lookAt(eye, 
 		center, 
 		up);
+	
+}
 
+void RobotViewer::custom_draw_code() {
 	//glm::mat4 camera = glm::lookAt(glm::vec3(look_at_x_, look_at_y_, camera_distance_), 
 	//	glm::vec3(m_xRot, m_yRot, m_zRot), glm::vec3(0.f, -1.f, 0.f));
 
-	GLint camera_location = m_shader.uniformLocation("camera");
-	glUniformMatrix4fv(camera_location, 1, GL_FALSE, glm::value_ptr(camera));
+	glBindTexture(GL_TEXTURE_2D, texture_id_);
+	glActiveTexture(GL_TEXTURE0 + active_texture_);
 
+	GLint camera_location = m_shader.uniformLocation("camera");
+	glUniformMatrix4fv(camera_location, 1, GL_FALSE, glm::value_ptr(camera_));
+
+	float ratio = static_cast<float>(size().width())/static_cast<float>(size().height());
+	GLint projection_location = m_shader.uniformLocation("projection");
+	glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection_));
 
 	GLint texture_used_loc = m_shader.uniformLocation("is_texture_used");
 	glUniform1i(texture_used_loc, is_texture_on_);
@@ -287,6 +286,8 @@ void RobotViewer::paintGL()
 	//} else {
 	//	glUniform1i(texture_used_loc, is_texture_on_);
 	//}
+
+
 
 	if (frames_.size() > 0) {
 		if (draw_frame_by_frame_) {
@@ -304,7 +305,24 @@ void RobotViewer::paintGL()
 		// always draw the default scene, if nothing is there
 		draw_scene(default_scene_);
 	}
+	
+}
 
+void RobotViewer::paintGL()
+{
+	// Clear the buffer with the current clearing color
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+	if (!m_shader.bind())
+	{
+		qWarning() << "Could not bind shader program to context";
+		return;
+	}
+
+	update_camera();
+
+	custom_draw_code();
 
 	// Draw stuff
 	glBindVertexArray(NULL);
@@ -417,70 +435,6 @@ void RobotViewer::create_plane_with_points_and_lines(std::vector<cv::Vec3f> poin
 
 }
 
-RenderEntity::RenderEntity(GLenum primitive, QGLShaderProgram* shader) : primitive_(primitive), shader_(shader), vao_(0) {
-	model_ = glm::mat4(1.f);
-	model_loc_ = shader_->uniformLocation("model");
-}
-
-void RenderEntity::set_type(Type type) {
-	type_ = type;
-}
-
-RenderEntity::Type RenderEntity::get_type() {
-	return type_;
-}
-
-void RenderEntity::set_model(glm::mat4 model) {
-	model_ = model;
-}
-
-glm::mat4 RenderEntity::get_model() {
-	return model_;
-}
-
-void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vector<cv::Vec4f>& colors,
-	std::vector<cv::Vec3f>& normals) {
-
-	shader_->bind();
-
-	glGenVertexArrays(1, &vao_);
-	glBindVertexArray(vao_);
-
-
-	glGenBuffers(2, vbo_);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_[0]);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(cv::Vec3f), &vertices[0], GL_STATIC_DRAW);
-
-
-	GLuint vert_pos_attr = shader_->attributeLocation("vertex");
-
-	glEnableVertexAttribArray(vert_pos_attr);
-	glVertexAttribPointer(vert_pos_attr, 3, GL_FLOAT, GL_FALSE, sizeof(cv::Vec3f), NULL);
-
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_[1]);
-	glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(cv::Vec4f), &colors[0], GL_STATIC_DRAW);
-
-	GLuint vert_color_attr = shader_->attributeLocation("vertColor");
-
-	glEnableVertexAttribArray(vert_color_attr);
-	glVertexAttribPointer(vert_color_attr, 4, GL_FLOAT, GL_FALSE, sizeof(cv::Vec4f), NULL);
-
-	count_ = vertices.size();
-
-	//is_draw_triangles_ = false;
-	//GLint texture_used_loc = m_shader.uniformLocation("is_texture_used");
-	//glUniform1i(texture_used_loc, is_draw_triangles_);
-
-	glBindVertexArray(NULL);
-	
-}
-
-void RenderEntity::draw() {
-	shader_->bind();
-	glBindVertexArray(vao_);
-	glDrawArrays(primitive_, 0, count_);
-}
 
 
 //void RobotViewer::update_lines_3d(WPts world_pnts) {
@@ -640,8 +594,35 @@ void RobotViewer::draw_texture() {
 }
 
 void RobotViewer::reset_view() {
-	look_at_x_ = look_at_y_ = 0.f;
+
+
+	zoom_ = 45.f;
+
+	camera_distance_ = -100.f;
+
+	look_at_z_ = -500.f;
+	look_at_x_ = -245.f;
+	look_at_y_ = 245.f;
+	
+	up_ = glm::vec3(0.f,1.f,0.f);
+	eye_ = glm::vec3(look_at_x_, look_at_y_, look_at_z_);
+	center_ = glm::vec3(0, 0, 0.f);
+
+	m_xRot = m_yRot = m_zRot = 0.f;
+
 	update();
+}
+
+void RobotViewer::center_view() {
+	//center = point_centroid_;
+	auto direction = glm::normalize(center_ - eye_);
+	camera_distance_ = 200.f;
+	center_ = point_centroid_;
+	eye_ = center_ - (camera_distance_ * direction);
+	update();
+}
+
+void RobotViewer::top_view() {
 }
 
 void RobotViewer::set_scale(int value) {
@@ -651,8 +632,19 @@ void RobotViewer::set_scale(int value) {
 
 void RobotViewer::start_reconstruction_sequence() {
 	frames_.clear();
+	points_.clear();
 }
 
+void RobotViewer::end_reconstruction_sequence() {
+	point_centroid_ = glm::vec3(0.f, 0.f, 0.f);
+
+	if (points_.size() > 0) {
+		for (auto& point : points_) {
+			point_centroid_ += glm::vec3(point[0], point[1], point[2]);
+		}
+		point_centroid_ /= points_.size();
+	}
+}
 
 void RobotViewer::create_calibration_frame(std::vector<cv::Vec3f> points_3d,
 	cv::Vec3f line_a, cv::Vec3f line_b, cv::Vec3f normal, double d) {
@@ -691,6 +683,9 @@ void RobotViewer::create_calibration_frame(std::vector<cv::Vec3f> points_3d,
 	scene.push_back(floor_grid);
 
 	frames_.push_back(scene);
+
+	// insert points for centroid
+	points_.insert(points_.end(), points_3d.begin(), points_3d.end());
 }
 
 void RobotViewer::create_final_calibration_frame(cv::Vec3f normal, double d) {
@@ -764,6 +759,10 @@ void RobotViewer::create_reconstruction_frame(std::vector<cv::Vec3f> points_3d,
 
 	frames_.push_back(scene);
 
+	// add points for center view calculation
+	points_.insert(points_.end(), points_3d.begin(), points_3d.end());
+
+
 }
 
 void RobotViewer::set_current_frame_to_draw(int frame_no) {
@@ -787,6 +786,86 @@ void RobotViewer::load_obj(std::string filename, std::vector<cv::Vec3f>& vertice
 		normals.push_back(cv::Vec3f(static_cast<float>(out_vertice[0]), static_cast<float>(out_vertice[1])
 			, static_cast<float>(out_vertice[2])));
 	}
+}
+
+void RobotViewer::load_obj(std::string filename,  std::vector<cv::Vec3f>& vertices,
+	std::vector<cv::Vec3f>& normals, std::vector<cv::Vec2f>& uvs, std::vector<unsigned int>& indices,
+	std::vector<int>& count, std::vector<int>& offset, std::vector<int>& base_index) {
+
+	std::vector<unsigned int> glm_indices;
+	std::vector<glm::vec3> glm_vertices;
+	std::vector<glm::vec2> glm_uvs;
+	std::vector<glm::vec3> glm_normals;
+	//loadAssImp(filename.c_str(), glm_indices, glm_vertices, glm_uvs, glm_normals);
+
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector < tinyobj::material_t> materials;
+	std::string error;
+	tinyobj::LoadObj(shapes, materials, error, filename.c_str());
+
+	//std::vector<int> count;
+	//std::vector<int> offset;
+
+	
+	const int no_of_vertices_per_polygon = 3;
+	int total_offset = 0;
+	int total_indices = 0;
+	for (auto& shape : shapes) {
+		auto& mesh = shape.mesh;
+
+		assert(mesh.indices.size() % no_of_vertices_per_polygon == 0);
+		assert(mesh.positions.size() % no_of_vertices_per_polygon == 0);
+
+		for (size_t i = 0; i < (mesh.positions.size() / no_of_vertices_per_polygon); ++i) {
+			glm::vec3 position(mesh.positions[(no_of_vertices_per_polygon * i) + 0], 
+				mesh.positions[(no_of_vertices_per_polygon * i) + 1], 
+				mesh.positions[(no_of_vertices_per_polygon * i) + 2]);
+			glm::vec3 normal(mesh.normals[(no_of_vertices_per_polygon * i) + 0], 
+				mesh.normals[(no_of_vertices_per_polygon * i) + 1], 
+				mesh.normals[(no_of_vertices_per_polygon * i) + 2]);
+			if (mesh.texcoords.size() > 0 && (mesh.texcoords.size() > 2 * i)) {
+				glm::vec2 texcoord(mesh.texcoords[(2 * i) + 0],
+					mesh.texcoords[(2 * i) + 1]);
+				glm_uvs.push_back(texcoord);
+			}
+			glm_vertices.push_back(position);
+			glm_normals.push_back(normal);
+		}
+
+		int no_of_vertices = mesh.positions.size() / 3;
+
+		int indices_count = mesh.indices.size();
+		for (size_t i = 0; i < indices_count; ++i) {
+			glm_indices.push_back(mesh.indices[i]);
+		}
+		count.push_back(indices_count);
+		offset.push_back(total_offset);
+		base_index.push_back(total_indices);
+
+		total_offset += (no_of_vertices);
+		total_indices += indices_count;
+	}
+	
+	for (auto& out_vertice : glm_vertices) {
+		vertices.push_back(cv::Vec3f(static_cast<float>(out_vertice[0]), static_cast<float>(out_vertice[1])
+			, static_cast<float>(out_vertice[2])));
+	}
+
+	for (auto& out_vertice : glm_normals) {
+		normals.push_back(cv::Vec3f(static_cast<float>(out_vertice[0]), static_cast<float>(out_vertice[1])
+			, static_cast<float>(out_vertice[2])));
+	}
+
+	for (auto& out_vertice : glm_uvs) {
+		uvs.push_back(cv::Vec2f(static_cast<float>(out_vertice[0]), static_cast<float>(out_vertice[1])));
+	}
+
+	indices = glm_indices;
+}
+
+void RobotViewer::load_obj(std::string filename, VertexBufferData& vertex_buffer_data) {
+	load_obj(filename, vertex_buffer_data.positions, vertex_buffer_data.normals, vertex_buffer_data.uvs,
+		vertex_buffer_data.indices, vertex_buffer_data.count, vertex_buffer_data.offset, vertex_buffer_data.base_index);
 }
 
 glm::mat4 RobotViewer::convert(cv::Mat& input_mat) {
@@ -890,6 +969,12 @@ void RobotViewer::update_model(RenderMesh& mesh, cv::Mat RT) {
 	}
 }
 
+void RobotViewer::update_model(RenderMesh& mesh, glm::mat4 RT) {
+	for (auto& entity : mesh) {
+		entity.set_model((RT) * entity.get_model());
+	}
+}
+
 void RobotViewer::draw_camera(cv::Mat& model) {
 	makeCurrent();
 	RenderEntity camera(GL_TRIANGLES, &m_shader);
@@ -946,7 +1031,7 @@ void RobotViewer::draw_table_top(cv::Mat& model) {
 
 	cv::Vec4f green(0.f, 1.f, 0.f, 1.f);
 
-	float y = 160.f;
+	float y = -160.f;
 	float space = 10.f;
 	int start = 10;
 	float max_value = 200.f;
@@ -1007,8 +1092,8 @@ void RobotViewer::draw_robot(cv::Mat& world) {
 	robot.set_type(RenderEntity::Default);
 	float scale = 50.f;
 	glm::mat4 model_transform;
-	model_transform = glm::translate(model_transform, glm::vec3(0.f, 60.f, 0.f));
-	model_transform = glm::scale(model_transform, glm::vec3(scale, scale, scale));
+	model_transform = glm::translate(model_transform, glm::vec3(20.f, -60.f, 0.f));
+	model_transform = glm::scale(model_transform, glm::vec3(scale * 2.5f, scale, scale));
 	robot.set_model(convert(world) * model_transform);
 
 	robot.upload_data_to_gpu(vertices, colors, normals);
@@ -1194,11 +1279,14 @@ void RobotViewer::setZRotation(float angle)
 
 void RobotViewer::mouseMoveEvent(QMouseEvent *event)
 {
+
+	//std::cout << m_xRot << ", " << m_yRot << std::endl;
 	if (mouse_down_) {
 		int dx = event->x() - m_lastPos.x();
 		int dy = event->y() - m_lastPos.y();
+		
 
-		float mouse_drag_sensitivity = 0.01;
+		float mouse_drag_sensitivity = 1;
 		if (event->buttons() & Qt::LeftButton) {
 			setXRotation(m_xRot + mouse_drag_sensitivity * dy);
 			setYRotation(m_yRot + mouse_drag_sensitivity * dx);
@@ -1207,6 +1295,7 @@ void RobotViewer::mouseMoveEvent(QMouseEvent *event)
 			setZRotation(m_zRot + mouse_drag_sensitivity * dx);
 		}
 		m_lastPos = event->pos();
+
 	} else {
 		m_lastPos = event->pos();
 		//m_lastPos = QPoint(0, 0);
@@ -1230,4 +1319,17 @@ void RobotViewer::keyPressEvent(QKeyEvent* event) {
 		look_at_y_ -= multiplier;
 	}
 	update();
+}
+
+void RobotViewer::load_inital_models() {
+	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
+
+	draw_camera(unit_matrix);
+	draw_table_top(unit_matrix);
+	draw_robot(unit_matrix);
+
+	// create default scene
+	default_scene_.push_back(assets_[ROBOT]);
+	default_scene_.push_back(assets_[CAMERA]);
+	default_scene_.push_back(assets_[FLOOR_GRID]);
 }

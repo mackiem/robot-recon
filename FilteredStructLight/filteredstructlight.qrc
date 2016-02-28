@@ -4,6 +4,8 @@
     <file>model_frag.glsl</file>
     <file>camera_vert.glsl</file>
     <file>camera_frag.glsl</file>
+    <file>swarm_vert.glsl</file>
+    <file>swarm_frag.glsl</file>
     <file>projector.qml</file>
     <file>settings.ini</file>
   </qresource>

@@ -12,6 +12,7 @@
 #include "modelviewer.h"
 #include "imageviewer.h"
 #include "robotviewer.h"
+#include "swarmviewer.h"
 
 
 class QArrayPushButton : public QPushButton {
@@ -101,6 +102,7 @@ private:
 	QPushButton* interpolate_line_;
 	QWidget* robot_viewer_tab_;
 	RobotViewer* robot_viewer_;
+	SwarmViewer* swarm_viewer_;
 	
 	QLineEdit* velocity_line_edit_;
 	QLineEdit* reconstruction_video_filename_;
@@ -140,6 +142,8 @@ private:
 	void add_frame_analysis_options(QGroupBox* frame_analysis_group_box);
 	void add_robot_viewer_tab(QTabWidget* tab_widget);
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
+	
+	void add_swarm_sim_tab(QTabWidget* tab_widget);
 
 	void add_calibration_options(QGroupBox* calibration_group_box);
 
