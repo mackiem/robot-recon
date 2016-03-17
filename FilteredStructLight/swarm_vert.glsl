@@ -18,8 +18,8 @@ void main() {
 	frag_normal = normalize(inverse_transpose_model * normal);
 	frag_color = color;
 	frag_uv = uv;
-	vec4 homogenous_position = model * vec4(position, 1.0);
-	frag_position = vec3(homogenous_position) / homogenous_position.w;
-	//frag_position = vec3(model * vec4(position, 1.0));
+	//vec4 homogenous_position = model * vec4(position, 1.0);
+	//frag_position = vec3(homogenous_position) / homogenous_position.w;
+	frag_position = vec3(model * vec4(position, 1.0));
 	gl_Position = mvp * vec4(position, 1.0);
 }

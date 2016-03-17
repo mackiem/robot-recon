@@ -24,6 +24,14 @@ glm::mat4 RenderEntity::get_model() {
 	return model_;
 }
 
+void RenderEntity::set_initial_model(glm::mat4 initial_model) {
+	initial_model_ = initial_model;
+}
+
+glm::mat4 RenderEntity::get_initial_model() {
+	return initial_model_;
+}
+
 void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vector<cv::Vec4f>& colors,
 	std::vector<cv::Vec3f>& normals) {
 
@@ -65,14 +73,16 @@ void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vec
 void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vector<cv::Vec4f>& colors,
 	std::vector<cv::Vec3f>& normals,
 	std::vector<cv::Vec2f>& uvs, std::vector<unsigned int>& indices,
-	std::vector<int>& count, std::vector<int>& offset, std::vector<int>& base_index) {
+	std::vector<int>& count, std::vector<int>& offset, std::vector<int>& base_index, bool reuse) {
 
 	shader_->bind();
 
-	glGenVertexArrays(1, &vao_);
-	glBindVertexArray(vao_);
+	if (!reuse) {
+		glGenVertexArrays(1, &vao_);
+		glGenBuffers(5, vbo_);
+	}
 
-	glGenBuffers(5, vbo_);
+	glBindVertexArray(vao_);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_[POSITION]);
 	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(cv::Vec3f), &vertices[0], GL_STATIC_DRAW);
@@ -119,9 +129,9 @@ void RenderEntity::upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vec
 	glBindVertexArray(NULL);
 }
 
-void RenderEntity::upload_data_to_gpu(VertexBufferData& vertex_buffer_data) {
+void RenderEntity::upload_data_to_gpu(VertexBufferData& vertex_buffer_data, bool reuse) {
 	upload_data_to_gpu(vertex_buffer_data.positions, vertex_buffer_data.colors, vertex_buffer_data.normals, vertex_buffer_data.uvs,
-		vertex_buffer_data.indices, vertex_buffer_data.count, vertex_buffer_data.offset, vertex_buffer_data.base_index);
+		vertex_buffer_data.indices, vertex_buffer_data.count, vertex_buffer_data.offset, vertex_buffer_data.base_index, reuse);
 
 }
 
@@ -131,10 +141,36 @@ void RenderEntity::draw() {
 	if (using_indices_) {
 		for (size_t i = 0; i < element_count_.size(); ++i) {
 			//glDrawElements(GL_TRIANGLES, element_count_[i], GL_UNSIGNED_INT, element_offset_[i]);
-			glDrawElementsBaseVertex(GL_TRIANGLES, element_count_[i], GL_UNSIGNED_INT, (GLvoid*) (sizeof(unsigned int) * (element_base_index_[i])), 
+			glDrawElementsBaseVertex(primitive_, element_count_[i], GL_UNSIGNED_INT, (GLvoid*) (sizeof(unsigned int) * (element_base_index_[i])), 
 				static_cast<GLint>(element_offset_[i]));
 		}
 	} else {
 		glDrawArrays(primitive_, 0, count_);
 	}
+}
+
+VisObject::VisObject(UniformLocations& locations) : locations_(locations) {
+}
+
+void VisObject::update(glm::mat4 global_model) {
+}
+
+void VisObject::draw(glm::mat4 global_model, glm::mat4 camera, glm::mat4 projection) {
+	for (auto& entity : mesh_) {
+		// model
+		glm::mat4 transformed_model = global_model * entity.model_;
+		glUniformMatrix4fv(locations_.model_loc_, 1, GL_FALSE, glm::value_ptr(transformed_model));
+
+		// normal matrix
+		glm::mat3 inverse_transpose_model = glm::transpose(glm::inverse(glm::mat3(transformed_model)));
+		glUniformMatrix3fv(locations_.inverse_transpose_loc_, 1, GL_FALSE, glm::value_ptr(inverse_transpose_model));
+
+
+		glm::mat4 mvp_matrix = projection * camera * transformed_model;
+		glUniformMatrix4fv(locations_.mvp_loc_, 1, GL_FALSE, glm::value_ptr(mvp_matrix));
+
+
+		entity.draw();
+	}
+
 }

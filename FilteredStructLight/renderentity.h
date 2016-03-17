@@ -6,6 +6,7 @@
 #include <QGLWidget>
 #include <QGLBuffer>
 #include <QGLShaderProgram>
+#include "octree/octree.h"
 
 
 struct VertexBufferData {
@@ -49,6 +50,7 @@ public:
 		INDEX = 4
 	};
 
+	glm::mat4 initial_model_;
 	glm::mat4 model_;
 	RenderEntity(GLenum primitive, QGLShaderProgram* shader);
 
@@ -56,6 +58,8 @@ public:
 	Type get_type();
 	void set_model(glm::mat4 model);
 	glm::mat4 get_model();
+	void set_initial_model(glm::mat4 initial_model);
+	glm::mat4 get_initial_model();
 
 	void upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vector<cv::Vec4f>& colors,
 		std::vector<cv::Vec3f>& normals);
@@ -63,12 +67,33 @@ public:
 	void upload_data_to_gpu(std::vector<cv::Vec3f>& vertices, std::vector<cv::Vec4f>& colors,
 		std::vector<cv::Vec3f>& normals,
 		std::vector<cv::Vec2f>& uvs, std::vector<unsigned int>& indices,
-		std::vector<int>& count, std::vector<int>& offset, std::vector<int>& base_index);
+		std::vector<int>& count, std::vector<int>& offset, std::vector<int>& base_index, bool reuse = false);
 
-	void upload_data_to_gpu(VertexBufferData& vertex_buffer_data);
+	void upload_data_to_gpu(VertexBufferData& vertex_buffer_data, bool reuse = false);
 
 	void draw();
 
 private:
 	RenderEntity::Type type_;
 };
+
+typedef std::vector<RenderEntity> RenderMesh;
+typedef std::unordered_map<std::string, RenderMesh> Assets;
+typedef std::vector<RenderMesh> Scene;
+
+struct UniformLocations {
+	GLint model_loc_;
+	GLint inverse_transpose_loc_;
+	GLint mvp_loc_;
+};
+
+class VisObject {
+protected:
+	UniformLocations& locations_;
+public:
+	RenderMesh mesh_;
+	VisObject(UniformLocations& locations);
+	virtual void update(glm::mat4 global_model);
+	virtual void draw(glm::mat4 global_model, glm::mat4 camera, glm::mat4 projection);
+};
+

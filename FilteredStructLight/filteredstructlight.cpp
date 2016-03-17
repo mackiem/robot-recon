@@ -9,12 +9,27 @@ const char* FilteredStructLight::CHECKERBOARD_VIDEO_FILENAME_LABEL = "checkerboa
 const char* FilteredStructLight::SCANLINE_VIDEO_FILENAME_LABEL = "scanline_video_filename";
 const char* FilteredStructLight::VELOCITY_LABEL = "velocity";
 
+
+const char* FilteredStructLight::ROBOTS_NO_LABEL = "robots_no";
+const char* FilteredStructLight::EXPLORATION_CONSTANT_LABEL = "exploration_constant";
+const char* FilteredStructLight::SEPERATION_CONSTANT_LABEL = "seperation_constant";
+const char* FilteredStructLight::GOTO_WORK_CONSTANT_LABEL = "goto_work_constant";
+const char* FilteredStructLight::GRID_RESOLUTION_LABEL = "grid_resolution";
+const char* FilteredStructLight::GRID_LENGTH_LABEL = "grid_length";
+const char* FilteredStructLight::BUILDING_INTERIOR_SCALE_LABEL = "interior_scale";
+const char* FilteredStructLight::BUILDING_OFFSET_X_LABEL = "interior_offset_x";
+const char* FilteredStructLight::BUILDING_OFFSET_Y_LABEL = "interior_offset_y";
+const char* FilteredStructLight::BUILDING_OFFSET_Z_LABEL = "interior_offset_z";
+const char* FilteredStructLight::SHOW_BUILDING_LABEL = "show_interior";
+
+
 FilteredStructLight::FilteredStructLight(QWidget *parent)
 	: QMainWindow(parent)
 {
 	//ui.setupUi(this);
-	//settings_filepath_ = ":/FilteredStructLight/settings.ini";
-	settings_filepath_ = QDir::currentPath() + "/settings.ini";
+	//recon_settings_filepath_ = ":/FilteredStructLight/settings.ini";
+	recon_settings_filepath_ = QDir::currentPath() + "/settings.ini";
+	swarm_settings_filepath_ = QDir::currentPath() + "/swarm_settings.ini";
 	setupUi();
 }
 
@@ -22,8 +37,8 @@ FilteredStructLight::~FilteredStructLight()
 {
 }
 
-void FilteredStructLight::load_settings() {
-	QSettings settings(settings_filepath_, QSettings::IniFormat);
+void FilteredStructLight::load_recon_settings() {
+	QSettings settings(recon_settings_filepath_, QSettings::IniFormat);
 	
 	reconstruction_video_filename_->setText(settings.value(RECONSTRUCTION_VIDEO_FILENAME_LABEL, "").toString());
 	std::string calibration_checkerboard_video_filename = CHECKERBOARD_VIDEO_FILENAME_LABEL;
@@ -42,8 +57,8 @@ void FilteredStructLight::load_settings() {
 	velocity_line_edit_->setText(settings.value(VELOCITY_LABEL, "").toString());
 }
 
-void FilteredStructLight::save_settings() {
-	QSettings settings(settings_filepath_, QSettings::IniFormat);
+void FilteredStructLight::save_recon_settings() {
+	QSettings settings(recon_settings_filepath_, QSettings::IniFormat);
 
 	settings.setValue(RECONSTRUCTION_VIDEO_FILENAME_LABEL, reconstruction_video_filename_->text());
 
@@ -59,6 +74,45 @@ void FilteredStructLight::save_settings() {
 	}
 
 	settings.setValue(VELOCITY_LABEL, velocity_line_edit_->text());
+}
+
+void FilteredStructLight::save_swarm_settings() {
+	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
+
+	settings.setValue(ROBOTS_NO_LABEL, robots_spinbox_->value());
+	settings.setValue(EXPLORATION_CONSTANT_LABEL, exploration_constant_->value());
+	settings.setValue(SEPERATION_CONSTANT_LABEL, seperation_constant_->value());
+	settings.setValue(GOTO_WORK_CONSTANT_LABEL, goto_work_constant_->value());
+
+	settings.setValue(GRID_RESOLUTION_LABEL, grid_resolution_spin_box_->value());
+	settings.setValue(GRID_LENGTH_LABEL, grid_length_spin_box_->value());
+
+	settings.setValue(BUILDING_INTERIOR_SCALE_LABEL, scale_spinbox_->value());
+	settings.setValue(BUILDING_OFFSET_X_LABEL, x_spin_box_->value());
+	settings.setValue(BUILDING_OFFSET_Y_LABEL, y_spin_box_->value());
+	settings.setValue(BUILDING_OFFSET_Z_LABEL, z_spin_box_->value());
+	settings.setValue(SHOW_BUILDING_LABEL, (show_interior_->isChecked()));
+}
+
+
+void FilteredStructLight::load_swarm_settings() {
+	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
+	
+	robots_spinbox_->setValue(settings.value(ROBOTS_NO_LABEL, "10").toInt());
+	exploration_constant_->setValue(settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
+	seperation_constant_->setValue(settings.value(SEPERATION_CONSTANT_LABEL, "1").toDouble());
+	goto_work_constant_->setValue(settings.value(GOTO_WORK_CONSTANT_LABEL, "1").toDouble());
+
+	grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
+	grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
+
+	scale_spinbox_->setValue(settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toInt());
+	x_spin_box_->setValue(settings.value(BUILDING_OFFSET_X_LABEL, "0").toInt());
+	y_spin_box_->setValue(settings.value(BUILDING_OFFSET_Y_LABEL, "0").toInt());
+	z_spin_box_->setValue(settings.value(BUILDING_OFFSET_Z_LABEL, "0").toInt());
+
+	Qt::CheckState show_interior = settings.value(SHOW_BUILDING_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
+	show_interior_->setCheckState(show_interior);
 }
 
 void FilteredStructLight::shutdown_cam_thread() {
@@ -244,12 +298,12 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 }
 
 void FilteredStructLight::connect_line_edits_to_save_settings() {
-	connect(reconstruction_video_filename_, &QLineEdit::textChanged, this, &FilteredStructLight::save_settings);
-	connect(velocity_line_edit_, &QLineEdit::textChanged, this, &FilteredStructLight::save_settings);
+	connect(reconstruction_video_filename_, &QLineEdit::textChanged, this, &FilteredStructLight::save_recon_settings);
+	connect(velocity_line_edit_, &QLineEdit::textChanged, this, &FilteredStructLight::save_recon_settings);
 
 	for (int i = 0; i < (MAX_VIDEO_NO); ++i) {
-		connect(calibration_video_filename_[i], &QLineEdit::textChanged, this, &FilteredStructLight::save_settings);
-		connect(scanline_video_filename_[i], &QLineEdit::textChanged, this, &FilteredStructLight::save_settings);
+		connect(calibration_video_filename_[i], &QLineEdit::textChanged, this, &FilteredStructLight::save_recon_settings);
+		connect(scanline_video_filename_[i], &QLineEdit::textChanged, this, &FilteredStructLight::save_recon_settings);
 	}
 }
 
@@ -454,6 +508,133 @@ void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vecto
 	tab_widget->addTab(camera_info_tab_, "Camera Info");
 }
 
+void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
+	QVBoxLayout* group_box_layout = new QVBoxLayout();
+
+	QHBoxLayout* scale_layout = new QHBoxLayout();
+	scale_spinbox_ = new QSpinBox(group_box);
+	scale_spinbox_->setRange(1, 50);
+	scale_spinbox_->setValue(10);
+	QLabel* scale_label = new QLabel("Scale", group_box);
+	scale_layout->addWidget(scale_label);
+	scale_layout->addWidget(scale_spinbox_);
+
+	QGroupBox* offset_group_box = new QGroupBox("Offset", group_box);
+	QHBoxLayout* offset_layout = new QHBoxLayout();
+
+	QLabel* x_offset = new QLabel("x", offset_group_box);
+	x_spin_box_ = new QSpinBox(offset_group_box);
+	x_spin_box_->setRange(0, 100);
+	x_spin_box_->setSingleStep(1);
+
+	QLabel* y_offset = new QLabel("y", offset_group_box);
+	y_spin_box_ = new QSpinBox(offset_group_box);
+	y_spin_box_->setRange(0, 100);
+	y_spin_box_->setSingleStep(1);
+
+	QLabel* z_offset = new QLabel("z", offset_group_box);
+	z_spin_box_ = new QSpinBox(offset_group_box);
+	z_spin_box_->setRange(0, 100);
+	z_spin_box_->setSingleStep(1);
+
+	offset_layout->addWidget(x_offset);
+	offset_layout->addWidget(x_spin_box_);
+	offset_layout->addWidget(y_offset);
+	offset_layout->addWidget(y_spin_box_);
+	offset_layout->addWidget(z_offset);
+	offset_layout->addWidget(z_spin_box_);
+
+	offset_group_box->setLayout(offset_layout);
+
+	show_interior_ = new QCheckBox("Show Interior", group_box);
+
+	group_box_layout->addLayout(scale_layout);
+	group_box_layout->addWidget(offset_group_box);
+	group_box_layout->addWidget(show_interior_);
+
+	group_box->setLayout(scale_layout);
+}
+
+void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
+
+	QVBoxLayout* group_box_layout = new QVBoxLayout();
+
+	QHBoxLayout* robots_layout = new QHBoxLayout();
+
+	robots_spinbox_ = new QSpinBox(group_box);
+	robots_spinbox_->setRange(1, 50);
+	robots_spinbox_->setValue(10);
+	QLabel* robots_label = new QLabel("# of Robots");
+	robots_layout->addWidget(robots_label);
+	robots_layout->addWidget(robots_spinbox_);
+
+	group_box_layout->addLayout(robots_layout);
+
+	QGroupBox* constants_group_box = new QGroupBox("Constants");
+	QHBoxLayout* constants_layout = new QHBoxLayout();
+
+	double max_constant_value = 20.0;
+
+	QLabel* exploration_label = new QLabel("Exploration", group_box);
+	exploration_constant_ = new QDoubleSpinBox(group_box);
+	exploration_constant_->setMinimum(0.0);
+	exploration_constant_->setMaximum(max_constant_value);
+	exploration_constant_->setSingleStep(0.1);
+
+	constants_layout->addWidget(exploration_label);
+	constants_layout->addWidget(exploration_constant_);
+
+
+	QLabel* seperation_label = new QLabel("Seperation", group_box);
+	seperation_constant_ = new QDoubleSpinBox(group_box);
+	seperation_constant_->setMinimum(0.0);
+	seperation_constant_->setMaximum(max_constant_value);
+	seperation_constant_->setSingleStep(0.1);
+
+	constants_layout->addWidget(seperation_label);
+	constants_layout->addWidget(seperation_constant_);
+
+
+	QLabel* goto_work_label = new QLabel("Go to Work", group_box);
+	goto_work_constant_ = new QDoubleSpinBox(group_box);
+	goto_work_constant_->setMinimum(0.0);
+	goto_work_constant_->setMaximum(max_constant_value);
+	goto_work_constant_->setSingleStep(0.1);
+
+	constants_layout->addWidget(goto_work_label);
+	constants_layout->addWidget(goto_work_constant_);
+
+	constants_group_box->setLayout(constants_layout);
+
+	group_box_layout->addWidget(constants_group_box);
+
+	group_box->setLayout(group_box_layout);
+
+}
+
+void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
+	QVBoxLayout* group_box_layout = new QVBoxLayout();
+	QHBoxLayout* grid_box_layout = new QHBoxLayout();
+
+	QLabel* grid_resolution_per_side = new QLabel("Resolution (n^2)");
+	grid_resolution_spin_box_ = new QSpinBox(group_box);
+	grid_resolution_spin_box_->setRange(1, 60000);
+	grid_resolution_spin_box_->setValue(16);
+
+	grid_box_layout->addWidget(grid_resolution_per_side);
+	grid_box_layout->addWidget(grid_resolution_spin_box_);
+
+	QLabel* grid_length_per_side = new QLabel("Length");
+	grid_length_spin_box_ = new QSpinBox(group_box);
+	grid_length_spin_box_->setRange(1, 100);
+	grid_length_spin_box_->setValue(20);
+
+	grid_box_layout->addWidget(grid_length_per_side);
+	grid_box_layout->addWidget(grid_length_spin_box_);
+
+	group_box_layout->addLayout(grid_box_layout);
+}
+
 void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 
 	QWidget* swarm_tab = new QWidget(tab_widget);
@@ -478,25 +659,9 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 
 	// change room size
 	QGroupBox* interior_group_box = new QGroupBox("Interior", swarm_tab);
-	QHBoxLayout* scale_layout = new QHBoxLayout();
-	QSpinBox* scale_spinbox = new QSpinBox(swarm_tab);
-	scale_spinbox->setRange(1, 50);
-	scale_spinbox->setValue(10);
-	QLabel* scale_label = new QLabel("Scale");
-	scale_layout->addWidget(scale_label);
-	scale_layout->addWidget(scale_spinbox);
-	interior_group_box->setLayout(scale_layout);
 
 	// no of robots
 	QGroupBox* robots_group_box = new QGroupBox("Robots", swarm_tab);
-	QHBoxLayout* robots_layout = new QHBoxLayout();
-	QSpinBox* robots_spinbox = new QSpinBox(swarm_tab);
-	robots_spinbox->setRange(1, 50);
-	robots_spinbox->setValue(10);
-	QLabel* robots_label = new QLabel("# of Robots");
-	robots_layout->addWidget(robots_label);
-	robots_layout->addWidget(robots_spinbox);
-	robots_group_box->setLayout(robots_layout);
 
 	swarm_left_panel_layout->addWidget(interior_group_box);
 	swarm_left_panel_layout->addWidget(robots_group_box);
@@ -507,7 +672,6 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	swarm_tab->setLayout(swarm_viewer_layout);
 
 	tab_widget->addTab(swarm_tab, "Swarm Sim");
-
 }
 
 QArrayPushButton::QArrayPushButton(QString& text, int id, QWidget* parent) : id_(id) {
@@ -976,7 +1140,7 @@ void FilteredStructLight::setupUi() {
 		&FilteredStructLight::handle_frame_filenames);
 
 
-	load_settings();
+	load_recon_settings();
 
 	connect_line_edits_to_save_settings();
 

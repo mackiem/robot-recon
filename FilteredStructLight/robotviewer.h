@@ -16,9 +16,6 @@ class RobotViewer : public QGLWidget
 
 protected:
 
-	typedef std::vector<RenderEntity> RenderMesh;
-	typedef std::unordered_map<std::string, RenderMesh> Assets;
-	typedef std::vector<RenderMesh> Scene;
 
 	virtual void initializeGL();
 	virtual void paintGL();
@@ -57,10 +54,16 @@ protected:
 	glm::vec3 up_;
 	glm::vec3 eye_;
 	glm::vec3 center_;
-private:
+
+	float look_at_x_;
+	float look_at_y_;
+	float look_at_z_;
+
 	bool prepareShaderProgram(const QString& vertexShaderPath,
 		const QString& fragmentShaderPath);
+	bool prepareShaderProgram(const QString& vertexShaderPath, const QString& fragmentShaderPath, QGLShaderProgram& shader);
 
+private:
 
 	QGLBuffer m_vertexBuffer;
 
@@ -77,9 +80,6 @@ private:
 	bool is_texture_on_;
 	float camera_distance_;
 	bool mouse_down_;
-	float look_at_x_;
-	float look_at_y_;
-	float look_at_z_;
 	GLuint vao_pts_;
 	GLuint vbo_pts_[3];
 	GLint no_of_triangles_;

@@ -162,20 +162,28 @@ void RobotViewer::initializeGL()
 bool RobotViewer::prepareShaderProgram(const QString& vertexShaderPath,
 	const QString& fragmentShaderPath)
 {
+	bool result = prepareShaderProgram(vertexShaderPath, fragmentShaderPath, m_shader);
+
+	return result;
+}
+
+bool RobotViewer::prepareShaderProgram(const QString& vertexShaderPath,
+	const QString& fragmentShaderPath, QGLShaderProgram& shader)
+{
 	// First we load and compile the vertex shader?
-	bool result = m_shader.addShaderFromSourceFile(QGLShader::Vertex, vertexShaderPath);
+	bool result = shader.addShaderFromSourceFile(QGLShader::Vertex, vertexShaderPath);
 	if (!result)
-		qWarning() << m_shader.log();
+		qWarning() << shader.log();
 
 	// …now the fragment shader?
-	result = m_shader.addShaderFromSourceFile(QGLShader::Fragment, fragmentShaderPath);
+	result = shader.addShaderFromSourceFile(QGLShader::Fragment, fragmentShaderPath);
 	if (!result)
-		qWarning() << m_shader.log();
+		qWarning() << shader.log();
 
 	// …and finally we link them to resolve any references.
-	result = m_shader.link();
+	result = shader.link();
 	if (!result)
-		qWarning() << "Could not link shader program:" << m_shader.log();
+		qWarning() << "Could not link shader program:" << shader.log();
 
 	return result;
 }

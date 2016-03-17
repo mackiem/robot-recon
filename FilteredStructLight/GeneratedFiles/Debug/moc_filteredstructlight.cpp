@@ -194,7 +194,7 @@ void FilteredStructLight::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
         FilteredStructLight *_t = static_cast<FilteredStructLight *>(_o);
         switch (_id) {
         case 0: _t->update_images((*reinterpret_cast< int(*)>(_a[1]))); break;
-        case 1: _t->save_settings(); break;
+        case 1: _t->save_recon_settings(); break;
         case 2: _t->start_reconstruction_sequence(); break;
         case 3: _t->handle_frame_filenames((*reinterpret_cast< std::vector<std::string>(*)>(_a[1]))); break;
         default: ;

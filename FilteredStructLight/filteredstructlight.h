@@ -51,9 +51,20 @@ private:
 	static const char* CHECKERBOARD_VIDEO_FILENAME_LABEL;
 	static const char* SCANLINE_VIDEO_FILENAME_LABEL;
 	static const char* VELOCITY_LABEL;
+	static const char* ROBOTS_NO_LABEL;
+	static const char* EXPLORATION_CONSTANT_LABEL;
+	static const char* SEPERATION_CONSTANT_LABEL;
+	static const char* GOTO_WORK_CONSTANT_LABEL;
+	static const char* GRID_RESOLUTION_LABEL;
+	static const char* GRID_LENGTH_LABEL;
+	static const char* BUILDING_INTERIOR_SCALE_LABEL;
+	static const char* BUILDING_OFFSET_X_LABEL;
+	static const char* BUILDING_OFFSET_Y_LABEL;
+	static const char* BUILDING_OFFSET_Z_LABEL;
+	static const char* SHOW_BUILDING_LABEL;
 	static const int MAX_VIDEO_NO;
 
-	QString settings_filepath_;
+	QString recon_settings_filepath_;
 
 	CamThread* cam_thread_;
 	Reconstruct3D* reconstructor_;
@@ -129,7 +140,19 @@ private:
 	QLineEdit** scanline_video_filename_;
 	QArrayPushButton** scanline_video_browse_;
 
-	void load_settings();
+	// swarm settings
+	QString swarm_settings_filepath_;
+	QSpinBox* robots_spinbox_;
+	QDoubleSpinBox* exploration_constant_;
+	QDoubleSpinBox* seperation_constant_;
+	QDoubleSpinBox* goto_work_constant_;
+	QSpinBox* scale_spinbox_;
+	QSpinBox* x_spin_box_;
+	QSpinBox* y_spin_box_;
+	QSpinBox* z_spin_box_;
+	QCheckBox* show_interior_;
+
+	void load_recon_settings();
 
 	void shutdown_cam_thread();
 
@@ -142,7 +165,9 @@ private:
 	void add_frame_analysis_options(QGroupBox* frame_analysis_group_box);
 	void add_robot_viewer_tab(QTabWidget* tab_widget);
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
-	
+	void add_interior_options(QGroupBox* group_box);
+	void add_robot_options(QGroupBox* group_box);
+	void add_grid_options(QGroupBox* group_box);
 	void add_swarm_sim_tab(QTabWidget* tab_widget);
 
 	void add_calibration_options(QGroupBox* calibration_group_box);
@@ -154,7 +179,7 @@ private:
 
 private slots:
 	void update_images(int frame_no);
-	void save_settings();
+	void save_recon_settings();
 
 public slots:
 	void start_reconstruction_sequence();
