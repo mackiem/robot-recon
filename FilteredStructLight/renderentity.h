@@ -91,6 +91,9 @@ class VisObject {
 protected:
 	UniformLocations& locations_;
 public:
+	virtual ~VisObject() {
+	}
+
 	RenderMesh mesh_;
 	VisObject(UniformLocations& locations);
 	virtual void update(glm::mat4 global_model);

@@ -55,6 +55,7 @@ private:
 	static const char* EXPLORATION_CONSTANT_LABEL;
 	static const char* SEPERATION_CONSTANT_LABEL;
 	static const char* GOTO_WORK_CONSTANT_LABEL;
+	static const char* SEPARATION_DISTANCE_LABEL;
 	static const char* GRID_RESOLUTION_LABEL;
 	static const char* GRID_LENGTH_LABEL;
 	static const char* BUILDING_INTERIOR_SCALE_LABEL;
@@ -144,14 +145,17 @@ private:
 	QString swarm_settings_filepath_;
 	QSpinBox* robots_spinbox_;
 	QDoubleSpinBox* exploration_constant_;
-	QDoubleSpinBox* seperation_constant_;
+	QDoubleSpinBox* separation_constant_;
 	QDoubleSpinBox* goto_work_constant_;
 	QSpinBox* scale_spinbox_;
 	QSpinBox* x_spin_box_;
 	QSpinBox* y_spin_box_;
 	QSpinBox* z_spin_box_;
 	QCheckBox* show_interior_;
-
+	QSpinBox* grid_resolution_spin_box_;
+	QSpinBox* grid_length_spin_box_;
+	QPushButton* swarm_reset_button_;
+	QDoubleSpinBox* separation_distance_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();
@@ -160,7 +164,7 @@ private:
 
 	void add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget);
 	void add_reconstruction_options(QGroupBox* recon_options_group_box);
-	void connect_line_edits_to_save_settings();
+	void connect_recon_line_edits_to_save_settings();
 	void add_display_options(QGroupBox* display_options_group_box);
 	void add_frame_analysis_options(QGroupBox* frame_analysis_group_box);
 	void add_robot_viewer_tab(QTabWidget* tab_widget);
@@ -168,7 +172,9 @@ private:
 	void add_interior_options(QGroupBox* group_box);
 	void add_robot_options(QGroupBox* group_box);
 	void add_grid_options(QGroupBox* group_box);
+	void add_reset_swarm_sim_options(QGroupBox* group_box);
 	void add_swarm_sim_tab(QTabWidget* tab_widget);
+	void connect_widgets_to_swarm_save_settings();
 
 	void add_calibration_options(QGroupBox* calibration_group_box);
 
@@ -180,7 +186,8 @@ private:
 private slots:
 	void update_images(int frame_no);
 	void save_recon_settings();
-
+	void save_swarm_settings();
+	void load_swarm_settings();
 public slots:
 	void start_reconstruction_sequence();
 	void handle_frame_filenames(std::vector<std::string> image_list);

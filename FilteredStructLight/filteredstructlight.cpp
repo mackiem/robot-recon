@@ -14,6 +14,8 @@ const char* FilteredStructLight::ROBOTS_NO_LABEL = "robots_no";
 const char* FilteredStructLight::EXPLORATION_CONSTANT_LABEL = "exploration_constant";
 const char* FilteredStructLight::SEPERATION_CONSTANT_LABEL = "seperation_constant";
 const char* FilteredStructLight::GOTO_WORK_CONSTANT_LABEL = "goto_work_constant";
+const char* FilteredStructLight::SEPARATION_DISTANCE_LABEL = "separation_distance";
+
 const char* FilteredStructLight::GRID_RESOLUTION_LABEL = "grid_resolution";
 const char* FilteredStructLight::GRID_LENGTH_LABEL = "grid_length";
 const char* FilteredStructLight::BUILDING_INTERIOR_SCALE_LABEL = "interior_scale";
@@ -81,8 +83,10 @@ void FilteredStructLight::save_swarm_settings() {
 
 	settings.setValue(ROBOTS_NO_LABEL, robots_spinbox_->value());
 	settings.setValue(EXPLORATION_CONSTANT_LABEL, exploration_constant_->value());
-	settings.setValue(SEPERATION_CONSTANT_LABEL, seperation_constant_->value());
+	settings.setValue(SEPERATION_CONSTANT_LABEL, separation_constant_->value());
 	settings.setValue(GOTO_WORK_CONSTANT_LABEL, goto_work_constant_->value());
+
+	settings.setValue(SEPARATION_DISTANCE_LABEL, separation_distance_->value());
 
 	settings.setValue(GRID_RESOLUTION_LABEL, grid_resolution_spin_box_->value());
 	settings.setValue(GRID_LENGTH_LABEL, grid_length_spin_box_->value());
@@ -99,9 +103,12 @@ void FilteredStructLight::load_swarm_settings() {
 	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
 	
 	robots_spinbox_->setValue(settings.value(ROBOTS_NO_LABEL, "10").toInt());
+	emit robots_spinbox_->valueChanged(robots_spinbox_->value());
 	exploration_constant_->setValue(settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
-	seperation_constant_->setValue(settings.value(SEPERATION_CONSTANT_LABEL, "1").toDouble());
+	separation_constant_->setValue(settings.value(SEPERATION_CONSTANT_LABEL, "1").toDouble());
 	goto_work_constant_->setValue(settings.value(GOTO_WORK_CONSTANT_LABEL, "1").toDouble());
+	separation_distance_->setValue(settings.value(SEPARATION_DISTANCE_LABEL, "100").toDouble());
+	emit separation_distance_->valueChanged(separation_distance_->value());
 
 	grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
 	grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
@@ -113,6 +120,7 @@ void FilteredStructLight::load_swarm_settings() {
 
 	Qt::CheckState show_interior = settings.value(SHOW_BUILDING_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
 	show_interior_->setCheckState(show_interior);
+	emit show_interior_->stateChanged(show_interior);
 }
 
 void FilteredStructLight::shutdown_cam_thread() {
@@ -297,7 +305,7 @@ void FilteredStructLight::add_reconstruction_options(QGroupBox* recon_options_gr
 	
 }
 
-void FilteredStructLight::connect_line_edits_to_save_settings() {
+void FilteredStructLight::connect_recon_line_edits_to_save_settings() {
 	connect(reconstruction_video_filename_, &QLineEdit::textChanged, this, &FilteredStructLight::save_recon_settings);
 	connect(velocity_line_edit_, &QLineEdit::textChanged, this, &FilteredStructLight::save_recon_settings);
 
@@ -514,13 +522,13 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	QHBoxLayout* scale_layout = new QHBoxLayout();
 	scale_spinbox_ = new QSpinBox(group_box);
 	scale_spinbox_->setRange(1, 50);
-	scale_spinbox_->setValue(10);
+	//scale_spinbox_->setValue(10);
 	QLabel* scale_label = new QLabel("Scale", group_box);
 	scale_layout->addWidget(scale_label);
 	scale_layout->addWidget(scale_spinbox_);
 
 	QGroupBox* offset_group_box = new QGroupBox("Offset", group_box);
-	QHBoxLayout* offset_layout = new QHBoxLayout();
+	QGridLayout* offset_layout = new QGridLayout();
 
 	QLabel* x_offset = new QLabel("x", offset_group_box);
 	x_spin_box_ = new QSpinBox(offset_group_box);
@@ -537,12 +545,12 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	z_spin_box_->setRange(0, 100);
 	z_spin_box_->setSingleStep(1);
 
-	offset_layout->addWidget(x_offset);
-	offset_layout->addWidget(x_spin_box_);
-	offset_layout->addWidget(y_offset);
-	offset_layout->addWidget(y_spin_box_);
-	offset_layout->addWidget(z_offset);
-	offset_layout->addWidget(z_spin_box_);
+	offset_layout->addWidget(x_offset, 0, 0);
+	offset_layout->addWidget(x_spin_box_, 0, 1);
+	offset_layout->addWidget(y_offset, 1, 0);
+	offset_layout->addWidget(y_spin_box_, 1, 1);
+	offset_layout->addWidget(z_offset, 2, 0);
+	offset_layout->addWidget(z_spin_box_, 2, 1);
 
 	offset_group_box->setLayout(offset_layout);
 
@@ -552,7 +560,31 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	group_box_layout->addWidget(offset_group_box);
 	group_box_layout->addWidget(show_interior_);
 
-	group_box->setLayout(scale_layout);
+	group_box->setLayout(group_box_layout);
+
+	connect(x_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+		[&](int value)
+	{
+		swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
+	}
+	);
+
+	connect(y_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+		[&](int value)
+	{
+		swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
+	}
+	);
+
+	connect(z_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+		[&](int value)
+	{
+		swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
+	}
+	);
+
+	connect(show_interior_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_interior);
+
 }
 
 void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
@@ -563,7 +595,6 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	robots_spinbox_ = new QSpinBox(group_box);
 	robots_spinbox_->setRange(1, 50);
-	robots_spinbox_->setValue(10);
 	QLabel* robots_label = new QLabel("# of Robots");
 	robots_layout->addWidget(robots_label);
 	robots_layout->addWidget(robots_spinbox_);
@@ -571,9 +602,10 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	group_box_layout->addLayout(robots_layout);
 
 	QGroupBox* constants_group_box = new QGroupBox("Constants");
-	QHBoxLayout* constants_layout = new QHBoxLayout();
+	QGridLayout* constants_layout = new QGridLayout();
 
-	double max_constant_value = 20.0;
+
+	double max_constant_value = 100.0;
 
 	QLabel* exploration_label = new QLabel("Exploration", group_box);
 	exploration_constant_ = new QDoubleSpinBox(group_box);
@@ -581,18 +613,18 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	exploration_constant_->setMaximum(max_constant_value);
 	exploration_constant_->setSingleStep(0.1);
 
-	constants_layout->addWidget(exploration_label);
-	constants_layout->addWidget(exploration_constant_);
+	constants_layout->addWidget(exploration_label, 0, 0);
+	constants_layout->addWidget(exploration_constant_, 0, 1);
 
 
 	QLabel* seperation_label = new QLabel("Seperation", group_box);
-	seperation_constant_ = new QDoubleSpinBox(group_box);
-	seperation_constant_->setMinimum(0.0);
-	seperation_constant_->setMaximum(max_constant_value);
-	seperation_constant_->setSingleStep(0.1);
+	separation_constant_ = new QDoubleSpinBox(group_box);
+	separation_constant_->setMinimum(0.0);
+	separation_constant_->setMaximum(max_constant_value);
+	separation_constant_->setSingleStep(0.1);
 
-	constants_layout->addWidget(seperation_label);
-	constants_layout->addWidget(seperation_constant_);
+	constants_layout->addWidget(seperation_label, 1, 0);
+	constants_layout->addWidget(separation_constant_, 1, 1);
 
 
 	QLabel* goto_work_label = new QLabel("Go to Work", group_box);
@@ -601,8 +633,17 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	goto_work_constant_->setMaximum(max_constant_value);
 	goto_work_constant_->setSingleStep(0.1);
 
-	constants_layout->addWidget(goto_work_label);
-	constants_layout->addWidget(goto_work_constant_);
+	constants_layout->addWidget(goto_work_label, 2, 0);
+	constants_layout->addWidget(goto_work_constant_, 2, 1);
+
+	QLabel* separation_distance_label = new QLabel("Separation Distance", group_box);
+	separation_distance_ = new QDoubleSpinBox(group_box);
+	separation_distance_->setMinimum(0.0);
+	separation_distance_->setMaximum(1000.0);
+	separation_distance_->setSingleStep(0.1);
+
+	constants_layout->addWidget(separation_distance_label, 3, 0);
+	constants_layout->addWidget(separation_distance_, 3, 1);
 
 	constants_group_box->setLayout(constants_layout);
 
@@ -610,29 +651,49 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	group_box->setLayout(group_box_layout);
 
+	connect(robots_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_no_of_robots);
+	connect(exploration_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_exploration_constant);
+	connect(separation_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_constant);
+	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_goto_work_constant);
+	connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_distance);
+
 }
 
 void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
-	QHBoxLayout* grid_box_layout = new QHBoxLayout();
+	QGridLayout* grid_box_layout = new QGridLayout();
 
-	QLabel* grid_resolution_per_side = new QLabel("Resolution (n^2)");
+	QLabel* grid_resolution_per_side = new QLabel("Resolution (2^n^3)");
 	grid_resolution_spin_box_ = new QSpinBox(group_box);
 	grid_resolution_spin_box_->setRange(1, 60000);
 	grid_resolution_spin_box_->setValue(16);
 
-	grid_box_layout->addWidget(grid_resolution_per_side);
-	grid_box_layout->addWidget(grid_resolution_spin_box_);
+	grid_box_layout->addWidget(grid_resolution_per_side, 0, 0);
+	grid_box_layout->addWidget(grid_resolution_spin_box_, 0, 1);
 
 	QLabel* grid_length_per_side = new QLabel("Length");
 	grid_length_spin_box_ = new QSpinBox(group_box);
 	grid_length_spin_box_->setRange(1, 100);
 	grid_length_spin_box_->setValue(20);
 
-	grid_box_layout->addWidget(grid_length_per_side);
-	grid_box_layout->addWidget(grid_length_spin_box_);
+	grid_box_layout->addWidget(grid_length_per_side, 1, 0);
+	grid_box_layout->addWidget(grid_length_spin_box_, 1, 1);
 
 	group_box_layout->addLayout(grid_box_layout);
+
+	group_box->setLayout(group_box_layout);
+
+	connect(grid_resolution_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_grid_resolution);
+	connect(grid_length_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_grid_length);
+
+}
+	
+void FilteredStructLight::add_reset_swarm_sim_options(QGroupBox* group_box) {
+	QVBoxLayout* group_box_layout = new QVBoxLayout();
+	swarm_reset_button_ = new QPushButton("Reset Sim.", group_box);
+	group_box_layout->addWidget(swarm_reset_button_);
+	group_box->setLayout(group_box_layout);
+	connect(swarm_reset_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::reset_sim );
 }
 
 void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
@@ -657,14 +718,25 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	robot_viewer_size_policy.setVerticalPolicy(QSizePolicy::Preferred);
 	swarm_viewer_->setSizePolicy(robot_viewer_size_policy);
 
+	QGroupBox* swarm_group_box = new QGroupBox("Reset", swarm_tab);
+	add_reset_swarm_sim_options(swarm_group_box);
+
 	// change room size
 	QGroupBox* interior_group_box = new QGroupBox("Interior", swarm_tab);
+	add_interior_options(interior_group_box);
 
 	// no of robots
 	QGroupBox* robots_group_box = new QGroupBox("Robots", swarm_tab);
+	add_robot_options(robots_group_box);
 
+	// grid box
+	QGroupBox* grid_group_box = new QGroupBox("Grid", swarm_tab);
+	add_grid_options(grid_group_box);
+
+	swarm_left_panel_layout->addWidget(swarm_group_box);
 	swarm_left_panel_layout->addWidget(interior_group_box);
 	swarm_left_panel_layout->addWidget(robots_group_box);
+	swarm_left_panel_layout->addWidget(grid_group_box);
 
 	swarm_viewer_layout->addLayout(swarm_left_panel_layout);
 	swarm_viewer_layout->addWidget(swarm_viewer_);
@@ -672,6 +744,92 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	swarm_tab->setLayout(swarm_viewer_layout);
 
 	tab_widget->addTab(swarm_tab, "Swarm Sim");
+}
+
+void FilteredStructLight::connect_widgets_to_swarm_save_settings() {
+	connect(grid_resolution_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), 
+		this,
+		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
+	
+	connect(grid_length_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+		this,
+		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(robots_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), 
+		this,
+		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(exploration_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+		this,
+		[&](double value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(separation_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+		this,
+		[&](double value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+		this,
+		[&](double value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(x_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(y_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(z_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(scale_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(show_interior_, &QCheckBox::stateChanged, 
+		this,
+		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
 }
 
 QArrayPushButton::QArrayPushButton(QString& text, int id, QWidget* parent) : id_(id) {
@@ -1141,8 +1299,11 @@ void FilteredStructLight::setupUi() {
 
 
 	load_recon_settings();
+	connect_recon_line_edits_to_save_settings();
 
-	connect_line_edits_to_save_settings();
+	load_swarm_settings();
+	connect_widgets_to_swarm_save_settings();
+
 
 	central_widget_->adjustSize();
 	showMaximized();
