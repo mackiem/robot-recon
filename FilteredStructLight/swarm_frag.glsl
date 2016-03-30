@@ -1,6 +1,6 @@
 #version 400
 
-#define NO_OF_LIGHTS 5
+#define NO_OF_LIGHTS 20
 
 in vec3 frag_normal;
 in vec4 frag_color;

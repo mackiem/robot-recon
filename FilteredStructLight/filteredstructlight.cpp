@@ -583,6 +583,9 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	}
 	);
 
+	connect(scale_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_interior_scale);
+
+
 	connect(show_interior_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_interior);
 
 }
@@ -788,6 +791,14 @@ void FilteredStructLight::connect_widgets_to_swarm_save_settings() {
 	);
 
 	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+		this,
+		[&](double value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
 		this,
 		[&](double value)
 	{

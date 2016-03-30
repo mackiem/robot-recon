@@ -50,6 +50,11 @@ glm::vec3 Robot::calculate_force(glm::vec3 move_to_position, float constant) con
 void Robot::calculate_explore_force() {
 	// if there's a frontier (unexplore space around me) head towards that
 	// naive algorithm - find the first
+	
+	if (all_goals_explored_) {
+		explore_force_ = glm::vec3(0.f);
+		return;
+	}
 
 	try {
 		auto current_cell = octree_->map_to_grid(position_);
@@ -62,13 +67,18 @@ void Robot::calculate_explore_force() {
 			move_to_position.y = 10.f;
 			//explore_force_ = calculate_force(move_to_position);
 			explore_force_ = calculate_force(move_to_position, explore_constant_);
-			std::cout << "Frontier Cell : [" << frontier_cell.x << ", " << frontier_cell.y << ", " << frontier_cell.z << "]" << std::endl;
+#ifdef DEBUG
+			//std::cout << "Frontier Cell : [" << frontier_cell.x << ", " << frontier_cell.y << ", " << frontier_cell.z << "]" << std::endl;
+#endif
 		}
 		else {
 			// we are done
 			//goal_position_ = position_;
 			explore_force_ = glm::vec3(0.f);
+			all_goals_explored_ = true;
+#ifdef DEBUG
 			std::cout << "Nothing to explore..." << std::endl;
+#endif
 		}
 	}
 	catch (OutOfGridBoundsException& ex) {
@@ -95,6 +105,7 @@ void Robot::calculate_separation_force() {
 				glm::vec3 move_to_direction = glm::normalize(seperation_vector);
 				//move_to_direction.y = 10.f;
 				glm::vec3 move_to_position = position_ + distance_to_travel * move_to_direction;
+
 				//std::cout << "distance to travel : " << distance_to_travel << std::endl;
 			//std::cout << "robot : " << id_ << " move to direction : " << move_to_direction.x << ", " << move_to_direction.y << ", " << 
 			//	move_to_direction.z << std::endl;
@@ -114,6 +125,18 @@ void Robot::calculate_separation_force() {
 		}
 	}
 	separation_force_.y = 0.f;
+	glm::vec3 original_seperation_force = separation_force_;
+	float angle = 180.f;
+	while (is_going_out_of_bounds(position_, separation_force_)) {
+		glm::mat4 R = glm::rotate(glm::mat4(1.f), glm::radians(30.f), glm::vec3(0.f, 1.f, 0.f));
+		glm::vec4 force = glm::vec4(separation_force_.x, separation_force_.y,
+			separation_force_.z, 0.f);
+		glm::vec4 rotated_force = R * force;
+		separation_force_ = glm::vec3(rotated_force);
+		angle = std::acos(glm::dot(-original_seperation_force, separation_force_)
+			/ (glm::length(original_seperation_force) * glm::length(separation_force_)));
+		angle *= 180.f / 3.1415f;
+	}
 }
 
 void Robot::calculate_work_force() {
@@ -136,10 +159,10 @@ bool Robot::is_at_edge() {
 }
 
 void Robot::stop() {
-	work_force_ = glm::vec3(0.f, 0.f, 0.f);
-	explore_force_ = glm::vec3(0.f, 0.f, 0.f);
-	separation_force_ = glm::vec3(0.f, 0.f, 0.f);
-	resultant_force_ = glm::vec3(0.f, 0.f, 0.f);
+	//work_force_ = glm::vec3(0.f, 0.f, 0.f);
+	//explore_force_ = glm::vec3(0.f, 0.f, 0.f);
+	//separation_force_ = glm::vec3(0.f, 0.f, 0.f);
+	//resultant_force_ = glm::vec3(0.f, 0.f, 0.f);
 	velocity_ = glm::vec3(0.f, 0.f, 0.f);
 }
 
@@ -151,21 +174,25 @@ void Robot::nullify_forces() {
 
 }
 
-void Robot::calculate_out_of_bounds_force() {
-	//float out_of_bounds_constant_ = 10 * explore_constant_;
-	//try {
-	//	if (current_swarming_state_ != GOING_IN_BOUND) {
-	//		//change_state(GOING_IN_BOUND);
-	//	}
-	//} catch (OutOfGridBoundsException& ex) {
-	//	if (current_swarming_state_ != GOING_IN_BOUND) {
-	//		//out_of_bounds_force_ = -glm::normalize(velocity_) * 100.f;
-	//		explore_force_ = glm::vec3(0.f, 0.f, 0.f);
-	//		separation_force_ = glm::vec3(0.f, 0.f, 0.f);
-	//		velocity_ = glm::vec3(0.f, 0.f, 0.f);
-	//		change_state(EXPLORING);
-	//	}
-	//}
+bool Robot::is_going_out_of_bounds() const {
+
+	auto grid_position = octree_->map_to_grid(position_);
+
+	if (glm::length(resultant_force_) > 1e-3) {
+		auto force_direction = glm::normalize(resultant_force_);
+		auto move_to_position = position_ + static_cast<float>(octree_->get_grid_cube_length() * 2) * force_direction;
+
+		// if out of bounds?
+		try {
+			octree_->map_to_grid(move_to_position);
+		} catch (OutOfGridBoundsException& ex) {
+			// stop the force
+			return true;
+		}
+	}
+
+	return false;
+
 }
 
 
@@ -221,7 +248,6 @@ glm::vec3 Robot::calculate_resultant_force() {
 	calculate_explore_force();
 	calculate_separation_force();
 	//calculate_work_force();
-	//calculate_out_of_bounds_force();
 
 	//glm::vec3 actual_force = explore_constant_ * explore_force_
 	//	+ separation_force_ * separation_constant_+ work_constant_ * work_force_;
@@ -244,11 +270,13 @@ glm::vec3 Robot::calculate_resultant_force() {
 	//	+ separation_force_ + work_force_ + stopping_force_;
 
 	//if (force.y > 0.f) {
+#ifdef DEBUG
 	std::cout << "Robot : " << id_ << std::endl;
 	std::cout << "explore : [" << explore_force_.x << ", " << explore_force_.y << ", " << explore_force_.z << "]" << std::endl;
 	std::cout << "seperation : [" << separation_force_.x << ", " << separation_force_.y << ", " << separation_force_.z << "]" << std::endl;
 	std::cout << "out_of_bounds : [" << out_of_bounds_force_.x << ", " << out_of_bounds_force_.y << ", " << out_of_bounds_force_.z << "]" << std::endl;
 	std::cout << std::endl;
+#endif
 	// }
 
 	// ToDo : add some gaussian noise
@@ -258,20 +286,21 @@ glm::vec3 Robot::calculate_resultant_force() {
 
 Robot::Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree, 
 	double explore_constant, double seperation_constant, double work_constant,
-	double seperation_distance, QGLShaderProgram* shader) : VisObject(locations), id_(id),
-	timeout_(5000), last_timeout_(0), last_updated_time_(0), explore_constant_(explore_constant), separation_constant_(seperation_constant),
-	work_constant_(work_constant), separation_distance_threshold_(seperation_distance), octree_(octree),
-	shader_(shader) {
+	double seperation_distance, QGLShaderProgram* shader) : VisObject(locations), all_goals_explored_(false),
+	accumulator_(0.f), id_(id), timeout_(5000), last_timeout_(0), last_updated_time_(0),
+	explore_constant_(explore_constant), separation_constant_(seperation_constant), work_constant_(work_constant),
+	separation_distance_threshold_(seperation_distance), octree_(octree), shader_(shader) {
 
 	std::random_device rd;
 	rng_.seed(rd());
 	velocity_generator_ = std::uniform_real_distribution<float>(-0.2, 0.2);
-	position_generator_ = std::uniform_int_distribution<int>(0, octree->get_grid_cube_length() * octree_->get_grid_resolution_per_side());
+	position_generator_ = std::uniform_int_distribution<int>(octree->get_grid_cube_length(), 
+		octree->get_grid_cube_length() * (octree_->get_grid_resolution_per_side() - 1));
 	position_ = glm::vec3(position_generator_(rng_), 10.f, position_generator_(rng_));
 
 	//set_random_velocity();
 
-	mass_ = 10;
+	mass_ = 1;
 	max_velocity_ = 50;
 
 	//explore_constant_ = work_constant_ = 1.f;
@@ -347,9 +376,17 @@ bool Robot::is_velocity_non_zero() {
 
 void Robot::handle_input() {
 	//handle robot case
-	//std::cout << current_robot_state_ << std::endl;
-	switch (current_robot_state_) {
 
+	// if at any point if the vel is 0
+	if (glm::length(velocity_) < 1e-3) {
+		change_state(STOPPED);
+	}
+
+#ifdef DEBUG
+	//std::cout << "Current Robot id and state : " << id_ << ", " <<  current_robot_state_ << std::endl;
+#endif
+
+	switch (current_robot_state_) {
 	case MOVING: {
 		float distance_to_goal = glm::distance(goal_position_, position_);
 		if (std::abs(distance_to_goal) < distance_to_goal_threshold_) {
@@ -374,6 +411,7 @@ void Robot::handle_input() {
 		nullify_forces();
 		resultant_force_ = calculate_resultant_force();
 		change_state(MOVING);
+
 		break;
 	}
 	default: break;
@@ -410,6 +448,25 @@ void Robot::handle_input() {
 
 }
 
+bool Robot::is_going_out_of_bounds(const glm::vec3& position, const glm::vec3& direction) const {
+	if (glm::length(direction) > 1e-3) {
+
+
+		auto future_position = position +
+			glm::normalize(direction) * static_cast<float>(octree_->get_grid_cube_length());
+		try {
+			auto grid_position = octree_->map_to_grid(future_position);
+			if (octree_->is_interior(grid_position)) {
+				return true;
+			}
+		}
+		catch (OutOfGridBoundsException& ex) {
+			return true;
+		}
+	}
+	return false;
+}
+
 
 void Robot::update(glm::mat4 global_model) {
 
@@ -421,17 +478,51 @@ void Robot::update(glm::mat4 global_model) {
 	} else {
 
 		auto delta_time = (current_timestamp.count() - last_updated_time_) / 1000.f;
-		delta_time *= 4;
+
+		float dt = 1.f / 30.f; // 60 hz 
+
+		int speedup = 10;
+
+		cv::Vec4f green(0.f, 1.f, 0.f, 1.f);
+		cv::Vec4f red(0.f, 1.f, 0.f, 1.f);
+		cv::Vec4f blue(0.f, 0.f, 1.f, 1.f);
 
 
+		accumulator_ += delta_time;
+		
+		if (accumulator_ > dt) {
+			// integrate
+			for (int s = 0; s < speedup; ++s) {
+				handle_input();
 
-		handle_input();
+				// collision detection
+				// at any point if it's going to knock interior, stop
+				if (is_going_out_of_bounds(position_, velocity_)) {
+					stop();
+					continue;
+				}
 
-		// calculate position, velocity through euler integration
+				// calculate position, velocity through euler integration
+				glm::vec3 acceleration = resultant_force_ / mass_;
+				position_ += (velocity_ * (static_cast<float>(dt)));
+				velocity_ += acceleration * (static_cast<float>(dt));
 
-		glm::vec3 acceleration = resultant_force_ / mass_;
-		position_ += (velocity_ * (static_cast<float>(delta_time)));
-		velocity_ += acceleration * (static_cast<float>(delta_time));
+				visualize_force(0, explore_force_, blue, false);
+				visualize_force(1, separation_force_, red, false);
+
+				// update rendered mesh
+				for (auto& render_entity : mesh_) {
+					//glm::mat4 translate_model = glm::translate(render_entity.get_model(), position_);
+					glm::mat4 translate_model = glm::translate(glm::mat4(1.f), position_);
+					render_entity.set_model(translate_model * render_entity.get_initial_model());
+				}
+
+				update_explored(position_);
+
+
+			}
+			accumulator_ -= dt;
+		}
 
 		// calculate position, velocity through velocity verlet for 2nd order approximation
 		//glm::vec3 acceleration = resultant_force_ / mass_;
@@ -451,23 +542,10 @@ void Robot::update(glm::mat4 global_model) {
 		//	position_ =  velocity_ * static_cast<float>(delta_time);
 		//}
 
-		cv::Vec4f green(0.f, 1.f, 0.f, 1.f);
-		cv::Vec4f red(0.f, 1.f, 0.f, 1.f);
-		cv::Vec4f blue(0.f, 0.f, 1.f, 1.f);
-		visualize_force(0, explore_force_, blue, false);
-		visualize_force(1, separation_force_, red, false);
-
-		// update rendered mesh
-		for (auto& render_entity : mesh_) {
-			//glm::mat4 translate_model = glm::translate(render_entity.get_model(), position_);
-			glm::mat4 translate_model = glm::translate(glm::mat4(1.f), position_);
-			render_entity.set_model(translate_model * render_entity.get_initial_model());
-		}
 
 		last_updated_time_ = current_timestamp.count();
 
 		//  update octtree visit
-		update_explored(position_);
 
 
 		//if (last_timeout_ <= 0) {

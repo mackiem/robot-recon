@@ -30,6 +30,9 @@ private:
 	SwarmingState current_swarming_state_;
 	RobotState current_robot_state_;
 
+	bool all_goals_explored_;
+
+	float accumulator_;
 	unsigned int id_;
 	glm::vec3 velocity_;
 	glm::vec3 position_;
@@ -80,6 +83,7 @@ private:
 	// kinematics
 	glm::vec3 calculate_force(glm::vec3 move_to_position);
 	glm::vec3 calculate_force(glm::vec3 move_to_position, float constant) const;
+	bool is_going_out_of_bounds(const glm::vec3& position, const glm::vec3& direction) const;
 
 
 	std::shared_ptr<SwarmOctTree> octree_;
@@ -96,7 +100,7 @@ public:
 	bool is_at_edge();
 	void stop();
 	void nullify_forces();
-	void calculate_out_of_bounds_force();
+	bool is_going_out_of_bounds() const;
 	void visualize_force(const int& mesh_id, const glm::vec3& force, const cv::Vec4f& color, bool initialize);
 
 	glm::vec3 calculate_resultant_force();

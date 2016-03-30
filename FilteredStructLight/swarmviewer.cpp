@@ -10,11 +10,12 @@
 const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/house interior.obj";
 const int SwarmViewer::DEFAULT_NO_OF_ROBOTS = 3;
 
-#define NO_OF_LIGHTS 5
+#define NO_OF_LIGHTS 20
 #define NO_OF_ROBOTS 10
 
 const std::string SwarmViewer::OCCUPANCY_GRID_NAME = "occupancy_grid";
 const std::string SwarmViewer::OCCUPANCY_GRID_OVERLAY_NAME = "occupancy_grid_overlay";
+const int SwarmViewer::OCCUPANCY_GRID_HEIGHT = 2;
 
 
 void SwarmViewer::Light::update(glm::mat4 global_model) {
@@ -37,7 +38,7 @@ SwarmViewer::GridOverlay::GridOverlay(UniformLocations& locations, std::shared_p
 
 void SwarmViewer::GridOverlay::create_mesh(bool initialize) {
 	int grid_length_per_side = grid_resolution_per_side_ / 2;
-	int y = 2.f;
+	int y = OCCUPANCY_GRID_HEIGHT;
 
 	VertexBufferData bufferdata;
 
@@ -110,7 +111,6 @@ void SwarmViewer::GridOverlay::update(glm::mat4 global_model) {
 
 void SwarmViewer::load_inital_models() {
 
-	load_interior_model();
 	reset_sim();
 	//create_occupancy_grid_overlay(grid_resolution_per_side_, grid_length_, true);
 }
@@ -129,6 +129,136 @@ void SwarmViewer::initialize_position() {
 
 void SwarmViewer::set_shaders() {
 	set_shader_paths(":/FilteredStructLight/swarm_vert.glsl", ":/FilteredStructLight/swarm_frag.glsl");
+}
+
+void SwarmViewer::derive_floor_plan(VertexBufferData bufferdata, float scale, const glm::vec3& offset) {
+	std::vector<std::vector<cv::Vec3f>> triangle_list;
+	cv::Vec3f vertex_offset(offset.x, offset.y, offset.z);
+	for (size_t i = 0; i < bufferdata.count.size(); ++i) {
+		// get triangle vertices
+
+		int index_offset = bufferdata.base_index[i];
+		int base_vertex = bufferdata.offset[i];
+		std::vector<cv::Vec3f> triangle;
+		for (size_t j = 0; j < bufferdata.count[i]; ++j) {
+			int index = bufferdata.indices[index_offset + j];
+			cv::Vec3f triangle_point = (scale * (bufferdata.positions[base_vertex + index] + vertex_offset));
+			triangle.push_back(triangle_point);
+			if ((j+1) % 3 == 0 && j > 0) {
+				triangle_list.push_back(triangle);
+				triangle.clear();
+			}
+		}
+	}
+
+	// get floor plane
+	cv::Vec3f n(0.f, OCCUPANCY_GRID_HEIGHT, 0.f);
+	float d = OCCUPANCY_GRID_HEIGHT * OCCUPANCY_GRID_HEIGHT;
+
+	// for each triangle, check if 2 sides intersect with the plane,
+	// then rasterize that line to the grid (bresenham line algorithm)
+	for (auto& triangle : triangle_list) {
+		assert(triangle.size() == 3);
+		std::vector<glm::vec3> intersection_points;
+		for (int i = 0; i < 3; ++i) {
+			cv::Vec3f a = triangle[i];
+			int b_index = (i == 2) ? 0 : i + 1;
+			cv::Vec3f b = triangle[b_index];
+
+			cv::Vec3f intersection_pt;
+			bool does_intersect = intersect(n, d, a, b, intersection_pt);
+
+			if (does_intersect) {
+				intersection_points.push_back(glm::vec3(intersection_pt[0], intersection_pt[1],
+					intersection_pt[2]));
+			}
+
+			if ((a[1] > OCCUPANCY_GRID_HEIGHT && b[1] < OCCUPANCY_GRID_HEIGHT)
+				|| (a[1] < OCCUPANCY_GRID_HEIGHT && b[1] > OCCUPANCY_GRID_HEIGHT)) {
+				std::string result = (does_intersect) ? "true" : "false";
+				//std::cout << "Does intersect. Algorithm output : " <<  result << std::endl;
+				assert(does_intersect);
+			}
+		}
+			
+
+
+		assert(intersection_points.size() == 0 || intersection_points.size() == 2);
+		if (intersection_points.size() == 2) {
+			octree_->mark_interior_line(intersection_points[0],
+				intersection_points[1]);
+		}
+	}
+	int i = 0;
+}
+
+bool SwarmViewer::intersect(const cv::Vec3f& n, float d, 
+	const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt) const {
+
+	cv::Vec3f v = b - a;
+
+	float denominator = n.dot(v);
+	if (std::abs(denominator) < 1e-6) {
+		return false;
+	}
+
+	float numerator = d - n.dot(a);
+	float t = numerator / denominator;
+
+	if (t >= 0 && t <= 1) {
+		intersection_pt = a + t * v;
+		return true;
+	}
+	return false;
+}
+
+void SwarmViewer::quad_tree_test() {
+	int resolution = 5;
+	int empty_value = -1;
+	quadtree_ = std::make_shared<mm::Quadtree<int>>(resolution, empty_value);
+
+	int resolution_per_side = std::pow(5, 0.5);
+
+	for (int x = 0; x < resolution_per_side; ++x) {
+		for (int y = 0; y < resolution_per_side; ++y) {
+			int empty_return_value = quadtree_->at(x, y);
+			assert(empty_return_value == empty_value);
+
+			int some_value = x + y;
+			quadtree_->set(x, y, some_value);
+
+			int return_value = quadtree_->at(x, y);
+			assert(some_value == return_value);
+
+			quadtree_->unset(x, y);
+			int return_empty_value = quadtree_->at(x, y);
+			assert(empty_return_value == empty_value);
+		}
+	}
+
+	// do some random query tests
+	for (int x = 0; x < resolution_per_side; ++x) {
+		for (int y = 0; y < resolution_per_side; ++y) {
+
+			int some_value = x + y;
+			quadtree_->set(x, y, some_value);
+		}
+	}
+
+	std::random_device rd;
+	std::mt19937 rng(rd());
+	std::uniform_int_distribution<int> random_coords(0, resolution_per_side);
+
+	for (int i = 0; i < 1000; ++i) {
+		int x = random_coords(rng);
+		int y = random_coords(rng);
+
+		int return_value = quadtree_->at(x, y);
+		assert(return_value == x + y);
+	}
+
+	
+	quadtree_.reset();
 }
 
 void SwarmViewer::load_interior_model() {
@@ -150,7 +280,17 @@ void SwarmViewer::load_interior_model() {
 	load_obj(model_filename,  vertices, normals, uvs, indices, count, offset, base_index);
 
 	cv::Vec4f color(0.8f, 0.5f, 0.5f, 1.f);
-	for (auto& vertice : vertices) {
+
+	std::random_device rd;
+	std::mt19937 rng(rd());
+	std::uniform_real_distribution<float> color_distribution(0.4, 1.0);
+
+	cv::Vec4f random_color;
+	for (auto i = 0u; i < vertices.size(); ++i) {
+		//if (i % 3 == 0) {
+		//	random_color = cv::Vec4f(color_distribution(rng), color_distribution(rng), color_distribution(rng), 1.f);
+		//}
+		//colors.push_back(random_color);
 		colors.push_back(color);
 	}
 
@@ -165,16 +305,30 @@ void SwarmViewer::load_interior_model() {
 	
 	std::shared_ptr<VisObject> interior_model_object = std::make_shared<VisObject>(uniform_locations_);
 	interior_model_object->mesh_ = interior_model_mesh;
-	float scale = 2.f;
+
+	float scale = interior_scale_;
+
 	glm::mat4 model = glm::scale(glm::mat4(1.f), glm::vec3(scale, scale, scale));
+	model = glm::translate(model, interior_offset_);
 	update_model(interior_model_object->mesh_, model);
 
+	VertexBufferData bufferdata;
+	bufferdata.positions = vertices;
+	bufferdata.normals = normals;
+	bufferdata.colors = colors;
+	bufferdata.base_index = base_index;
+	bufferdata.indices = indices;
+	bufferdata.offset = offset;
+	bufferdata.uvs = uvs;
+	bufferdata.count = count;
+
+	derive_floor_plan(bufferdata, scale, interior_offset_);
 
 	default_vis_objects_.push_back(interior_model_object);
 
 	//default_scene_.push_back(interior_model_mesh);
 
-	create_lights();
+	//create_lights();
 }
 
 void SwarmViewer::custom_init_code() {
@@ -182,7 +336,7 @@ void SwarmViewer::custom_init_code() {
 	connect(timer_, SIGNAL(timeout()), this, SLOT(update()));
 	timer_->start(20);
 
-	//glEnable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);
 
 	look_at_z_ = 600.f;
 	look_at_x_ = 345.f;
@@ -247,26 +401,35 @@ void SwarmViewer::draw_mesh(RenderMesh& mesh) {
 
 void SwarmViewer::reset_sim() {
 
+
+	default_vis_objects_.clear();
 	robot_color_map_.clear();
 	reset_vis_objects_.clear();
 	robots_.clear();
+	lights_.clear();
 
 	grid_resolution_per_side_ = std::pow(grid_resolution_, 1.f / 3.f);
 	octree_ = std::make_shared<SwarmOctTree>(grid_length_, grid_resolution_);
+
+	load_interior_model();
 
 	create_robots();
 	create_occupancy_grid(grid_resolution_per_side_, grid_length_);
 	robot_color_map_[octree_->get_interior_mark()] = cv::Vec4f(1.f, 1.f, 1.f, 1.f);
 
+	create_lights();
+
 	std::shared_ptr<GridOverlay> overlay(new GridOverlay(uniform_locations_, 
 		octree_, grid_resolution_per_side_, grid_length_, robot_color_map_, &m_shader));
 	reset_vis_objects_.push_back(overlay);
+
 
 }
 
 SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer(format, parent)
 {
 
+	quad_tree_test();
 
 	//grid_ = VisObject(uniform_locations_);
 	//grid_overlay_ = VisObject(uniform_locations_);
@@ -313,7 +476,8 @@ void SwarmViewer::create_lights() {
 	std::random_device rd;
 	std::mt19937 rng(rd());
 	std::uniform_real_distribution<float> color(0.5, 1); // uniform, unbiased
-	std::uniform_int_distribution<int> position(0, 300);
+	std::uniform_int_distribution<int> position(0, octree_->get_grid_cube_length() 
+		* octree_->get_grid_resolution_per_side());
 
 	m_shader.bind();
 
@@ -391,7 +555,7 @@ void SwarmViewer::create_occupancy_grid(int grid_resolution_per_side, int grid_s
 
 	cv::Vec4f green(0.f, 1.f, 0.f, 1.f);
 
-	float y = 2.f;
+	float y = OCCUPANCY_GRID_HEIGHT;
 	float space = grid_size;
 	int grid_length_per_side = grid_resolution_per_side / 2;
 	//float max_value = grid_length_per_side * grid_length_;

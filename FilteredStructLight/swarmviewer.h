@@ -4,6 +4,7 @@
 #include "robot.h"
 #include <cmath>
 #include <memory>
+#include "quadtree.h"
 
 
 class SwarmViewer : public RobotViewer {
@@ -37,6 +38,8 @@ struct GridOverlay : public VisObject {
 };
 
 private:
+	std::shared_ptr<mm::Quadtree<int>> quadtree_;
+
 	std::string interior_model_filename_;
 	GLint model_loc_;
 	GLint inverse_transpose_loc_;
@@ -47,6 +50,7 @@ private:
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
 	static const std::string OCCUPANCY_GRID_OVERLAY_NAME;
+	static const int OCCUPANCY_GRID_HEIGHT;
 	std::vector<std::shared_ptr<Robot>> robots_;
 	std::vector<Light> lights_;
 	QTimer* timer_;
@@ -96,12 +100,16 @@ protected:
 	void load_inital_models() override;
 	void initialize_position();
 	virtual void set_shaders() override;
+	void derive_floor_plan(VertexBufferData bufferdata, float scale, const glm::vec3& offset);
 	void load_interior_model();
 	virtual void custom_init_code() override;
 	virtual void custom_draw_code() override;
 	virtual void draw_mesh(RenderMesh& mesh) override;
 
-	
+	bool intersect(const cv::Vec3f& n, float d,
+		const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt) const;
+	void quad_tree_test();
+
 public:
 	SwarmViewer(const QGLFormat& format, QWidget* parent = 0);
 	void create_light_model(RenderMesh& light_mesh);

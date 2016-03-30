@@ -151,6 +151,7 @@
     <ClCompile Include="objloader.cpp" />
     <ClCompile Include="octree.cpp" />
     <ClCompile Include="planefit.cpp" />
+    <ClCompile Include="quadtree.cpp" />
     <ClCompile Include="renderentity.cpp" />
     <ClCompile Include="robot.cpp" />
     <ClCompile Include="robotreconstruction.cpp" />
@@ -160,6 +161,7 @@
     <ClCompile Include="qrfac.c" />
     <ClCompile Include="qrsolv.c" />
     <ClCompile Include="reconstruct.cpp" />
+    <ClCompile Include="swarmutils.cpp" />
     <ClCompile Include="swarmviewer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -188,9 +190,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="octree.h" />
+    <ClInclude Include="quadtree.h" />
     <ClInclude Include="renderentity.h" />
     <ClInclude Include="robot.h" />
     <ClInclude Include="smoothopt.h" />
+    <ClInclude Include="swarmutils.h" />
     <CustomBuild Include="swarmviewer.h">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </Message>

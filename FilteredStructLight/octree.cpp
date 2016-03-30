@@ -1,12 +1,17 @@
 #include "octree.h"
 #include <queue>
 #include <memory>
+#include "swarmutils.h"
 
 // hoping there won't be 10k robots ever!
 int SwarmOctTree::INTERIOR_MARK = 10000;
 
+int SwarmOctTree::SEARCH_VISITED = 1;
+int SwarmOctTree::SEARCH_NOT_VISITED = 0;
+
 glm::ivec3 SwarmOctTree::map_to_grid(const glm::vec3& position) const  {
-	glm::ivec3 grid_pos =  (position / static_cast<float>(grid_cube_length_));
+	glm::vec3 grid_pos_float =  (position / static_cast<float>(grid_cube_length_));
+	glm::ivec3 grid_pos(grid_pos_float.x, grid_pos_float.y, grid_pos_float.z);
 	grid_pos += offset_;
 //glm::vec3(0.5f, 0.f, 0.5f) +
 
@@ -83,6 +88,12 @@ bool SwarmOctTree::visited(std::vector<BFSNode>& visited_nodes, BFSNode bfs_node
 	return false;
 }
 
+bool SwarmOctTree::visited(const SwarmOctTree& visited_nodes, const BFSNode& bfs_node) const {
+	auto position = bfs_node.grid_position_;
+	int visited_result = visited_nodes.at(position.x, position.y, position.z);
+	return (visited_result == SEARCH_VISITED);
+}
+
 bool SwarmOctTree::is_unexplored_perimeter(const glm::ivec3& grid_position) const {
 	if (!is_out_of_bounds(grid_position)) {
 		// throw error
@@ -91,6 +102,11 @@ bool SwarmOctTree::is_unexplored_perimeter(const glm::ivec3& grid_position) cons
 	int explored = at(grid_position.x, grid_position.y, grid_position.z);
 
 	return (explored == INTERIOR_MARK);
+}
+
+void SwarmOctTree::mark_visited(SwarmOctTree& swarm_oct_tree, const BFSNode& bfs_node) const {
+	auto pos = bfs_node.grid_position_;
+	swarm_oct_tree.set(pos.x, pos.y, pos.z, SEARCH_VISITED);
 }
 
 bool SwarmOctTree::is_out_of_bounds(const glm::ivec3& position) const {
@@ -132,6 +148,11 @@ bool SwarmOctTree::has_explored(const glm::ivec3& position) const {
 	return (explored != empty_value_);
 }
 
+bool SwarmOctTree::is_interior(const glm::ivec3& position) const {
+	int explored = at(position.x, position.y, position.z);
+	return (explored == INTERIOR_MARK);
+}
+
 int SwarmOctTree::get_grid_resolution_per_side() {
 	return grid_resolution_per_side_;
 }
@@ -142,10 +163,13 @@ int SwarmOctTree::get_grid_cube_length() {
 
 bool SwarmOctTree::frontier_bread_first_search(const glm::ivec3& current_position, glm::ivec3& result_cell) const {
 	std::queue<BFSNode> nodes;
-	std::vector<BFSNode> visited_nodes;
+	//std::vector<BFSNode> visited_nodes;
+
+	SwarmOctTree search_octree = SwarmOctTree(grid_cube_length_, grid_resolution_);
+	search_octree.setEmptyValue(SEARCH_NOT_VISITED);
 
 	nodes.push(BFSNode(current_position));
-	visited_nodes.push_back(BFSNode(current_position));
+	//visited_nodes.push_back(BFSNode(current_position));
 
 	while (!nodes.empty()) {
 		auto& current_cell = nodes.front();
@@ -156,9 +180,15 @@ bool SwarmOctTree::frontier_bread_first_search(const glm::ivec3& current_positio
 		//	return true;
 		//}
 
-		if (is_unexplored_perimeter(current_cell.grid_position_)) {
-			result_cell = current_cell.grid_position_;
-			return true;
+		if (!is_unexplored_perimeter(current_cell.grid_position_)
+			&& !has_explored(current_cell.grid_position_)) {
+			std::vector<glm::ivec3> adjacent_cells = get_adjacent_cells(current_cell.grid_position_);
+			for (auto& adjacent_cell : adjacent_cells) {
+				if (is_unexplored_perimeter(adjacent_cell)) {
+					result_cell = current_cell.grid_position_;
+					return true;
+				}
+			}
 		}
 
 
@@ -169,9 +199,14 @@ bool SwarmOctTree::frontier_bread_first_search(const glm::ivec3& current_positio
 			// inefficient rechecking all adjacent cells, without only checking UNVISITED cells
 			// copy octree?
 			BFSNode adjacent_node(adjacent_cell);
-			if (!visited(visited_nodes, adjacent_node)) {
+			adjacent_node.parent_grid_position_ = current_cell.grid_position_;
+			//if (!visited(visited_nodes, adjacent_node)) {
+			//	nodes.push(adjacent_node);
+			//	visited_nodes.push_back(adjacent_node);
+			//}
+			if (!visited(search_octree, adjacent_node)) {
 				nodes.push(adjacent_node);
-				visited_nodes.push_back(adjacent_node);
+				mark_visited(search_octree, adjacent_node);
 			}
 		}
 
@@ -181,4 +216,35 @@ bool SwarmOctTree::frontier_bread_first_search(const glm::ivec3& current_positio
 	// all cells explored, we are done
 	// no search result
 	return false;
+}
+
+void SwarmOctTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
+	
+	
+	float length = glm::length(b - a);
+	float division_factor = (get_grid_cube_length() / 2.f);
+	int no_of_segments = (length / division_factor) + 1;
+#ifdef DEBUG
+	std::cout << "No of segments : " << no_of_segments << std::endl;
+#endif
+
+
+	glm::vec3 direction;
+	if (length > 1e-3) {
+		direction = glm::normalize(b - a);
+	}
+
+	for (int i = 0; i < no_of_segments; ++i) {
+		glm::vec3 position = a + direction * (division_factor) * static_cast<float>(i);
+		try {
+			auto grid_position = map_to_grid(position);
+			set(grid_position.x, grid_position.y, grid_position.z, INTERIOR_MARK);
+			//SwarmUtils::print_vector("mark interior A", a);
+			//SwarmUtils::print_vector("mark interior B", b);
+			SwarmUtils::print_vector("marking grid position", grid_position);
+			SwarmUtils::print_vector("marking position", position);
+		} catch (OutOfGridBoundsException& ex) {
+			// ignore
+		}
+	}
 }
