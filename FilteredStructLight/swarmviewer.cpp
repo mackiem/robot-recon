@@ -217,7 +217,7 @@ void SwarmViewer::quad_tree_test() {
 	int empty_value = -1;
 	quadtree_ = std::make_shared<mm::Quadtree<int>>(resolution, empty_value);
 
-	int resolution_per_side = std::pow(5, 0.5);
+	int resolution_per_side = std::pow(std::pow(4, 5), 0.5);
 
 	for (int x = 0; x < resolution_per_side; ++x) {
 		for (int y = 0; y < resolution_per_side; ++y) {
@@ -247,7 +247,7 @@ void SwarmViewer::quad_tree_test() {
 
 	std::random_device rd;
 	std::mt19937 rng(rd());
-	std::uniform_int_distribution<int> random_coords(0, resolution_per_side);
+	std::uniform_int_distribution<int> random_coords(0, resolution_per_side - 1);
 
 	for (int i = 0; i < 1000; ++i) {
 		int x = random_coords(rng);

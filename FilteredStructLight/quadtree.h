@@ -234,20 +234,6 @@ bool mm::Quadtree<T>::find_node(QuadNode* node, unsigned x, unsigned y, QuadNode
 			return false;
 		} else {
 			if (node->rect_.x1_ <= x && x < node->rect_.x_avg_) {
-				// east half
-				if (node->rect_.y1_ <= y && y < node->rect_.y_avg_) {
-					// NE quadrant, equal to handle the edge case of being on the edge
-					return find_node(node->children[QuadNode::NE], x, y, result_node);
-					
-				} else if (node->rect_.y_avg_ <= y && y <= node->rect_.y2_) {
-					// SE quadrant
-					return find_node(node->children[QuadNode::SE], x, y, result_node);
-					
-				} else {
-					// undefined situation
-					return false;
-				}
-			} else if (node->rect_.x_avg_ <= x  && x  <= node->rect_.x2_) {
 				// west half, equal to handle the edge case of being on the edge
 				if (node->rect_.y1_ <= y && y < node->rect_.y_avg_) {
 					// NW quadrant, equal to handle the edge case of being on the edge
@@ -256,6 +242,20 @@ bool mm::Quadtree<T>::find_node(QuadNode* node, unsigned x, unsigned y, QuadNode
 				} else if (node->rect_.y_avg_ <= y && y <= node->rect_.y2_) {
 					// SW quadrant
 					return find_node(node->children[QuadNode::SW], x, y, result_node);
+					
+				} else {
+					// undefined situation
+					return false;
+				}
+			} else if (node->rect_.x_avg_ <= x  && x  <= node->rect_.x2_) {
+				// east half
+				if (node->rect_.y1_ <= y && y < node->rect_.y_avg_) {
+					// NE quadrant, equal to handle the edge case of being on the edge
+					return find_node(node->children[QuadNode::NE], x, y, result_node);
+					
+				} else if (node->rect_.y_avg_ <= y && y <= node->rect_.y2_) {
+					// SE quadrant
+					return find_node(node->children[QuadNode::SE], x, y, result_node);
 					
 				} else {
 					// undefined situation
