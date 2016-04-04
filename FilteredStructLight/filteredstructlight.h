@@ -56,6 +56,7 @@ private:
 	static const char* SEPERATION_CONSTANT_LABEL;
 	static const char* GOTO_WORK_CONSTANT_LABEL;
 	static const char* SEPARATION_DISTANCE_LABEL;
+	static const char* SHOW_FORCES_LABEL;
 	static const char* GRID_RESOLUTION_LABEL;
 	static const char* GRID_LENGTH_LABEL;
 	static const char* BUILDING_INTERIOR_SCALE_LABEL;
@@ -156,6 +157,8 @@ private:
 	QSpinBox* grid_length_spin_box_;
 	QPushButton* swarm_reset_button_;
 	QDoubleSpinBox* separation_distance_;
+
+	QCheckBox* show_forces_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();

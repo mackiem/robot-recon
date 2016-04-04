@@ -4,7 +4,8 @@
 #include "robot.h"
 #include <cmath>
 #include <memory>
-#include "quadtree.h"
+#include "swarmtree.h"
+
 
 
 class SwarmViewer : public RobotViewer {
@@ -25,12 +26,12 @@ public:
 };
 
 struct GridOverlay : public VisObject {
-	std::shared_ptr<SwarmOctTree> octree_;
+	std::shared_ptr<SwarmOccupancyTree> occupany_grid_;
 	unsigned int grid_resolution_per_side_;
 	float grid_length_;
 	QGLShaderProgram* shader_;
 	std::map<int, cv::Vec4f> robot_color_map_;
-	GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOctTree> octree, unsigned int grid_resolution, 
+	GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOccupancyTree> octree, unsigned int grid_resolution, 
 		float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
 
 	void create_mesh(bool initialize);
@@ -38,7 +39,14 @@ struct GridOverlay : public VisObject {
 };
 
 private:
-	std::shared_ptr<mm::Quadtree<int>> quadtree_;
+	enum Formation {
+		GRID = 0,
+		RANDOM = 1
+	};
+
+	std::shared_ptr<SwarmOccupancyTree> occupany_grid_;
+	std::shared_ptr<SwarmCollisionTree> collision_grid_;
+
 
 	std::string interior_model_filename_;
 	GLint model_loc_;
@@ -46,6 +54,7 @@ private:
 	GLint mvp_loc_;
 	GLint view_position_loc_;
 	int grid_resolution_per_side_;
+	bool show_forces_;
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
@@ -89,7 +98,7 @@ private:
 	//z_spin_box_->setValue(settings.value(BUILDING_OFFSET_Z_LABEL, "0").toInt());
 
 	//show_interior_->setCheckState(show_interior);
-	std::shared_ptr<SwarmOctTree> octree_;
+	//std::shared_ptr<SwarmOctTree> octree_test_;
 	QGLShaderProgram line_shader_;
 
 	//std::vector<VisObject> default_objects_;
@@ -102,6 +111,7 @@ protected:
 	virtual void set_shaders() override;
 	void derive_floor_plan(VertexBufferData bufferdata, float scale, const glm::vec3& offset);
 	void load_interior_model();
+	void change_to_top_down_view();
 	virtual void custom_init_code() override;
 	virtual void custom_draw_code() override;
 	virtual void draw_mesh(RenderMesh& mesh) override;
@@ -115,6 +125,7 @@ public:
 	void create_light_model(RenderMesh& light_mesh);
 	void create_robot_model(RenderMesh& light_mesh, cv::Vec4f color);
 	void create_lights();
+	std::vector<glm::vec3> create_starting_formation(Formation type);
 	void create_robots();
 	//void create_occupancy_grid_overlay(int grid_resolution, int grid_size, bool initialize = false);
 	void create_occupancy_grid(int grid_resolution, int grid_size);
@@ -137,4 +148,6 @@ void set_goto_work_constant(double constant);
 void set_show_interior(int show);
 
 void reset_sim();
+
+void set_show_forces(int show);
 };

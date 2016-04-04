@@ -56,7 +56,7 @@ void RobotViewer::set_shaders() {
 
 void RobotViewer::init_camera_params() {
 
-	zoom_ = 45.f;
+	fovy_ = 45.f;
 
 	camera_distance_ = -100.f;
 
@@ -75,7 +75,7 @@ void RobotViewer::init_camera_params() {
 
 void RobotViewer::custom_init_code() {
 	glm::mat4 camera = glm::lookAt(eye_, center_, up_);
-	glm::mat4 projection = glm::perspective(zoom_, static_cast<float>(sizeHint().width())
+	glm::mat4 projection = glm::perspective(fovy_, static_cast<float>(sizeHint().width())
 		/static_cast<float>(sizeHint().height()), 0.1f, 1000.0f);
 
 	GLint projection_location = m_shader.uniformLocation("projection");
@@ -199,7 +199,7 @@ void RobotViewer::wheelEvent(QWheelEvent* event) {
     QPoint numDegrees = event->angleDelta() / 8;
 
 	if (!numDegrees.isNull()) {
-		//zoom_ += (float)(numDegrees.y()) / (float)(15 * 10);
+		//fovy_ += (float)(numDegrees.y()) / (float)(15 * 10);
 		camera_distance_ += (float)(numDegrees.y()) / (float)(1);
 	}
 	update();
@@ -263,9 +263,9 @@ void RobotViewer::update_camera() {
 
 	//glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
 
-	projection_ = glm::perspective(zoom_, 
-		static_cast<float>(size().width())/static_cast<float>(size().height()), 0.1f, 10000.0f);
-	//glm::mat4 projection = glm::perspective(zoom_, 1.f, 0.1f, 1000.0f);
+	projection_ = glm::perspective(fovy_, 
+		static_cast<float>(size().width())/static_cast<float>(size().height()), 0.1f, 100000.0f);
+	//glm::mat4 projection = glm::perspective(fovy_, 1.f, 0.1f, 1000.0f);
 
 
 	camera_ = glm::lookAt(eye, 
@@ -604,7 +604,7 @@ void RobotViewer::draw_texture() {
 void RobotViewer::reset_view() {
 
 
-	zoom_ = 45.f;
+	fovy_ = 45.f;
 
 	camera_distance_ = -100.f;
 

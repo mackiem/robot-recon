@@ -59,6 +59,9 @@ protected:
 	float look_at_y_;
 	float look_at_z_;
 
+	float fovy_;
+	float camera_distance_;
+
 	bool prepareShaderProgram(const QString& vertexShaderPath,
 		const QString& fragmentShaderPath);
 	bool prepareShaderProgram(const QString& vertexShaderPath, const QString& fragmentShaderPath, QGLShaderProgram& shader);
@@ -73,12 +76,10 @@ private:
 	int angle_;
 	int no_of_pts_;
 	QTimer timer_;
-	float zoom_;
 	GLuint texture_id_;
 	bool is_draw_triangles_;
 	GLint active_texture_;
 	bool is_texture_on_;
-	float camera_distance_;
 	bool mouse_down_;
 	GLuint vao_pts_;
 	GLuint vbo_pts_[3];

@@ -176,6 +176,12 @@
     <ClCompile Include="quadtree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="swarmtree.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Program Files\gevorkyan.org\MicroProfiler\x86\micro-profiler.initializer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="filteredstructlight.h">
@@ -262,6 +268,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="quadtree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="swarmtree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

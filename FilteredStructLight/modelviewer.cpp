@@ -184,7 +184,7 @@ void ModelViewer::wheelEvent(QWheelEvent* event) {
     QPoint numDegrees = event->angleDelta() / 8;
 
 	if (!numDegrees.isNull()) {
-		//zoom_ += (float)(numDegrees.y()) / (float)(15 * 10);
+		//fovy_ += (float)(numDegrees.y()) / (float)(15 * 10);
 		camera_distance_ += (float)(numDegrees.y()) / (float)(1);
 	}
 	update();
@@ -225,7 +225,7 @@ void ModelViewer::paintGL()
 	glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
 
 	glm::mat4 projection = glm::perspective(zoom_, static_cast<float>(size().width())/static_cast<float>(size().height()), 0.1f, 1000.0f);
-	//glm::mat4 projection = glm::perspective(zoom_, 1.f, 0.1f, 1000.0f);
+	//glm::mat4 projection = glm::perspective(fovy_, 1.f, 0.1f, 1000.0f);
 	float ratio = static_cast<float>(size().width())/static_cast<float>(size().height());
 	GLint projection_location = m_shader.uniformLocation("projection");
 	glUniformMatrix4fv(projection_location, 1, GL_FALSE, glm::value_ptr(projection));

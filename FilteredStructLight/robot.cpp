@@ -3,7 +3,9 @@
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 #include <cmath>
 #include <queue>
+#include "swarmutils.h"
 
+int Robot::MAX_DEPTH = 10;
 
 
 void Robot::set_explore_constant(float constant) {
@@ -57,12 +59,12 @@ void Robot::calculate_explore_force() {
 	}
 
 	try {
-		auto current_cell = octree_->map_to_grid(position_);
+		auto current_cell = occupancy_grid_->map_to_grid(position_);
 
 		glm::ivec3 frontier_cell;
-		bool something_to_explore = octree_->frontier_bread_first_search(current_cell, frontier_cell);
+		bool something_to_explore = occupancy_grid_->frontier_bread_first_search(current_cell, frontier_cell, MAX_DEPTH);
 		if (something_to_explore) {
-			auto move_to_position = octree_->map_to_position(frontier_cell);
+			auto move_to_position = occupancy_grid_->map_to_position(frontier_cell);
 			// only 2D
 			move_to_position.y = 10.f;
 			//explore_force_ = calculate_force(move_to_position);
@@ -87,13 +89,20 @@ void Robot::calculate_explore_force() {
 	}
 }
 
-void Robot::calculate_separation_force() {
+void Robot::calculate_separation_force(const std::vector<int>& other_robots) {
 
 	separation_force_ = glm::vec3(0.f, 0.f, 0.f);
-	for (auto& robot : robots_) {
-		if (robot->id_ < id_) {
+	//auto other_robots = collision_grid_->find_adjacent_robots(id_, occupancy_grid_->map_to_grid(position_));
+	//std::vector<glm::ivec3> cells;
+	//cells.reserve(9);
+	//get_adjacent_cells(position_, cells);
+	//auto other_robots = get_other_robots(cells);
+	
+
+	for (auto& robot_id : other_robots) {
+		if (robot_id < id_) {
 			// naively, just a set direction away from me
-			auto seperation_vector = position_ - robot->position_;
+			auto seperation_vector = position_ - robots_[robot_id]->position_;
 			//std::cout << "Other robot : " << robot.id_ << " position : " << robot.position_.x << ", " << robot.position_.y << ", " << 
 			//	robot.position_.z << std::endl;
 			float distance = glm::length(seperation_vector);
@@ -146,9 +155,9 @@ void Robot::calculate_work_force() {
 
 bool Robot::is_at_edge() {
 	try {
-		auto current_cell = octree_->map_to_grid(position_);
-		if ((current_cell.x <= 0 || current_cell.x >= octree_->get_grid_resolution_per_side())
-			|| (current_cell.z <= 0 || current_cell.z >= octree_->get_grid_resolution_per_side())) {
+		auto current_cell = occupancy_grid_->map_to_grid(position_);
+		if ((current_cell.x <= 0 || current_cell.x >= occupancy_grid_->get_grid_resolution_per_side())
+			|| (current_cell.z <= 0 || current_cell.z >= occupancy_grid_->get_grid_resolution_per_side())) {
 			return true;
 		}
 	return false;
@@ -176,15 +185,15 @@ void Robot::nullify_forces() {
 
 bool Robot::is_going_out_of_bounds() const {
 
-	auto grid_position = octree_->map_to_grid(position_);
+	auto grid_position = occupancy_grid_->map_to_grid(position_);
 
 	if (glm::length(resultant_force_) > 1e-3) {
 		auto force_direction = glm::normalize(resultant_force_);
-		auto move_to_position = position_ + static_cast<float>(octree_->get_grid_cube_length() * 2) * force_direction;
+		auto move_to_position = position_ + static_cast<float>(occupancy_grid_->get_grid_cube_length() * 2) * force_direction;
 
 		// if out of bounds?
 		try {
-			octree_->map_to_grid(move_to_position);
+			occupancy_grid_->map_to_grid(move_to_position);
 		} catch (OutOfGridBoundsException& ex) {
 			// stop the force
 			return true;
@@ -244,9 +253,9 @@ void Robot::visualize_force(const int& mesh_id, const glm::vec3& force, const cv
 }
 
 
-glm::vec3 Robot::calculate_resultant_force() {
+glm::vec3 Robot::calculate_resultant_force(const std::vector<int>& other_robots) {
 	calculate_explore_force();
-	calculate_separation_force();
+	calculate_separation_force(other_robots);
 	//calculate_work_force();
 
 	//glm::vec3 actual_force = explore_constant_ * explore_force_
@@ -259,8 +268,8 @@ glm::vec3 Robot::calculate_resultant_force() {
 	glm::vec3 force;
 	if (glm::length(actual_force) > 1e-3) {
 		glm::vec3 force_direction = glm::normalize(actual_force);
-		force = force_direction * static_cast<float>(octree_->get_grid_cube_length());
-		goal_position_ = position_ + force_direction * static_cast<float>(octree_->get_grid_cube_length());
+		force = force_direction * static_cast<float>(occupancy_grid_->get_grid_cube_length());
+		goal_position_ = position_ + force_direction * static_cast<float>(occupancy_grid_->get_grid_cube_length());
 	} else {
 		goal_position_ = position_;
 	}
@@ -271,11 +280,11 @@ glm::vec3 Robot::calculate_resultant_force() {
 
 	//if (force.y > 0.f) {
 #ifdef DEBUG
-	std::cout << "Robot : " << id_ << std::endl;
-	std::cout << "explore : [" << explore_force_.x << ", " << explore_force_.y << ", " << explore_force_.z << "]" << std::endl;
-	std::cout << "seperation : [" << separation_force_.x << ", " << separation_force_.y << ", " << separation_force_.z << "]" << std::endl;
-	std::cout << "out_of_bounds : [" << out_of_bounds_force_.x << ", " << out_of_bounds_force_.y << ", " << out_of_bounds_force_.z << "]" << std::endl;
-	std::cout << std::endl;
+	//std::cout << "Robot : " << id_ << std::endl;
+	//std::cout << "explore : [" << explore_force_.x << ", " << explore_force_.y << ", " << explore_force_.z << "]" << std::endl;
+	//std::cout << "seperation : [" << separation_force_.x << ", " << separation_force_.y << ", " << separation_force_.z << "]" << std::endl;
+	//std::cout << "out_of_bounds : [" << out_of_bounds_force_.x << ", " << out_of_bounds_force_.y << ", " << out_of_bounds_force_.z << "]" << std::endl;
+	//std::cout << std::endl;
 #endif
 	// }
 
@@ -284,23 +293,29 @@ glm::vec3 Robot::calculate_resultant_force() {
 	return force;
 }
 
-Robot::Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree, 
+Robot::Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOccupancyTree> octree, std::shared_ptr<SwarmCollisionTree> collision_tree, 
 	double explore_constant, double seperation_constant, double work_constant,
-	double seperation_distance, QGLShaderProgram* shader) : VisObject(locations), all_goals_explored_(false),
+	double seperation_distance, glm::vec3 position, QGLShaderProgram* shader) : VisObject(locations), all_goals_explored_(false),
 	accumulator_(0.f), id_(id), timeout_(5000), last_timeout_(0), last_updated_time_(0),
 	explore_constant_(explore_constant), separation_constant_(seperation_constant), work_constant_(work_constant),
-	separation_distance_threshold_(seperation_distance), octree_(octree), shader_(shader) {
+	separation_distance_threshold_(seperation_distance), occupancy_grid_(octree), position_(position),  collision_grid_(collision_tree), shader_(shader) {
 
 	std::random_device rd;
 	rng_.seed(rd());
 	velocity_generator_ = std::uniform_real_distribution<float>(-0.2, 0.2);
 	position_generator_ = std::uniform_int_distribution<int>(octree->get_grid_cube_length(), 
-		octree->get_grid_cube_length() * (octree_->get_grid_resolution_per_side() - 1));
-	position_ = glm::vec3(position_generator_(rng_), 10.f, position_generator_(rng_));
+		octree->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - 1));
+	//position_ = glm::vec3(position_generator_(rng_), 10.f, position_generator_(rng_));
+	position_.y = 10.f;
+	SwarmUtils::print_vector("Robot position vector : ", position_);
+
+	collision_grid_->insert(id_, occupancy_grid_->map_to_grid(position_));
+	previous_position_ = position_;
 
 	//set_random_velocity();
 
-	mass_ = 1;
+	robot_radius_ = 10.f;
+	mass_ = 10;
 	max_velocity_ = 50;
 
 	//explore_constant_ = work_constant_ = 1.f;
@@ -322,6 +337,15 @@ Robot::Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<Swarm
 
 }
 
+void Robot::set_show_forces(bool show) {
+	show_forces_ = show;
+	//hack
+	glm::vec3 zero_force;
+	cv::Vec4f blue(0.f, 0.f, 1.f, 1.f);
+	visualize_force(0, zero_force, blue, false);
+	visualize_force(1, zero_force, blue, false);
+}
+
 void Robot::set_velocity(glm::vec3 velocity) {
 	velocity_ = velocity;
 }
@@ -331,11 +355,13 @@ void Robot::set_random_velocity() {
 	set_velocity(velocity);
 }
 
-void Robot::update_explored(const glm::vec3& position) {
+void Robot::update_explored() {
 	int explored = id_;
 	try {
-		glm::ivec3 grid_position = octree_->map_to_grid(position);
-		octree_->set(grid_position.x, grid_position.y, grid_position.z, explored);
+		glm::ivec3 grid_position = occupancy_grid_->map_to_grid(position_);
+		glm::ivec3 previous_grid_position = occupancy_grid_->map_to_grid(previous_position_);
+		occupancy_grid_->set(grid_position.x, grid_position.z, explored);
+		collision_grid_->update(id_, previous_grid_position, grid_position);
 	} catch (OutOfGridBoundsException& exception) {
 		// ignore
 	}
@@ -362,8 +388,8 @@ void Robot::calculate_stopping_force() {
 }
 
 glm::vec3 Robot::calculate_inward_force() {
-	glm::ivec3 mid_point(octree_->get_grid_resolution_per_side()/ 2, 0.f, octree_->get_grid_resolution_per_side()/ 2);
-	glm::vec3 distance = 100.f * glm::normalize(octree_->map_to_position(mid_point) - position_);
+	glm::ivec3 mid_point(occupancy_grid_->get_grid_resolution_per_side()/ 2, 0.f, occupancy_grid_->get_grid_resolution_per_side()/ 2);
+	glm::vec3 distance = 100.f * glm::normalize(occupancy_grid_->map_to_position(mid_point) - position_);
 	distance.y = 0.f;
 	return distance;
 }
@@ -374,16 +400,17 @@ bool Robot::is_velocity_non_zero() {
 
 }
 
-void Robot::handle_input() {
+void Robot::handle_input(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells) {
 	//handle robot case
 
 	// if at any point if the vel is 0
-	if (glm::length(velocity_) < 1e-3) {
+	float velocity_magnitude = glm::length(velocity_);
+	if (velocity_magnitude < 1e-3) {
 		change_state(STOPPED);
 	}
 
 #ifdef DEBUG
-	//std::cout << "Current Robot id and state : " << id_ << ", " <<  current_robot_state_ << std::endl;
+	std::cout << "Current Robot id and state : " << id_ << ", " <<  current_robot_state_ << std::endl;
 #endif
 
 	switch (current_robot_state_) {
@@ -394,22 +421,31 @@ void Robot::handle_input() {
 			//resultant_force_ = stopping_force_;
 			nullify_forces();
 			velocity_ = glm::vec3(0.f, 0.f, 0.f);
-			change_state(STOPPING);
+	        velocity_magnitude = glm::length(velocity_);
+			change_state(STOPPED);
+		}
+
+		if (velocity_magnitude > 0 &&
+			(is_colliding_with_interior(interior_cells) ||
+			is_colliding_with_robots(other_robots))) {
+			stop();
+			change_state(STOPPED);
+			//continue;
 		}
 
 		break;
 	}
-	case STOPPING: {
-		if (!is_velocity_non_zero()) {
-			nullify_forces();
-			velocity_ = glm::vec3(0.f, 0.f, 0.f);
-			change_state(STOPPED);
-		}
-		break;
-	}
+	//case STOPPING: {
+	//	if (!is_velocity_non_zero()) {
+	//		nullify_forces();
+	//		velocity_ = glm::vec3(0.f, 0.f, 0.f);
+	//		change_state(STOPPED);
+	//	}
+	//	break;
+	//}
 	case STOPPED: {
 		nullify_forces();
-		resultant_force_ = calculate_resultant_force();
+		resultant_force_ = calculate_resultant_force(other_robots);
 		change_state(MOVING);
 
 		break;
@@ -453,10 +489,10 @@ bool Robot::is_going_out_of_bounds(const glm::vec3& position, const glm::vec3& d
 
 
 		auto future_position = position +
-			glm::normalize(direction) * static_cast<float>(octree_->get_grid_cube_length());
+			glm::normalize(direction) * static_cast<float>(occupancy_grid_->get_grid_cube_length());
 		try {
-			auto grid_position = octree_->map_to_grid(future_position);
-			if (octree_->is_interior(grid_position)) {
+			auto grid_position = occupancy_grid_->map_to_grid(future_position);
+			if (occupancy_grid_->is_interior(grid_position)) {
 				return true;
 			}
 		}
@@ -467,6 +503,48 @@ bool Robot::is_going_out_of_bounds(const glm::vec3& position, const glm::vec3& d
 	return false;
 }
 
+std::vector<glm::vec3> Robot::get_interior_cell_positions(const std::vector<glm::ivec3>& grid_positions) const {
+	return occupancy_grid_->find_adjacent_interiors(grid_positions);
+}
+
+std::vector<int> Robot::get_other_robots(const std::vector<glm::ivec3>& grid_positions) const {
+	return collision_grid_->find_adjacent_robots(id_, grid_positions);
+	
+}
+
+void Robot::get_adjacent_cells(const glm::vec3& position, std::vector<glm::ivec3>& cells) const {
+	occupancy_grid_->get_adjacent_cells(occupancy_grid_->map_to_grid(position), cells);
+}
+
+bool Robot::is_colliding(const glm::vec3& other_object_position, float radius) const {
+	//(R0 - R1) ^ 2 <= (x0 - x1) ^ 2 + (y0 - y1) ^ 2 <= (R0 + R1) ^ 2
+
+	//float robot_radius = (occupancy_grid_->get_grid_cube_length() / 2.f) - 5;
+
+	glm::vec3 position_difference = other_object_position - position_;
+	if (glm::dot(position_difference, position_difference) <= std::pow(robot_radius_ + radius, 2)) {
+		return true;
+	}
+	return false;
+}
+
+bool Robot::is_colliding_with_interior(const std::vector<glm::vec3>& interior_positions) const {
+	for (auto& interior : interior_positions) {
+		if (is_colliding(interior, occupancy_grid_->get_grid_cube_length() / 2.f)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool Robot::is_colliding_with_robots(const std::vector<int>& robot_ids) const {
+	for (auto& robot_id : robot_ids) {
+		if (is_colliding(robots_[robot_id]->position_, robot_radius_)) {
+			return true;
+		}
+	}
+	return false;
+}
 
 void Robot::update(glm::mat4 global_model) {
 
@@ -474,7 +552,9 @@ void Robot::update(glm::mat4 global_model) {
 		std::chrono::system_clock::now().time_since_epoch());
 
 	if (last_updated_time_ <= 0) {
+
 		last_updated_time_ = current_timestamp.count();
+
 	} else {
 
 		auto delta_time = (current_timestamp.count() - last_updated_time_) / 1000.f;
@@ -493,22 +573,33 @@ void Robot::update(glm::mat4 global_model) {
 		if (accumulator_ > dt) {
 			// integrate
 			for (int s = 0; s < speedup; ++s) {
-				handle_input();
+				std::vector<glm::ivec3> adjacent_cells;
+				adjacent_cells.reserve(9);
+				get_adjacent_cells(position_, adjacent_cells);
+				auto robot_ids = get_other_robots(adjacent_cells);
+				auto interior_cells = get_interior_cell_positions(adjacent_cells);
+
+				handle_input(robot_ids, interior_cells);
 
 				// collision detection
 				// at any point if it's going to knock interior, stop
-				if (is_going_out_of_bounds(position_, velocity_)) {
-					stop();
-					continue;
+
+				if (current_robot_state_ == MOVING) {
 				}
+				//if (is_going_out_of_bounds(position_, velocity_)) {
+				//	stop();
+				//	continue;
+				//}
 
 				// calculate position, velocity through euler integration
 				glm::vec3 acceleration = resultant_force_ / mass_;
-				position_ += (velocity_ * (static_cast<float>(dt)));
 				velocity_ += acceleration * (static_cast<float>(dt));
+				position_ += (velocity_ * (static_cast<float>(dt)));
 
-				visualize_force(0, explore_force_, blue, false);
-				visualize_force(1, separation_force_, red, false);
+				if (show_forces_) {
+					visualize_force(0, explore_force_, blue, false);
+					visualize_force(1, separation_force_, red, false);
+				}
 
 				// update rendered mesh
 				for (auto& render_entity : mesh_) {
@@ -517,7 +608,9 @@ void Robot::update(glm::mat4 global_model) {
 					render_entity.set_model(translate_model * render_entity.get_initial_model());
 				}
 
-				update_explored(position_);
+				update_explored();
+
+				previous_position_ = position_;
 
 
 			}
@@ -564,7 +657,7 @@ void Robot::update(glm::mat4 global_model) {
 Robot& Robot::operator=(const Robot& other) {
 	if (this != &other) {
 		id_ = other.id_;
-		octree_ = other.octree_;
+		occupancy_grid_ = other.occupancy_grid_;
 
 		velocity_ = other.velocity_;
 		position_ = other.position_;
@@ -600,3 +693,4 @@ Robot& Robot::operator=(const Robot& other) {
 //bool Robot::operator=(const Robot& other) {
 //	return (other.id_ == id_);
 //}
+

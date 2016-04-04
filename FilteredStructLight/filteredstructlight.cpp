@@ -15,6 +15,7 @@ const char* FilteredStructLight::EXPLORATION_CONSTANT_LABEL = "exploration_const
 const char* FilteredStructLight::SEPERATION_CONSTANT_LABEL = "seperation_constant";
 const char* FilteredStructLight::GOTO_WORK_CONSTANT_LABEL = "goto_work_constant";
 const char* FilteredStructLight::SEPARATION_DISTANCE_LABEL = "separation_distance";
+const char* FilteredStructLight::SHOW_FORCES_LABEL = "show_forces";
 
 const char* FilteredStructLight::GRID_RESOLUTION_LABEL = "grid_resolution";
 const char* FilteredStructLight::GRID_LENGTH_LABEL = "grid_length";
@@ -96,6 +97,8 @@ void FilteredStructLight::save_swarm_settings() {
 	settings.setValue(BUILDING_OFFSET_Y_LABEL, y_spin_box_->value());
 	settings.setValue(BUILDING_OFFSET_Z_LABEL, z_spin_box_->value());
 	settings.setValue(SHOW_BUILDING_LABEL, (show_interior_->isChecked()));
+
+	settings.setValue(SHOW_FORCES_LABEL, (show_forces_->isChecked()));
 }
 
 
@@ -112,6 +115,7 @@ void FilteredStructLight::load_swarm_settings() {
 
 	grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
 	grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
+	emit grid_length_spin_box_->valueChanged(grid_length_spin_box_->value());
 
 	scale_spinbox_->setValue(settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toInt());
 	x_spin_box_->setValue(settings.value(BUILDING_OFFSET_X_LABEL, "0").toInt());
@@ -121,6 +125,11 @@ void FilteredStructLight::load_swarm_settings() {
 	Qt::CheckState show_interior = settings.value(SHOW_BUILDING_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
 	show_interior_->setCheckState(show_interior);
 	emit show_interior_->stateChanged(show_interior);
+
+	Qt::CheckState show_forces = settings.value(SHOW_FORCES_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
+	show_forces_->setCheckState(show_forces);
+	emit show_forces_->stateChanged(show_forces);
+
 }
 
 void FilteredStructLight::shutdown_cam_thread() {
@@ -597,7 +606,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	QHBoxLayout* robots_layout = new QHBoxLayout();
 
 	robots_spinbox_ = new QSpinBox(group_box);
-	robots_spinbox_->setRange(1, 50);
+	robots_spinbox_->setRange(1, 2000);
 	QLabel* robots_label = new QLabel("# of Robots");
 	robots_layout->addWidget(robots_label);
 	robots_layout->addWidget(robots_spinbox_);
@@ -650,7 +659,11 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	constants_group_box->setLayout(constants_layout);
 
+
 	group_box_layout->addWidget(constants_group_box);
+
+	show_forces_ = new QCheckBox("Show forces", group_box); 
+	group_box_layout->addWidget(show_forces_);
 
 	group_box->setLayout(group_box_layout);
 
@@ -660,13 +673,15 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_goto_work_constant);
 	connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_distance);
 
+	connect(show_forces_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_forces);
+
 }
 
 void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
 	QGridLayout* grid_box_layout = new QGridLayout();
 
-	QLabel* grid_resolution_per_side = new QLabel("Resolution (2^n^3)");
+	QLabel* grid_resolution_per_side = new QLabel("Resolution (4^n)");
 	grid_resolution_spin_box_ = new QSpinBox(group_box);
 	grid_resolution_spin_box_->setRange(1, 60000);
 	grid_resolution_spin_box_->setValue(16);
@@ -677,7 +692,7 @@ void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 	QLabel* grid_length_per_side = new QLabel("Length");
 	grid_length_spin_box_ = new QSpinBox(group_box);
 	grid_length_spin_box_->setRange(1, 100);
-	grid_length_spin_box_->setValue(20);
+	//grid_length_spin_box_->setValue(20);
 
 	grid_box_layout->addWidget(grid_length_per_side, 1, 0);
 	grid_box_layout->addWidget(grid_length_spin_box_, 1, 1);

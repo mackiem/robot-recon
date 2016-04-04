@@ -5,13 +5,14 @@ namespace mm {
 	template <class T> class Quadtree {
 	public:
 		bool set(unsigned int x, unsigned int y, T& object);
-		T at(unsigned int x, unsigned int y);
+		T at(unsigned int x, unsigned int y) const;
 		bool unset(unsigned int x, unsigned int y);
 		void set_empty_value(T empty_object);
-		Quadtree<T>(unsigned int resolution_per_side, T empty_value);
-		~Quadtree<T>();
+		Quadtree<T>(unsigned int resolution, T empty_value);
+		virtual ~Quadtree<T>();
+		int get_resolution_per_side() const;
 
-	private:
+	protected:
 		unsigned int resolution_;
 		T empty_value_;
 		int resolution_per_side_;
@@ -38,8 +39,8 @@ namespace mm {
 		bool delete_value(QuadNode* node, unsigned int x, unsigned int y);
 		bool create_nodes(QuadNode* node, int current_level, int resolution);
 		bool destroy_nodes(QuadNode* node);
-		bool find_node(QuadNode* node, unsigned int x, unsigned int y, QuadNode*& result_node);
-		void print_error(const char* error_msg);
+		bool find_node(QuadNode* node, unsigned int x, unsigned int y, QuadNode*& result_node) const;
+		void print_error(const char* error_msg) const;
 		void init_root(QuadNode*& root);
 	};
 };
@@ -50,15 +51,15 @@ bool mm::Quadtree<T>::set(unsigned x, unsigned y, T& object) {
 }
 
 template <class T>
-T mm::Quadtree<T>::at(unsigned x, unsigned y) {
+T mm::Quadtree<T>::at(unsigned x, unsigned y) const {
 	QuadNode* result_node;
 	bool success = find_node(root_, x, y, result_node);
 	if (success) {
 		T result_value = result_node->object_;
 		return result_value;
 	}
-	const char* error_msg = "Error state - no node found in location";
-	print_error(error_msg);
+	//const char* error_msg = "Error state - no node found in location";
+	//print_error(error_msg);
 	return empty_value_;
 }
 
@@ -102,6 +103,11 @@ mm::Quadtree<T>::~Quadtree() {
 }
 
 template <class T>
+int mm::Quadtree<T>::get_resolution_per_side() const {
+	return resolution_per_side_;
+}
+
+template <class T>
 bool mm::Quadtree<T>::insert_value(QuadNode* node, unsigned x, unsigned y, T& object) {
 	QuadNode* result_node;
 	bool success =	find_node(root_, x, y, result_node);
@@ -136,7 +142,9 @@ bool mm::Quadtree<T>::create_nodes(QuadNode* node, int current_level, int resolu
 	} else {
 		// make sure there are no leaks
 		for (char i = 0; i < 4; ++i) {
-			delete node->children[i];
+			//if (node->children[i]) {
+			//	delete node->children[i];
+			//}
 			node->children[i] = nullptr;
 		}
 
@@ -221,7 +229,7 @@ bool mm::Quadtree<T>::destroy_nodes(QuadNode* node) {
 }
 
 template <class T>
-bool mm::Quadtree<T>::find_node(QuadNode* node, unsigned x, unsigned y, QuadNode*& result_node) {
+bool mm::Quadtree<T>::find_node(QuadNode* node, unsigned x, unsigned y, QuadNode*& result_node) const {
 	// base case
 	if (node->children[QuadNode::NE] == nullptr) {
 		// this is the leaf node
@@ -271,7 +279,7 @@ bool mm::Quadtree<T>::find_node(QuadNode* node, unsigned x, unsigned y, QuadNode
 }
 
 template <class T>
-void mm::Quadtree<T>::print_error(const char* error_msg) {
+void mm::Quadtree<T>::print_error(const char* error_msg) const {
 #ifdef DEBUG
 		std::cout << error_msg << std::endl;
 #endif

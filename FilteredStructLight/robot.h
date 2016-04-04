@@ -4,7 +4,8 @@
 #include "fsl_common.h"
 #include <random>
 #include <stdexcept>
-#include "octree.h"
+//#include "octree.h"
+#include "swarmtree.h"
 #include <memory>
 
 
@@ -69,6 +70,8 @@ private:
 	glm::vec3 resultant_force_;
 	float distance_to_goal_threshold_;
 	glm::vec3 stopping_force_;
+	glm::vec3 previous_position_;
+	float robot_radius_;
 	glm::vec3 calculate_inward_force();
 	bool is_velocity_non_zero();
 	//int grid_cube_length_;
@@ -86,16 +89,19 @@ private:
 	bool is_going_out_of_bounds(const glm::vec3& position, const glm::vec3& direction) const;
 
 
-	std::shared_ptr<SwarmOctTree> octree_;
+	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
+	std::shared_ptr<SwarmCollisionTree> collision_grid_;
 	QGLShaderProgram* shader_;
+	bool show_forces_;
 
 public:
+	static int MAX_DEPTH;
 	void set_explore_constant(float constant);
 	void set_seperation_constant(float constant);
 	void set_work_constant(float constant);
 
 	void calculate_explore_force();
-	void calculate_separation_force();
+	void calculate_separation_force(const std::vector<int>& other_robots);
 	void calculate_work_force();
 	bool is_at_edge();
 	void stop();
@@ -103,22 +109,33 @@ public:
 	bool is_going_out_of_bounds() const;
 	void visualize_force(const int& mesh_id, const glm::vec3& force, const cv::Vec4f& color, bool initialize);
 
-	glm::vec3 calculate_resultant_force();
-	Robot(UniformLocations& locations, unsigned id, 
-		std::shared_ptr<SwarmOctTree> octree, 
+	glm::vec3 calculate_resultant_force(const std::vector<int>& other_robots);
+	Robot(UniformLocations& locations, unsigned id,
+		std::shared_ptr<SwarmOccupancyTree> octree,
+		std::shared_ptr<SwarmCollisionTree> collision_tree, 
 		double explore_constant, double seperation_constant, 
-		double work_constant, double seperation_distance, QGLShaderProgram* shader);
+		double work_constant, double seperation_distance, glm::vec3 position, QGLShaderProgram* shader);
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
+
+	void set_show_forces(bool show);
 	void set_velocity(glm::vec3 velocity);
 	void set_random_velocity();
-	void update_explored(const glm::vec3& position);
+	void update_explored();
 	void update_robots(const std::vector<std::shared_ptr<Robot>>& robots);
 	void calculate_stopping_force();
-	void handle_input();
+	void handle_input(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells);
 	//void handle_input();
 	virtual void update(glm::mat4 global_model);
 
 	Robot& operator=(const Robot& other);
+
+	std::vector<glm::vec3> get_interior_cell_positions(const std::vector<glm::ivec3>& grid_positions) const;
+	std::vector<int> get_other_robots(const std::vector<glm::ivec3>& grid_positions) const;
+	void get_adjacent_cells(const glm::vec3& position, std::vector<glm::ivec3>& cells) const;
+	bool is_colliding(const glm::vec3& other_object_position, float radius) const;
+	bool is_colliding_with_interior(const std::vector<glm::vec3>& interior_positions) const;
+	bool is_colliding_with_robots(const std::vector<int>& robot_ids) const;
+
 
 	// calculate forces, 3 types of forces for now
 	// calculate acceleration and integrate for velocity and position
