@@ -8,6 +8,19 @@
 #include "swarmtree.h"
 #include <memory>
 
+struct GridOverlay : public VisObject {
+	std::shared_ptr<SwarmOccupancyTree> occupany_grid_;
+	unsigned int grid_resolution_per_side_;
+	float grid_length_;
+	QGLShaderProgram* shader_;
+	std::map<int, cv::Vec4f> robot_color_map_;
+	GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOccupancyTree> octree, unsigned int grid_resolution, 
+		float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
+
+	void update_grid_position(const glm::ivec3& position);
+	void create_mesh(bool initialize);
+	void update(glm::mat4 global_model) override;
+};
 
 class Robot : public VisObject {
 
@@ -59,7 +72,7 @@ private:
 	// seperation force requirements
 	//glm::vec3 center_of_mass_;
 	std::vector<std::shared_ptr<Robot>> robots_;
-	float minimum_seperation_distance_;
+	float minimum_separation_distance_;
 	float separation_distance_threshold_;
 
 	// exploration force requirements
@@ -67,13 +80,12 @@ private:
 	float mass_;
 	float max_velocity_;
 	bool travelling_in_bound_;
-	glm::vec3 resultant_force_;
+	glm::vec3 resultant_direction_;
 	float distance_to_goal_threshold_;
 	glm::vec3 stopping_force_;
 	glm::vec3 previous_position_;
 	float robot_radius_;
-	glm::vec3 calculate_inward_force();
-	bool is_velocity_non_zero();
+	GridOverlay* overlay_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;
@@ -86,7 +98,6 @@ private:
 	// kinematics
 	glm::vec3 calculate_force(glm::vec3 move_to_position);
 	glm::vec3 calculate_force(glm::vec3 move_to_position, float constant) const;
-	bool is_going_out_of_bounds(const glm::vec3& position, const glm::vec3& direction) const;
 
 
 	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
@@ -97,19 +108,16 @@ private:
 public:
 	static int MAX_DEPTH;
 	void set_explore_constant(float constant);
-	void set_seperation_constant(float constant);
+	void set_separation_constant(float constant);
 	void set_work_constant(float constant);
+	void set_grid_overlay(GridOverlay* overlay);
 
 	void calculate_explore_force();
-	void calculate_separation_force(const std::vector<int>& other_robots);
+	void calculate_separation_force(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells);
 	void calculate_work_force();
-	bool is_at_edge();
-	void stop();
-	void nullify_forces();
-	bool is_going_out_of_bounds() const;
 	void visualize_force(const int& mesh_id, const glm::vec3& force, const cv::Vec4f& color, bool initialize);
 
-	glm::vec3 calculate_resultant_force(const std::vector<int>& other_robots);
+	glm::vec3 calculate_resultant_direction(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells);
 	Robot(UniformLocations& locations, unsigned id,
 		std::shared_ptr<SwarmOccupancyTree> octree,
 		std::shared_ptr<SwarmCollisionTree> collision_tree, 
@@ -118,12 +126,7 @@ public:
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
 
 	void set_show_forces(bool show);
-	void set_velocity(glm::vec3 velocity);
-	void set_random_velocity();
-	void update_explored();
 	void update_robots(const std::vector<std::shared_ptr<Robot>>& robots);
-	void calculate_stopping_force();
-	void handle_input(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells);
 	//void handle_input();
 	virtual void update(glm::mat4 global_model);
 

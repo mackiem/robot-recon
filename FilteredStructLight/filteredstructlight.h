@@ -64,6 +64,7 @@ private:
 	static const char* BUILDING_OFFSET_Y_LABEL;
 	static const char* BUILDING_OFFSET_Z_LABEL;
 	static const char* SHOW_BUILDING_LABEL;
+	static const char* INTERIOR_MODEL_FILENAME;
 	static const int MAX_VIDEO_NO;
 
 	QString recon_settings_filepath_;
@@ -148,7 +149,7 @@ private:
 	QDoubleSpinBox* exploration_constant_;
 	QDoubleSpinBox* separation_constant_;
 	QDoubleSpinBox* goto_work_constant_;
-	QSpinBox* scale_spinbox_;
+	QDoubleSpinBox* scale_spinbox_;
 	QSpinBox* x_spin_box_;
 	QSpinBox* y_spin_box_;
 	QSpinBox* z_spin_box_;
@@ -159,6 +160,8 @@ private:
 	QDoubleSpinBox* separation_distance_;
 
 	QCheckBox* show_forces_;
+	QLineEdit* model_filename_;
+	QPushButton* model_filename_browse_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();

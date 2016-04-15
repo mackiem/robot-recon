@@ -461,8 +461,8 @@ void SwarmOccupancyTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
 			set(grid_position.x, grid_position.z, INTERIOR_MARK);
 			//SwarmUtils::print_vector("mark interior A", a);
 			//SwarmUtils::print_vector("mark interior B", b);
-			SwarmUtils::print_vector("marking grid position", grid_position);
-			SwarmUtils::print_vector("marking position", position);
+			//SwarmUtils::print_vector("marking grid position", grid_position);
+			//SwarmUtils::print_vector("marking position", position);
 		} catch (OutOfGridBoundsException& ex) {
 			// ignore
 		}

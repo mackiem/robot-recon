@@ -25,23 +25,13 @@ public:
 	virtual void update(glm::mat4 global_model);
 };
 
-struct GridOverlay : public VisObject {
-	std::shared_ptr<SwarmOccupancyTree> occupany_grid_;
-	unsigned int grid_resolution_per_side_;
-	float grid_length_;
-	QGLShaderProgram* shader_;
-	std::map<int, cv::Vec4f> robot_color_map_;
-	GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOccupancyTree> octree, unsigned int grid_resolution, 
-		float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
-
-	void create_mesh(bool initialize);
-	void update(glm::mat4 global_model) override;
-};
 
 private:
 	enum Formation {
 		GRID = 0,
-		RANDOM = 1
+		RANDOM = 1,
+		SQUARE,
+		SQUARE_CLOSE_TO_EDGE
 	};
 
 	std::shared_ptr<SwarmOccupancyTree> occupany_grid_;
@@ -59,7 +49,6 @@ private:
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
 	static const std::string OCCUPANCY_GRID_OVERLAY_NAME;
-	static const int OCCUPANCY_GRID_HEIGHT;
 	std::vector<std::shared_ptr<Robot>> robots_;
 	std::vector<Light> lights_;
 	QTimer* timer_;
@@ -89,7 +78,7 @@ private:
 	//grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
 	//grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
 
-	float interior_scale_;
+	double interior_scale_;
 	glm::vec3 interior_offset_;
 	bool show_interior_;
 	//scale_spinbox_->setValue(settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toInt());
@@ -106,6 +95,7 @@ private:
 	//VisObject grid_overlay_;
 
 protected:
+
 	void load_inital_models() override;
 	void initialize_position();
 	virtual void set_shaders() override;
@@ -121,6 +111,7 @@ protected:
 	void quad_tree_test();
 
 public:
+	static const int OCCUPANCY_GRID_HEIGHT;
 	SwarmViewer(const QGLFormat& format, QWidget* parent = 0);
 	void create_light_model(RenderMesh& light_mesh);
 	void create_robot_model(RenderMesh& light_mesh, cv::Vec4f color);
@@ -138,7 +129,7 @@ void set_separation_distance(float distance);
 void set_grid_resolution(int grid_resolution);
 void set_grid_length(int grid_length);
 
-void set_interior_scale(int scale);
+void set_interior_scale(double scale);
 void set_interior_offset(glm::vec3 offset);
 
 void set_exploration_constant(double constant);
@@ -150,4 +141,6 @@ void set_show_interior(int show);
 void reset_sim();
 
 void set_show_forces(int show);
+
+void set_model_filename(QString filename);
 };

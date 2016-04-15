@@ -24,6 +24,7 @@ const char* FilteredStructLight::BUILDING_OFFSET_X_LABEL = "interior_offset_x";
 const char* FilteredStructLight::BUILDING_OFFSET_Y_LABEL = "interior_offset_y";
 const char* FilteredStructLight::BUILDING_OFFSET_Z_LABEL = "interior_offset_z";
 const char* FilteredStructLight::SHOW_BUILDING_LABEL = "show_interior";
+const char* FilteredStructLight::INTERIOR_MODEL_FILENAME = "interior_model_filename";
 
 
 FilteredStructLight::FilteredStructLight(QWidget *parent)
@@ -97,6 +98,7 @@ void FilteredStructLight::save_swarm_settings() {
 	settings.setValue(BUILDING_OFFSET_Y_LABEL, y_spin_box_->value());
 	settings.setValue(BUILDING_OFFSET_Z_LABEL, z_spin_box_->value());
 	settings.setValue(SHOW_BUILDING_LABEL, (show_interior_->isChecked()));
+	settings.setValue(INTERIOR_MODEL_FILENAME, model_filename_->text());
 
 	settings.setValue(SHOW_FORCES_LABEL, (show_forces_->isChecked()));
 }
@@ -117,7 +119,11 @@ void FilteredStructLight::load_swarm_settings() {
 	grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
 	emit grid_length_spin_box_->valueChanged(grid_length_spin_box_->value());
 
-	scale_spinbox_->setValue(settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toInt());
+	model_filename_->setText(settings.value(INTERIOR_MODEL_FILENAME, "interior/house interior.obj").toString());
+	emit model_filename_->textChanged(model_filename_->text());
+
+
+	scale_spinbox_->setValue(settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toDouble());
 	x_spin_box_->setValue(settings.value(BUILDING_OFFSET_X_LABEL, "0").toInt());
 	y_spin_box_->setValue(settings.value(BUILDING_OFFSET_Y_LABEL, "0").toInt());
 	z_spin_box_->setValue(settings.value(BUILDING_OFFSET_Z_LABEL, "0").toInt());
@@ -528,9 +534,30 @@ void FilteredStructLight::add_camera_info_tab(QTabWidget* tab_widget, std::vecto
 void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
 
+
+	model_filename_ = new QLineEdit(group_box);
+	model_filename_browse_ = new QPushButton("...", group_box);
+	model_filename_browse_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+	model_filename_browse_->setMaximumSize(30, 30);
+
+	QHBoxLayout* filename_layout = new QHBoxLayout();
+	filename_layout->addWidget(model_filename_);
+	filename_layout->addWidget(model_filename_browse_);
+
+	connect(model_filename_browse_, &QPushButton::clicked, this, 
+		[&] {
+		QString selected_filename = QFileDialog::getOpenFileName(this, QString("Open Model"), QDir::currentPath(),
+			"Video Files(*.obj)");
+		model_filename_->setText(selected_filename);
+	});
+
+
+	connect(model_filename_, &QLineEdit::textChanged, swarm_viewer_, 
+		&SwarmViewer::set_model_filename);
+
 	QHBoxLayout* scale_layout = new QHBoxLayout();
-	scale_spinbox_ = new QSpinBox(group_box);
-	scale_spinbox_->setRange(1, 50);
+	scale_spinbox_ = new QDoubleSpinBox(group_box);
+	scale_spinbox_->setRange(0.0001, 50);
 	//scale_spinbox_->setValue(10);
 	QLabel* scale_label = new QLabel("Scale", group_box);
 	scale_layout->addWidget(scale_label);
@@ -541,17 +568,17 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 
 	QLabel* x_offset = new QLabel("x", offset_group_box);
 	x_spin_box_ = new QSpinBox(offset_group_box);
-	x_spin_box_->setRange(0, 100);
+	x_spin_box_->setRange(0, 1000);
 	x_spin_box_->setSingleStep(1);
 
 	QLabel* y_offset = new QLabel("y", offset_group_box);
 	y_spin_box_ = new QSpinBox(offset_group_box);
-	y_spin_box_->setRange(0, 100);
+	y_spin_box_->setRange(0, 1000);
 	y_spin_box_->setSingleStep(1);
 
 	QLabel* z_offset = new QLabel("z", offset_group_box);
 	z_spin_box_ = new QSpinBox(offset_group_box);
-	z_spin_box_->setRange(0, 100);
+	z_spin_box_->setRange(0, 1000);
 	z_spin_box_->setSingleStep(1);
 
 	offset_layout->addWidget(x_offset, 0, 0);
@@ -565,6 +592,7 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 
 	show_interior_ = new QCheckBox("Show Interior", group_box);
 
+	group_box_layout->addLayout(filename_layout);
 	group_box_layout->addLayout(scale_layout);
 	group_box_layout->addWidget(offset_group_box);
 	group_box_layout->addWidget(show_interior_);
@@ -592,7 +620,7 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	}
 	);
 
-	connect(scale_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_interior_scale);
+	connect(scale_spinbox_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_interior_scale);
 
 
 	connect(show_interior_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_interior);
@@ -618,6 +646,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 
 	double max_constant_value = 100.0;
+
 
 	QLabel* exploration_label = new QLabel("Exploration", group_box);
 	exploration_constant_ = new QDoubleSpinBox(group_box);
@@ -842,8 +871,8 @@ void FilteredStructLight::connect_widgets_to_swarm_save_settings() {
 	}
 	);
 
-	connect(scale_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
-		[&](int value)
+	connect(scale_spinbox_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
 	{
 		save_swarm_settings();
 	}
@@ -852,6 +881,14 @@ void FilteredStructLight::connect_widgets_to_swarm_save_settings() {
 	connect(show_interior_, &QCheckBox::stateChanged, 
 		this,
 		[&](int value)
+	{
+		save_swarm_settings();
+	}
+	);
+
+	connect(model_filename_, &QLineEdit::textChanged, 
+		this,
+		[&](const QString & text)
 	{
 		save_swarm_settings();
 	}

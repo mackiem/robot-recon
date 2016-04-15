@@ -6,8 +6,13 @@
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
+#include "swarmutils.h"
 
-const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/house interior.obj";
+//const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/house interior.obj";
+//const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/box-floor-plan.obj";
+
+const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/l-shape-floor-plan.obj";
+
 const int SwarmViewer::DEFAULT_NO_OF_ROBOTS = 3;
 
 #define NO_OF_LIGHTS 2
@@ -29,18 +34,18 @@ void SwarmViewer::Light::update(glm::mat4 global_model) {
 	glUniform3fv(light_position_location_, 1, glm::value_ptr(world_position));
 }
 
-SwarmViewer::GridOverlay::GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOccupancyTree> octree, 
+GridOverlay::GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOccupancyTree> octree, 
 	unsigned grid_resolution, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader) : 
 	VisObject(locations), occupany_grid_(octree), grid_resolution_per_side_(grid_resolution), grid_length_(grid_length), robot_color_map_(robot_color_map), shader_(shader)  {
 	
 	create_mesh(true);
 }
 
-void SwarmViewer::GridOverlay::create_mesh(bool initialize) {
+void GridOverlay::create_mesh(bool initialize) {
 
 	if (initialize) {
 		int grid_length_per_side = grid_resolution_per_side_ / 2;
-		int y = OCCUPANCY_GRID_HEIGHT;
+		int y = SwarmViewer::OCCUPANCY_GRID_HEIGHT;
 
 		VertexBufferData bufferdata;
 
@@ -109,8 +114,26 @@ void SwarmViewer::GridOverlay::create_mesh(bool initialize) {
 
 }
 
-void SwarmViewer::GridOverlay::update(glm::mat4 global_model) {
-	create_mesh(false);
+void GridOverlay::update(glm::mat4 global_model) {
+	//create_mesh(false);
+}
+
+void GridOverlay::update_grid_position(const glm::ivec3& position) {
+	RenderEntity& entity = mesh_[0];
+	std::vector<cv::Vec4f> fill_color(6);
+	for (int i = 0; i < 6; ++i) {
+		fill_color[i] = cv::Vec4f(160.f, 32.f, 240.f, 255.f);
+		fill_color[i] /= 255.f;
+	}
+
+
+	glBindVertexArray(entity.vao_);
+	glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
+	glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (position.x * grid_resolution_per_side_) + position.z) * sizeof(cv::Vec4f), 
+		6 * sizeof(cv::Vec4f), &fill_color[0]);
+
+	glBindVertexArray(0);
+
 }
 
 void SwarmViewer::load_inital_models() {
@@ -326,7 +349,9 @@ void SwarmViewer::load_interior_model() {
 	bufferdata.uvs = uvs;
 	bufferdata.count = count;
 
-	//derive_floor_plan(bufferdata, scale, interior_offset_);
+	if (interior_model_filename_.compare("") > 0) {
+		derive_floor_plan(bufferdata, scale, interior_offset_);
+	}
 
 	default_vis_objects_.push_back(interior_model_object);
 
@@ -340,6 +365,9 @@ void SwarmViewer::change_to_top_down_view() {
 	look_at_x_ = 0.f;
 	look_at_y_ = 0.f;
 
+	m_xRot = 0.f;
+	m_yRot = 0.f;
+	m_zRot = 0.f;
 
 	camera_distance_ = 0.f;
 	float length = grid_resolution_per_side_ * grid_length_;
@@ -455,6 +483,11 @@ void SwarmViewer::reset_sim() {
 		occupany_grid_, grid_resolution_per_side_, grid_length_, robot_color_map_, &m_shader));
 	reset_vis_objects_.push_back(overlay);
 
+	for (auto& robot : robots_) {
+		robot->set_grid_overlay(overlay.get());
+	}
+
+
 
 }
 
@@ -463,6 +496,10 @@ void SwarmViewer::set_show_forces(int show) {
 	for (auto& robot : robots_) {
 		robot->set_show_forces(show_forces_);
 	}
+}
+
+void SwarmViewer::set_model_filename(QString filename) {
+	interior_model_filename_ = filename.toStdString();
 }
 
 SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer(format, parent)
@@ -562,8 +599,9 @@ void SwarmViewer::create_lights() {
 std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 	std::vector<glm::vec3> robot_positions;
 	switch (type) {
-	case GRID: {
-		int no_of_robots_per_side = std::sqrt(no_of_robots_);
+	case SQUARE: {
+
+		int no_of_robots_per_side = ((no_of_robots_ - 4)/ 4.f) + 2;
 		glm::ivec3 robots_mid_point((no_of_robots_per_side / 2) - 1, 0, (no_of_robots_per_side / 2) - 1);
 		glm::ivec3 mid_point((grid_resolution_per_side_ / 2) - 1, 0, (grid_resolution_per_side_ / 2) - 1);
 		glm::ivec3 offset = mid_point - robots_mid_point;
@@ -575,8 +613,68 @@ std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 					if (!occupany_grid_->is_out_of_bounds(robot_grid_position)
 						&& !occupany_grid_->is_interior(robot_grid_position)) {
 						robot_positions.push_back(occupany_grid_->map_to_position(robot_grid_position));
+						//SwarmUtils::print_vector("Grid Pos : ", robot_grid_position);
 					}
 				}
+			}
+		}
+
+		int z = no_of_robots_per_side;
+		int x = 0;
+
+		std::cout << "No of robots : " << no_of_robots_per_side << " " << robot_positions.size() << std::endl;
+		no_of_robots_ = robot_positions.size();
+		break;
+	}
+	case SQUARE_CLOSE_TO_EDGE: {
+		//int no_of_robots_per_side = ((no_of_robots_ - 4)/ 4.f) + 2;
+		//glm::ivec3 robots_mid_point((no_of_robots_per_side / 2) - 1, 0, (no_of_robots_per_side / 2) - 1);
+		//glm::ivec3 mid_point((grid_resolution_per_side_ / 2) - 1, 0, (grid_resolution_per_side_ / 2) - 1);
+		//glm::ivec3 offset = mid_point - robots_mid_point;
+
+		int distance_from_edge = 5;
+		
+		for (int x = 0; x < grid_resolution_per_side_ - 1; ++x) {
+			for (int z = 0; z < grid_resolution_per_side_ - 1; z++) {
+				if (((x - distance_from_edge == 0) || (grid_resolution_per_side_ - 1 - x - distance_from_edge == 0)) && 
+					((z - distance_from_edge >= 0) && (grid_resolution_per_side_ - 1 - z - distance_from_edge >= 0)) ||
+					(((z - distance_from_edge == 0) || (grid_resolution_per_side_ - 1 - z - distance_from_edge == 0)) && 
+					((x - distance_from_edge >= 0) && (grid_resolution_per_side_ - 1 - x - distance_from_edge >= 0)))) {
+
+					glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z); // +offset;
+					if (!occupany_grid_->is_out_of_bounds(robot_grid_position)
+						&& !occupany_grid_->is_interior(robot_grid_position)) {
+						if (robot_positions.size() < no_of_robots_) {
+							robot_positions.push_back(occupany_grid_->map_to_position(robot_grid_position));
+						}
+						//SwarmUtils::print_vector("Grid Pos : ", robot_grid_position);
+					}
+				}
+			}
+		}
+
+		//int z = no_of_robots_per_side;
+		//int x = 0;
+
+		std::cout << "No of robots : " << robot_positions.size() << std::endl;
+		no_of_robots_ = robot_positions.size();
+		break;
+	}
+	case GRID: {
+		int no_of_robots_per_side = std::sqrt(no_of_robots_);
+		glm::ivec3 robots_mid_point((no_of_robots_per_side / 2) - 1, 0, (no_of_robots_per_side / 2) - 1);
+		glm::ivec3 mid_point((grid_resolution_per_side_ / 2) - 1, 0, (grid_resolution_per_side_ / 2) - 1);
+		glm::ivec3 offset = mid_point - robots_mid_point;
+		
+		for (int x = 0; x < no_of_robots_per_side; ++x) {
+			for (int z = 0; z < no_of_robots_per_side; z++) {
+				//if ((z == 0 || z == (no_of_robots_per_side - 1)) || (x == 0 || x == no_of_robots_per_side - 1)) {
+					glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z) + offset;
+					if (!occupany_grid_->is_out_of_bounds(robot_grid_position)
+						&& !occupany_grid_->is_interior(robot_grid_position)) {
+						robot_positions.push_back(occupany_grid_->map_to_position(robot_grid_position));
+					}
+				//}
 			}
 		}
 
@@ -594,6 +692,7 @@ std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 		//	}
 		//}
 		break;
+
 	}
 	case RANDOM: break;
 	default: break;
@@ -611,7 +710,7 @@ void SwarmViewer::create_robots() {
 	create_robot_model(robot_mesh, color);
 
 
-	std::vector<glm::vec3> robot_positions = create_starting_formation(GRID);
+	std::vector<glm::vec3> robot_positions = create_starting_formation(SQUARE_CLOSE_TO_EDGE);
 	assert(no_of_robots_ == robot_positions.size());
 
 	for (int i = 0; i < no_of_robots_; ++i) {
@@ -726,7 +825,7 @@ void SwarmViewer::set_grid_length(int grid_length) {
 	grid_length_ = grid_length;
 }
 
-void SwarmViewer::set_interior_scale(int scale) {
+void SwarmViewer::set_interior_scale(double scale) {
 	interior_scale_ = scale;
 }
 

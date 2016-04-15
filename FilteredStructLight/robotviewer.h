@@ -62,6 +62,10 @@ protected:
 	float fovy_;
 	float camera_distance_;
 
+	float m_xRot;
+	float m_yRot;
+	float m_zRot;
+
 	bool prepareShaderProgram(const QString& vertexShaderPath,
 		const QString& fragmentShaderPath);
 	bool prepareShaderProgram(const QString& vertexShaderPath, const QString& fragmentShaderPath, QGLShaderProgram& shader);
@@ -93,9 +97,6 @@ private:
 	std::vector<cv::Vec3f> points_;
 	void gen_texture(GLuint& texture_id, cv::Mat& remapped_img_for_texture);
 
-	float m_xRot;
-	float m_yRot;
-	float m_zRot;
 	QPoint m_lastPos;
 
 	void setXRotation(float angle);

@@ -22,11 +22,11 @@ struct VertexBufferData {
 
 class RenderEntity {
 
-private:
+public:
 	GLenum primitive_;
 	QGLShaderProgram* shader_;
 	GLuint vao_;
-	GLuint vbo_[2];
+	GLuint vbo_[5];
 	GLint count_;
 	GLint model_loc_;
 	bool using_indices_;
@@ -34,7 +34,6 @@ private:
 	std::vector<int> element_offset_;
 	std::vector<int> element_base_index_;
 
-public:
 	enum Type {
 		Plane = 0,
 		Points = 1,
