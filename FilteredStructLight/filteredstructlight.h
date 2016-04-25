@@ -53,7 +53,10 @@ private:
 	static const char* VELOCITY_LABEL;
 	static const char* ROBOTS_NO_LABEL;
 	static const char* EXPLORATION_CONSTANT_LABEL;
-	static const char* SEPERATION_CONSTANT_LABEL;
+	static const char* SEPARATION_CONSTANT_LABEL;
+	static const char* ALIGNMENT_CONSTANT_LABEL;
+	static const char* CLUSTER_CONSTANT_LABEL;
+	static const char* PERIMETER_CONSTANT_LABEL;
 	static const char* GOTO_WORK_CONSTANT_LABEL;
 	static const char* SEPARATION_DISTANCE_LABEL;
 	static const char* SHOW_FORCES_LABEL;
@@ -65,6 +68,7 @@ private:
 	static const char* BUILDING_OFFSET_Z_LABEL;
 	static const char* SHOW_BUILDING_LABEL;
 	static const char* INTERIOR_MODEL_FILENAME;
+	static const char* SWARM_CONFIG_FILENAME_LABEL;
 	static const int MAX_VIDEO_NO;
 
 	QString recon_settings_filepath_;
@@ -148,6 +152,8 @@ private:
 	QSpinBox* robots_spinbox_;
 	QDoubleSpinBox* exploration_constant_;
 	QDoubleSpinBox* separation_constant_;
+	QDoubleSpinBox* cluster_constant_;
+	QDoubleSpinBox* perimeter_constant_;
 	QDoubleSpinBox* goto_work_constant_;
 	QDoubleSpinBox* scale_spinbox_;
 	QSpinBox* x_spin_box_;
@@ -162,6 +168,11 @@ private:
 	QCheckBox* show_forces_;
 	QLineEdit* model_filename_;
 	QPushButton* model_filename_browse_;
+	QLineEdit* swarm_config_filename_;
+	QPushButton* swarm_config_filename_browse_;
+	QPushButton* load_swarm_config_button_;
+	QPushButton* save_swarm_config_button_;
+	QDoubleSpinBox* alignment_constant_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();
@@ -188,12 +199,15 @@ private:
 	void add_robot_calibration_tab(QTabWidget* tab_widget);
 
 	std::vector<std::string> frame_filenames_;
+	void connect_load_filename_to_save_settings();
 
 private slots:
 	void update_images(int frame_no);
 	void save_recon_settings();
-	void save_swarm_settings();
-	void load_swarm_settings();
+	void save_swarm_settings(QString swarm_conf_filepath);
+	void load_swarm_settings(QString swarm_conf_filepath);
+	void load_swarm_config_settings();
+	void save_swarm_config_settings();
 public slots:
 	void start_reconstruction_sequence();
 	void handle_frame_filenames(std::vector<std::string> image_list);

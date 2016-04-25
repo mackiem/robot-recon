@@ -12,7 +12,10 @@ const char* FilteredStructLight::VELOCITY_LABEL = "velocity";
 
 const char* FilteredStructLight::ROBOTS_NO_LABEL = "robots_no";
 const char* FilteredStructLight::EXPLORATION_CONSTANT_LABEL = "exploration_constant";
-const char* FilteredStructLight::SEPERATION_CONSTANT_LABEL = "seperation_constant";
+const char* FilteredStructLight::SEPARATION_CONSTANT_LABEL = "separation_constant";
+const char* FilteredStructLight::ALIGNMENT_CONSTANT_LABEL = "alignment_constant";
+const char* FilteredStructLight::CLUSTER_CONSTANT_LABEL = "cluster_constant";
+const char* FilteredStructLight::PERIMETER_CONSTANT_LABEL = "perimeter_constant";
 const char* FilteredStructLight::GOTO_WORK_CONSTANT_LABEL = "goto_work_constant";
 const char* FilteredStructLight::SEPARATION_DISTANCE_LABEL = "separation_distance";
 const char* FilteredStructLight::SHOW_FORCES_LABEL = "show_forces";
@@ -25,6 +28,8 @@ const char* FilteredStructLight::BUILDING_OFFSET_Y_LABEL = "interior_offset_y";
 const char* FilteredStructLight::BUILDING_OFFSET_Z_LABEL = "interior_offset_z";
 const char* FilteredStructLight::SHOW_BUILDING_LABEL = "show_interior";
 const char* FilteredStructLight::INTERIOR_MODEL_FILENAME = "interior_model_filename";
+
+const char* FilteredStructLight::SWARM_CONFIG_FILENAME_LABEL = "swarm_config_filename";
 
 
 FilteredStructLight::FilteredStructLight(QWidget *parent)
@@ -80,12 +85,15 @@ void FilteredStructLight::save_recon_settings() {
 	settings.setValue(VELOCITY_LABEL, velocity_line_edit_->text());
 }
 
-void FilteredStructLight::save_swarm_settings() {
-	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
+void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
+	QSettings settings(swarm_conf_filepath, QSettings::IniFormat);
 
 	settings.setValue(ROBOTS_NO_LABEL, robots_spinbox_->value());
 	settings.setValue(EXPLORATION_CONSTANT_LABEL, exploration_constant_->value());
-	settings.setValue(SEPERATION_CONSTANT_LABEL, separation_constant_->value());
+	settings.setValue(SEPARATION_CONSTANT_LABEL, separation_constant_->value());
+	settings.setValue(ALIGNMENT_CONSTANT_LABEL, alignment_constant_->value());
+	settings.setValue(CLUSTER_CONSTANT_LABEL, cluster_constant_->value());
+	settings.setValue(PERIMETER_CONSTANT_LABEL, perimeter_constant_->value());
 	settings.setValue(GOTO_WORK_CONSTANT_LABEL, goto_work_constant_->value());
 
 	settings.setValue(SEPARATION_DISTANCE_LABEL, separation_distance_->value());
@@ -104,14 +112,23 @@ void FilteredStructLight::save_swarm_settings() {
 }
 
 
-void FilteredStructLight::load_swarm_settings() {
-	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
+void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
+	QSettings settings(swarm_conf_filepath, QSettings::IniFormat);
 	
 	robots_spinbox_->setValue(settings.value(ROBOTS_NO_LABEL, "10").toInt());
 	emit robots_spinbox_->valueChanged(robots_spinbox_->value());
 	exploration_constant_->setValue(settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
-	separation_constant_->setValue(settings.value(SEPERATION_CONSTANT_LABEL, "1").toDouble());
+	emit exploration_constant_->valueChanged(exploration_constant_->value());
+	separation_constant_->setValue(settings.value(SEPARATION_CONSTANT_LABEL, "1").toDouble());
+	emit separation_constant_->valueChanged(separation_constant_->value());
+	alignment_constant_->setValue(settings.value(ALIGNMENT_CONSTANT_LABEL, "1").toDouble());
+	emit alignment_constant_->valueChanged(alignment_constant_->value());
+	cluster_constant_->setValue(settings.value(CLUSTER_CONSTANT_LABEL, "1").toDouble());
+	emit cluster_constant_->valueChanged(cluster_constant_->value());
+	perimeter_constant_->setValue(settings.value(PERIMETER_CONSTANT_LABEL, "1").toDouble());
+	emit perimeter_constant_->valueChanged(perimeter_constant_->value());
 	goto_work_constant_->setValue(settings.value(GOTO_WORK_CONSTANT_LABEL, "1").toDouble());
+	emit goto_work_constant_->valueChanged(goto_work_constant_->value());
 	separation_distance_->setValue(settings.value(SEPARATION_DISTANCE_LABEL, "100").toDouble());
 	emit separation_distance_->valueChanged(separation_distance_->value());
 
@@ -135,6 +152,25 @@ void FilteredStructLight::load_swarm_settings() {
 	Qt::CheckState show_forces = settings.value(SHOW_FORCES_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
 	show_forces_->setCheckState(show_forces);
 	emit show_forces_->stateChanged(show_forces);
+
+}
+
+void FilteredStructLight::load_swarm_config_settings() {
+	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
+	const char * default_filename = "swarm-config/default_swarm_config.ini";
+	QString filename = settings.value(SWARM_CONFIG_FILENAME_LABEL, default_filename).toString();
+	QFile file(filename);
+	if (!file.exists()) {
+		filename = default_filename;
+	}
+
+	swarm_config_filename_->setText(filename);
+}
+
+void FilteredStructLight::save_swarm_config_settings() {
+	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
+
+	settings.setValue(SWARM_CONFIG_FILENAME_LABEL, swarm_config_filename_->text());
 
 }
 
@@ -546,7 +582,7 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 
 	connect(model_filename_browse_, &QPushButton::clicked, this, 
 		[&] {
-		QString selected_filename = QFileDialog::getOpenFileName(this, QString("Open Model"), QDir::currentPath(),
+		QString selected_filename = QFileDialog::getOpenFileName(this, QString("Open Model"), "interior",
 			"Video Files(*.obj)");
 		model_filename_->setText(selected_filename);
 	});
@@ -645,7 +681,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	QGridLayout* constants_layout = new QGridLayout();
 
 
-	double max_constant_value = 100.0;
+	double max_constant_value = 1000.0;
 
 
 	QLabel* exploration_label = new QLabel("Exploration", group_box);
@@ -658,24 +694,57 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	constants_layout->addWidget(exploration_constant_, 0, 1);
 
 
-	QLabel* seperation_label = new QLabel("Seperation", group_box);
+	QLabel* separation_label = new QLabel("Separation", group_box);
 	separation_constant_ = new QDoubleSpinBox(group_box);
 	separation_constant_->setMinimum(0.0);
 	separation_constant_->setMaximum(max_constant_value);
 	separation_constant_->setSingleStep(0.1);
 
-	constants_layout->addWidget(seperation_label, 1, 0);
+	constants_layout->addWidget(separation_label, 1, 0);
 	constants_layout->addWidget(separation_constant_, 1, 1);
+
+	QLabel* alignment_label = new QLabel("Alignment", group_box);
+	alignment_constant_ = new QDoubleSpinBox(group_box);
+	alignment_constant_->setMinimum(0.0);
+	alignment_constant_->setMaximum(max_constant_value);
+	alignment_constant_->setSingleStep(0.1);
+
+	constants_layout->addWidget(alignment_label, 2, 0);
+	constants_layout->addWidget(alignment_constant_, 2, 1);
+
+	QLabel* cluster_label = new QLabel("Cluster", group_box);
+	cluster_constant_ = new QDoubleSpinBox(group_box);
+	cluster_constant_->setMinimum(0.0);
+	cluster_constant_->setMaximum(max_constant_value);
+	cluster_constant_->setSingleStep(0.1);
+
+	constants_layout->addWidget(cluster_label, 3, 0);
+	constants_layout->addWidget(cluster_constant_, 3, 1);
+
+	QLabel* perimeter_label= new QLabel("Perimeter", group_box);
+	perimeter_constant_ = new QDoubleSpinBox(group_box);
+	perimeter_constant_->setMinimum(0.0);
+	perimeter_constant_->setMaximum(max_constant_value);
+	perimeter_constant_->setSingleStep(0.1);
+
+	constants_layout->addWidget(perimeter_label, 4, 0);
+	constants_layout->addWidget(perimeter_constant_, 4, 1);
+
 
 
 	QLabel* goto_work_label = new QLabel("Go to Work", group_box);
 	goto_work_constant_ = new QDoubleSpinBox(group_box);
 	goto_work_constant_->setMinimum(0.0);
 	goto_work_constant_->setMaximum(max_constant_value);
-	goto_work_constant_->setSingleStep(0.1);
+	goto_work_constant_->setSingleStep(0.001);
+	goto_work_constant_->setDecimals(5);
 
-	constants_layout->addWidget(goto_work_label, 2, 0);
-	constants_layout->addWidget(goto_work_constant_, 2, 1);
+
+	goto_work_label->hide();
+	goto_work_constant_->hide();
+
+	constants_layout->addWidget(goto_work_label, 5, 0);
+	constants_layout->addWidget(goto_work_constant_, 5, 1);
 
 	QLabel* separation_distance_label = new QLabel("Separation Distance", group_box);
 	separation_distance_ = new QDoubleSpinBox(group_box);
@@ -683,8 +752,8 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	separation_distance_->setMaximum(1000.0);
 	separation_distance_->setSingleStep(0.1);
 
-	constants_layout->addWidget(separation_distance_label, 3, 0);
-	constants_layout->addWidget(separation_distance_, 3, 1);
+	constants_layout->addWidget(separation_distance_label, 6, 0);
+	constants_layout->addWidget(separation_distance_, 6, 1);
 
 	constants_group_box->setLayout(constants_layout);
 
@@ -699,6 +768,9 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	connect(robots_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_no_of_robots);
 	connect(exploration_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_exploration_constant);
 	connect(separation_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_constant);
+	connect(alignment_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_alignment_constant);
+	connect(cluster_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_cluster_constant);
+	connect(perimeter_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_perimeter_constant);
 	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_goto_work_constant);
 	connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_distance);
 
@@ -737,6 +809,53 @@ void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 	
 void FilteredStructLight::add_reset_swarm_sim_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
+
+	swarm_config_filename_ = new QLineEdit(group_box);
+	swarm_config_filename_browse_ = new QPushButton("...", group_box);
+	swarm_config_filename_browse_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+	swarm_config_filename_browse_->setMaximumSize(30, 30);
+
+	QHBoxLayout* filename_layout = new QHBoxLayout();
+	filename_layout->addWidget(swarm_config_filename_);
+	filename_layout->addWidget(swarm_config_filename_browse_);
+
+	connect(swarm_config_filename_browse_, &QPushButton::clicked, this, 
+		[&] {
+		QString selected_filename = QFileDialog::getOpenFileName(this, QString("Open Swarm Config"), "swarm-config",
+			"Ini Files(*.ini)");
+		swarm_config_filename_->setText(selected_filename);
+		emit load_swarm_config_button_->clicked();
+		emit swarm_reset_button_->clicked();
+	});
+
+	//connect(swarm_config_filename_, &QLineEdit::textChanged, this, 
+	//	&SwarmViewer::set_model_filename);
+
+	QHBoxLayout* load_save_layout = new QHBoxLayout();
+	load_swarm_config_button_ = new QPushButton("Load Conf.", group_box);
+	save_swarm_config_button_ = new QPushButton("Save Conf.", group_box);
+
+
+	connect(load_swarm_config_button_, &QPushButton::clicked, this, 
+		[&] {
+		load_swarm_settings(swarm_config_filename_->text());
+	});
+
+	connect(save_swarm_config_button_, &QPushButton::clicked, this, 
+		[&] {
+		save_swarm_settings(swarm_config_filename_->text());
+	});
+
+
+	load_save_layout->addWidget(save_swarm_config_button_);
+	load_save_layout->addWidget(load_swarm_config_button_);
+
+	//connect(swarm_config_filename_, &QLineEdit::textChanged, swarm_viewer_, 
+	//	&SwarmViewer::set_swarm_config_filename);
+
+	group_box_layout->addLayout(filename_layout);
+	group_box_layout->addLayout(load_save_layout);
+
 	swarm_reset_button_ = new QPushButton("Reset Sim.", group_box);
 	group_box_layout->addWidget(swarm_reset_button_);
 	group_box->setLayout(group_box_layout);
@@ -794,105 +913,121 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 }
 
 void FilteredStructLight::connect_widgets_to_swarm_save_settings() {
-	connect(grid_resolution_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), 
-		this,
-		[&](int value)
-	{
-		save_swarm_settings();
-	}
-	);
-	
-	connect(grid_length_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
-		this,
-		[&](int value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(grid_resolution_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), 
+	//	this,
+	//	[&](int value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
+	//
+	//connect(grid_length_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+	//	this,
+	//	[&](int value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(robots_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), 
-		this,
-		[&](int value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(robots_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), 
+	//	this,
+	//	[&](int value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(exploration_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
-		this,
-		[&](double value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(exploration_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+	//	this,
+	//	[&](double value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(separation_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
-		this,
-		[&](double value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(separation_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+	//	this,
+	//	[&](double value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
-		this,
-		[&](double value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(cluster_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+	//	this,
+	//	[&](double value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
-		this,
-		[&](double value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(perimeter_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+	//	this,
+	//	[&](double value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(x_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
-		[&](int value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+	//	this,
+	//	[&](double value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(y_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
-		[&](int value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+	//	this,
+	//	[&](double value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(z_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
-		[&](int value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(x_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+	//	[&](int value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(scale_spinbox_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(y_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+	//	[&](int value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(show_interior_, &QCheckBox::stateChanged, 
-		this,
-		[&](int value)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(z_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+	//	[&](int value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 
-	connect(model_filename_, &QLineEdit::textChanged, 
-		this,
-		[&](const QString & text)
-	{
-		save_swarm_settings();
-	}
-	);
+	//connect(scale_spinbox_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
+
+	//connect(show_interior_, &QCheckBox::stateChanged, 
+	//	this,
+	//	[&](int value)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
+
+	//connect(model_filename_, &QLineEdit::textChanged, 
+	//	this,
+	//	[&](const QString & text)
+	//{
+	//	save_swarm_settings();
+	//}
+	//);
 }
 
 QArrayPushButton::QArrayPushButton(QString& text, int id, QWidget* parent) : id_(id) {
@@ -1077,6 +1212,16 @@ void FilteredStructLight::add_robot_calibration_tab(QTabWidget* tab_widget) {
 		//robot_reconstruction_->calculate_light_position(,,);
 	});
 
+}
+
+void FilteredStructLight::connect_load_filename_to_save_settings() {
+	connect(swarm_config_filename_, &QLineEdit::textChanged, 
+		this,
+		[&](const QString & text)
+	{
+		save_swarm_config_settings();
+	}
+	);
 }
 
 void FilteredStructLight::update_images(int frame_no) {
@@ -1364,8 +1509,13 @@ void FilteredStructLight::setupUi() {
 	load_recon_settings();
 	connect_recon_line_edits_to_save_settings();
 
-	load_swarm_settings();
-	connect_widgets_to_swarm_save_settings();
+	load_swarm_config_settings();
+	load_swarm_settings(swarm_config_filename_->text());
+
+	connect_load_filename_to_save_settings();
+
+	//load_swarm_settings();
+	//connect_widgets_to_swarm_save_settings();
 
 
 	central_widget_->adjustSize();

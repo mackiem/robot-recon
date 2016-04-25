@@ -63,9 +63,17 @@ private:
 	float explore_constant_;
 	float separation_constant_;
 	float work_constant_;
+	float perimeter_constant_;
+	float cluster_constant_;
+	float alignment_constant_;
+
 
 	glm::vec3 explore_force_;
 	glm::vec3 separation_force_;
+	glm::vec3 perimeter_force_;
+	glm::vec3 cluster_force_;
+	glm::vec3 alignment_force_;
+
 	glm::vec3 work_force_;
 	glm::vec3 out_of_bounds_force_;
 
@@ -86,6 +94,8 @@ private:
 	glm::vec3 previous_position_;
 	float robot_radius_;
 	GridOverlay* overlay_;
+	float attraction_distance_threshold_;
+	int sensor_range_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;
@@ -96,8 +106,8 @@ private:
 	//bool explored_by(const glm::ivec3& position) const ;
 
 	// kinematics
-	glm::vec3 calculate_force(glm::vec3 move_to_position);
-	glm::vec3 calculate_force(glm::vec3 move_to_position, float constant) const;
+	glm::vec3 calculate_direction(glm::vec3 move_to_position);
+	glm::vec3 calculate_direction(glm::vec3 move_to_position, float constant) const;
 
 
 	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
@@ -114,14 +124,19 @@ public:
 
 	void calculate_explore_force();
 	void calculate_separation_force(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells);
+	void calculate_perimeter_force(const std::vector<glm::vec3>& interior_cells);
 	void calculate_work_force();
-	void visualize_force(const int& mesh_id, const glm::vec3& force, const cv::Vec4f& color, bool initialize);
+	void calculate_cluster_force(const std::vector<int>& other_robots);
+	void calculate_alignment_force(const std::vector<int>& other_robots);
+	void init_force_visualization(const int& mesh_id, const glm::vec3& force, const cv::Vec4f& color);
+	void update_force_visualization(const int& mesh_id, const glm::vec3& force);
+	glm::vec3 calculate_force_from_piecewise_squared_function(const glm::vec3& separation_vector, float constant, float distance_from_threshold);
 
 	glm::vec3 calculate_resultant_direction(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells);
 	Robot(UniformLocations& locations, unsigned id,
 		std::shared_ptr<SwarmOccupancyTree> octree,
 		std::shared_ptr<SwarmCollisionTree> collision_tree, 
-		double explore_constant, double seperation_constant, 
+		double explore_constant, double seperation_constant, double alignment_constant, double cluster_constant, double perimeter_constant,
 		double work_constant, double seperation_distance, glm::vec3 position, QGLShaderProgram* shader);
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
 

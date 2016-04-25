@@ -2,10 +2,75 @@
 #include "fsl_common.h"
 #include "quadtree.h"
 #include <memory>
+#include <queue>
+#include <functional>
 
 class OutOfGridBoundsException : public std::exception {
 public:
 OutOfGridBoundsException(const char* message) : std::exception(message) {};
+};
+
+struct ExploredPosition {
+	glm::ivec3 grid_pos_;
+	bool explored_;
+
+	ExploredPosition(glm::ivec3 grid_pos) : grid_pos_(grid_pos), explored_(false) {}
+};
+
+struct IVec3Comparator {
+	bool operator()(const glm::ivec3& lhs_grid_pos, const glm::ivec3& rhs_grid_pos) const {
+		//auto& lhs_grid_pos = lhs;
+		//auto& rhs_grid_pos = rhs;
+		if (lhs_grid_pos.x == rhs_grid_pos.x) {
+			if (lhs_grid_pos.y == rhs_grid_pos.y) {
+				return lhs_grid_pos.z < rhs_grid_pos.z;
+			}
+			else {
+				return lhs_grid_pos.y < rhs_grid_pos.y;
+			}
+		}
+		else {
+			return lhs_grid_pos.x < rhs_grid_pos.x;
+		}
+	}
+};
+
+struct Vec3Comparator {
+	bool operator()(const glm::vec3& lhs_grid_pos, const glm::vec3& rhs_grid_pos) const {
+		//auto& lhs_grid_pos = lhs;
+		//auto& rhs_grid_pos = rhs;
+		if (lhs_grid_pos.x == rhs_grid_pos.x) {
+			if (lhs_grid_pos.y == rhs_grid_pos.y) {
+				return lhs_grid_pos.z < rhs_grid_pos.z;
+			}
+			else {
+				return lhs_grid_pos.y < rhs_grid_pos.y;
+			}
+		}
+		else {
+			return lhs_grid_pos.x < rhs_grid_pos.x;
+		}
+	}
+};
+
+struct PerimeterPos {
+	float distance_;
+	glm::ivec3 grid_position_;
+
+	PerimeterPos(float distance, glm::ivec3 grid_position) : distance_(distance), grid_position_(grid_position) {
+	}
+
+	PerimeterPos() {
+		
+	}
+
+	bool operator<(const PerimeterPos& other) const {
+		return distance_ < other.distance_;
+	}
+
+	bool operator>(const PerimeterPos& other) const {
+		return distance_ > other.distance_;
+	}
 };
 
 class SwarmOccupancyTree : public mm::Quadtree< int > {
@@ -35,13 +100,26 @@ private:
 	int grid_resolution_per_side_;
 	int grid_resolution_;
 	glm::ivec3 offset_;
+
+	std::set<glm::ivec3, IVec3Comparator> explore_perimeter_list_;
+
+	std::set<glm::ivec3, IVec3Comparator> static_perimeter_list_;
 	//int empty_value_;
+
+	int pool_size_;
+	int current_pool_count_;
+	std::vector<std::vector<PerimeterPos>> heap_pool_;
+
 public:
+	bool find_closest_perimeter(const glm::ivec3& robot_grid_position,
+		glm::ivec3& perimeter_position);
+	bool find_closest_perimeter_from_list(const std::set<glm::ivec3, IVec3Comparator>& explore_perimeter_list, const glm::ivec3& robot_grid_position,
+		glm::ivec3& explore_position);
 	int get_interior_mark();
 	void mark_floor_plan();
 	SwarmOccupancyTree(int grid_cube_length, int grid_resolution);
 	SwarmOccupancyTree(int grid_cube_length, int grid_resolution, int empty_value);
-	void get_adjacent_cells(const glm::ivec3& position, std::vector<glm::ivec3>& cells) const;
+	void get_adjacent_cells(const glm::ivec3& position, std::vector<glm::ivec3>& cells, int sensor_range) const;
 	bool visited(std::set<BFSNode>* visited_nodes, const BFSNode& bfs_node) const;
 	bool visited(const SwarmOccupancyTree& visited_nodes, const BFSNode& bfs_node) const;
 	//bool visited(std::set<glm::ivec3>* visited_nodes, const glm::ivec3& bfs_node) const;
@@ -65,6 +143,10 @@ public:
 
 	int get_grid_resolution_per_side();
 	int get_grid_cube_length();
+	void create_perimeter_list();
+	bool next_cell_to_explore(const glm::ivec3& robot_grid_position,
+		glm::ivec3& explore_position);
+	void mark_explored_in_list(const glm::ivec3& grid_position);
 	
 };
 

@@ -65,12 +65,15 @@ private:
 	float explore_constant_;
 	float separation_constant_;
 	float goto_work_constant_;
+	float cluster_constant_;
+	float perimeter_constant_;
+	float alignment_constant_;
 
 	float separation_distance_;
 	
 	//robots_spinbox_->setValue(settings.value(ROBOTS_NO_LABEL, "10").toInt());
 	//exploration_constant_->setValue(settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
-	//separation_constant_->setValue(settings.value(SEPERATION_CONSTANT_LABEL, "1").toDouble());
+	//separation_constant_->setValue(settings.value(SEPARATION_CONSTANT_LABEL, "1").toDouble());
 	//goto_work_constant_->setValue(settings.value(GOTO_WORK_CONSTANT_LABEL, "1").toDouble());
 
 	unsigned int grid_resolution_;
@@ -134,6 +137,9 @@ void set_interior_offset(glm::vec3 offset);
 
 void set_exploration_constant(double constant);
 void set_separation_constant(double constant);
+void set_alignment_constant(double constant);
+void set_cluster_constant(double constant);
+void set_perimeter_constant(double constant);
 void set_goto_work_constant(double constant);
 
 void set_show_interior(int show);

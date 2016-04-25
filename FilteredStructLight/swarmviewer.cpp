@@ -388,6 +388,7 @@ void SwarmViewer::custom_init_code() {
 	timer_->start(20);
 
 	glEnable(GL_CULL_FACE);
+	glLineWidth(2);
 
 	look_at_z_ = 600.f;
 	look_at_x_ = 345.f;
@@ -466,6 +467,7 @@ void SwarmViewer::reset_sim() {
 	change_to_top_down_view();
 
 	load_interior_model();
+	occupany_grid_->create_perimeter_list();
 
 	create_robots();
 	// assumption - global position of other robots are known
@@ -728,7 +730,7 @@ void SwarmViewer::create_robots() {
 		//robots_.push_back(robot);
 
 		std::shared_ptr<Robot> robot(new Robot(uniform_locations_, 
-			i, occupany_grid_, collision_grid_, explore_constant_, separation_constant_, 
+			i, occupany_grid_, collision_grid_, explore_constant_, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_, 
 			goto_work_constant_, separation_distance_, robot_positions[i], &m_shader));
 		robot->mesh_.push_back(robot_mesh[0]);
 		robots_.push_back(robot);
@@ -839,6 +841,18 @@ void SwarmViewer::set_exploration_constant(double constant) {
 
 void SwarmViewer::set_separation_constant(double constant) {
 	separation_constant_ = constant;
+}
+
+void SwarmViewer::set_alignment_constant(double constant) {
+	alignment_constant_ = constant;
+}
+
+void SwarmViewer::set_cluster_constant(double constant) {
+	cluster_constant_ = constant;
+}
+
+void SwarmViewer::set_perimeter_constant(double constant) {
+	perimeter_constant_ = constant;
 }
 
 void SwarmViewer::set_goto_work_constant(double constant) {
