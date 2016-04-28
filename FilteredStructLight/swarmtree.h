@@ -102,6 +102,7 @@ private:
 	glm::ivec3 offset_;
 
 	std::set<glm::ivec3, IVec3Comparator> explore_perimeter_list_;
+	std::set<glm::ivec3, IVec3Comparator> empty_space_list_;
 
 	std::set<glm::ivec3, IVec3Comparator> static_perimeter_list_;
 	//int empty_value_;
@@ -111,10 +112,16 @@ private:
 	std::vector<std::vector<PerimeterPos>> heap_pool_;
 
 public:
+	bool line_of_sight_test(const glm::vec3& robot_position, const glm::vec3& point_to_test) const;
 	bool find_closest_perimeter(const glm::ivec3& robot_grid_position,
 		glm::ivec3& perimeter_position);
-	bool find_closest_perimeter_from_list(const std::set<glm::ivec3, IVec3Comparator>& explore_perimeter_list, const glm::ivec3& robot_grid_position,
+	bool find_closest_empty_space(const glm::ivec3& robot_grid_position,
+		glm::ivec3& perimeter_position);
+	bool find_closest_position_from_list(const std::set<glm::ivec3, IVec3Comparator>& explore_perimeter_list, const glm::ivec3& robot_grid_position,
 		glm::ivec3& explore_position);
+	bool find_closest_position_from_list(const std::set<glm::ivec3, IVec3Comparator>& explore_perimeter_list, const glm::ivec3& robot_grid_position,
+		glm::ivec3& explore_position, float range_min, float range_max);
+ 
 	int get_interior_mark();
 	void mark_floor_plan();
 	SwarmOccupancyTree(int grid_cube_length, int grid_resolution);
@@ -144,9 +151,15 @@ public:
 	int get_grid_resolution_per_side();
 	int get_grid_cube_length();
 	void create_perimeter_list();
+	void create_empty_space_list();
 	bool next_cell_to_explore(const glm::ivec3& robot_grid_position,
 		glm::ivec3& explore_position);
-	void mark_explored_in_list(const glm::ivec3& grid_position);
+
+	bool next_cell_to_explore(const glm::ivec3& robot_grid_position,
+		glm::ivec3& explore_position, float range_min, float range_max);
+	void mark_explored_in_perimeter_list(const glm::ivec3& grid_position);
+	void mark_explored_in_empty_space_list(const glm::ivec3& grid_position);
+	void mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position);
 	
 };
 

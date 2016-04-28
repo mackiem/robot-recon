@@ -25,7 +25,15 @@ struct GridOverlay : public VisObject {
 class Robot : public VisObject {
 
 private:
+	struct Range {
+		float min_;
+		float max_;
+		Range(int min, int max) : min_(min), max_(max) {};
 
+		Range() {
+		}
+		bool within_range(float grid_distance);
+	};
 	enum RobotState {
 		MOVING = 0,
 		STOPPING = 1,
@@ -96,6 +104,12 @@ private:
 	GridOverlay* overlay_;
 	float attraction_distance_threshold_;
 	int sensor_range_;
+
+	Range alignment_range_;
+	Range separation_range_;
+	Range cluster_range_;
+	Range perimeter_range_;
+	Range explore_range_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;

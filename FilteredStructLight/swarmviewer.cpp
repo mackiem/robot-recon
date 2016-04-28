@@ -467,7 +467,8 @@ void SwarmViewer::reset_sim() {
 	change_to_top_down_view();
 
 	load_interior_model();
-	occupany_grid_->create_perimeter_list();
+	//occupany_grid_->create_perimeter_list();
+	occupany_grid_->create_empty_space_list();
 
 	create_robots();
 	// assumption - global position of other robots are known
