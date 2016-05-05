@@ -5,10 +5,51 @@
 #include <cmath>
 #include <memory>
 #include "swarmtree.h"
+#include <QtCore/QThread>
+
+class RobotUpdateThread : public QThread {
+	Q_OBJECT
+	std::vector<std::shared_ptr<Robot>>* robots_;
+	bool aborted_;
+	bool paused_;
+	int time_step_count_;
+	int step_count_;
+	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
+
+public:
+	RobotUpdateThread();
+	void set_robots(std::vector<std::shared_ptr<Robot>>* robots) {
+		robots_ = robots;
+	}
+
+	void set_occupancy_tree(std::shared_ptr<SwarmOccupancyTree> occupancy_grid) {
+		occupancy_grid_ = occupancy_grid;
+	}
+	void abort() {
+		aborted_ = true;
+	}
+
+	void init() {
+		aborted_ = false;
+		time_step_count_ = 0;
+		step_count_ = -1;
+	}
+
+	void run() Q_DECL_OVERRIDE;	
+
+public slots:
+	void pause();
+	void resume();
+	void step();
+
+signals:
+	void update_time_step_count(int count);
 
 
+};
 
 class SwarmViewer : public RobotViewer {
+	Q_OBJECT
 
 struct Light : public VisObject {
 
@@ -26,6 +67,8 @@ public:
 };
 
 
+
+
 private:
 	enum Formation {
 		GRID = 0,
@@ -34,7 +77,7 @@ private:
 		SQUARE_CLOSE_TO_EDGE
 	};
 
-	std::shared_ptr<SwarmOccupancyTree> occupany_grid_;
+	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
 	std::shared_ptr<SwarmCollisionTree> collision_grid_;
 
 
@@ -45,6 +88,14 @@ private:
 	GLint view_position_loc_;
 	int grid_resolution_per_side_;
 	bool show_forces_;
+	Range separation_range_;
+	Range alignment_range_;
+	Range cluster_range_;
+	Range perimeter_range_;
+	Range explore_range_;
+	double sensor_range_;
+	int discovery_range_;
+
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
@@ -60,6 +111,7 @@ private:
 
 	std::map<int, cv::Vec4f> robot_color_map_;
 
+	RobotUpdateThread robot_update_thread_;
 
 	int no_of_robots_;
 	float explore_constant_;
@@ -70,6 +122,7 @@ private:
 	float alignment_constant_;
 
 	float separation_distance_;
+	int formation_;
 	
 	//robots_spinbox_->setValue(settings.value(ROBOTS_NO_LABEL, "10").toInt());
 	//exploration_constant_->setValue(settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
@@ -97,6 +150,11 @@ private:
 	//VisObject grid_;
 	//VisObject grid_overlay_;
 
+	bool paused_;
+	int step_count_;
+	int time_step_count_; 
+	std::shared_ptr<GridOverlay> overlay_;
+
 protected:
 
 	void load_inital_models() override;
@@ -105,6 +163,7 @@ protected:
 	void derive_floor_plan(VertexBufferData bufferdata, float scale, const glm::vec3& offset);
 	void load_interior_model();
 	void change_to_top_down_view();
+	void update_perimiter_positions_in_overlay();
 	virtual void custom_init_code() override;
 	virtual void custom_draw_code() override;
 	virtual void draw_mesh(RenderMesh& mesh) override;
@@ -123,6 +182,12 @@ public:
 	void create_robots();
 	//void create_occupancy_grid_overlay(int grid_resolution, int grid_size, bool initialize = false);
 	void create_occupancy_grid(int grid_resolution, int grid_size);
+
+signals:
+	void update_time_step_count(int count);
+	void physics_thread_pause();
+	void physics_thread_step();
+	void physics_thread_resume();
 
 public slots:
 void set_no_of_robots(int no_of_robots);
@@ -149,4 +214,20 @@ void reset_sim();
 void set_show_forces(int show);
 
 void set_model_filename(QString filename);
+
+void set_formation(int formation);
+
+void set_separation_range(double min, double max);
+void set_alignment_range(double min, double max);
+void set_cluster_range(double min, double max);
+void set_perimeter_range(double min, double max);
+void set_explore_range(double min, double max);
+
+void set_sensor_range(double sensor_range);
+void set_discovery_range(int discovery_range);
+
+void pause();
+void step();
+void resume();
+
 };

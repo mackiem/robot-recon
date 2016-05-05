@@ -17,23 +17,25 @@ struct GridOverlay : public VisObject {
 	GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOccupancyTree> octree, unsigned int grid_resolution, 
 		float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
 
+	void update_grid_position(const glm::ivec3& position, const cv::Vec4f& color);
 	void update_grid_position(const glm::ivec3& position);
 	void create_mesh(bool initialize);
 	void update(glm::mat4 global_model) override;
 };
 
+struct Range {
+	float min_;
+	float max_;
+	Range(int min, int max) : min_(min), max_(max) {};
+
+	Range() {
+	}
+	bool within_range(float grid_distance);
+};
+
 class Robot : public VisObject {
 
 private:
-	struct Range {
-		float min_;
-		float max_;
-		Range(int min, int max) : min_(min), max_(max) {};
-
-		Range() {
-		}
-		bool within_range(float grid_distance);
-	};
 	enum RobotState {
 		MOVING = 0,
 		STOPPING = 1,
@@ -129,6 +131,11 @@ private:
 	QGLShaderProgram* shader_;
 	bool show_forces_;
 
+	std::vector<glm::ivec3> explored_cells_;
+	QMutex explored_mutex_;
+
+	int discovery_range_;
+
 public:
 	static int MAX_DEPTH;
 	void set_explore_constant(float constant);
@@ -150,14 +157,16 @@ public:
 	Robot(UniformLocations& locations, unsigned id,
 		std::shared_ptr<SwarmOccupancyTree> octree,
 		std::shared_ptr<SwarmCollisionTree> collision_tree, 
-		double explore_constant, double seperation_constant, double alignment_constant, double cluster_constant, double perimeter_constant,
-		double work_constant, double seperation_distance, glm::vec3 position, QGLShaderProgram* shader);
+		double explore_constant, double seperation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant, 
+		Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, double sensor_range, int discovery_range,
+		double seperation_distance, glm::vec3 position, QGLShaderProgram* shader);
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
 
 	void set_show_forces(bool show);
 	void update_robots(const std::vector<std::shared_ptr<Robot>>& robots);
 	//void handle_input();
 	virtual void update(glm::mat4 global_model);
+	void update();
 
 	Robot& operator=(const Robot& other);
 
@@ -167,7 +176,7 @@ public:
 	bool is_colliding(const glm::vec3& other_object_position, float radius) const;
 	bool is_colliding_with_interior(const std::vector<glm::vec3>& interior_positions) const;
 	bool is_colliding_with_robots(const std::vector<int>& robot_ids) const;
-
+	void update_visualization_structs();
 
 	// calculate forces, 3 types of forces for now
 	// calculate acceleration and integrate for velocity and position

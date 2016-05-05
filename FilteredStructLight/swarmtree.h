@@ -112,7 +112,7 @@ private:
 	std::vector<std::vector<PerimeterPos>> heap_pool_;
 
 public:
-	bool line_of_sight_test(const glm::vec3& robot_position, const glm::vec3& point_to_test) const;
+	bool going_through_interior_test(const glm::vec3& robot_position, const glm::vec3& point_to_test) const;
 	bool find_closest_perimeter(const glm::ivec3& robot_grid_position,
 		glm::ivec3& perimeter_position);
 	bool find_closest_empty_space(const glm::ivec3& robot_grid_position,
@@ -122,6 +122,7 @@ public:
 	bool find_closest_position_from_list(const std::set<glm::ivec3, IVec3Comparator>& explore_perimeter_list, const glm::ivec3& robot_grid_position,
 		glm::ivec3& explore_position, float range_min, float range_max);
  
+	std::set<glm::ivec3, IVec3Comparator> get_perimeter_list();
 	int get_interior_mark();
 	void mark_floor_plan();
 	SwarmOccupancyTree(int grid_cube_length, int grid_resolution);

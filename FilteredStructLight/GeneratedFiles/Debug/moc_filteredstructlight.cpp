@@ -131,9 +131,122 @@ void QArrayPushButton::clicked_with_id(int _t1)
     void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
+struct qt_meta_stringdata_QArrayRadioButton_t {
+    QByteArrayData data[5];
+    char stringdata[56];
+};
+#define QT_MOC_LITERAL(idx, ofs, len) \
+    Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
+    qptrdiff(offsetof(qt_meta_stringdata_QArrayRadioButton_t, stringdata) + ofs \
+        - idx * sizeof(QByteArrayData)) \
+    )
+static const qt_meta_stringdata_QArrayRadioButton_t qt_meta_stringdata_QArrayRadioButton = {
+    {
+QT_MOC_LITERAL(0, 0, 17),
+QT_MOC_LITERAL(1, 18, 15),
+QT_MOC_LITERAL(2, 34, 0),
+QT_MOC_LITERAL(3, 35, 2),
+QT_MOC_LITERAL(4, 38, 17)
+    },
+    "QArrayRadioButton\0clicked_with_id\0\0"
+    "id\0intercept_clicked"
+};
+#undef QT_MOC_LITERAL
+
+static const uint qt_meta_data_QArrayRadioButton[] = {
+
+ // content:
+       7,       // revision
+       0,       // classname
+       0,    0, // classinfo
+       2,   14, // methods
+       0,    0, // properties
+       0,    0, // enums/sets
+       0,    0, // constructors
+       0,       // flags
+       1,       // signalCount
+
+ // signals: name, argc, parameters, tag, flags
+       1,    1,   24,    2, 0x06 /* Public */,
+
+ // slots: name, argc, parameters, tag, flags
+       4,    0,   27,    2, 0x08 /* Private */,
+
+ // signals: parameters
+    QMetaType::Void, QMetaType::Int,    3,
+
+ // slots: parameters
+    QMetaType::Void,
+
+       0        // eod
+};
+
+void QArrayRadioButton::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
+{
+    if (_c == QMetaObject::InvokeMetaMethod) {
+        QArrayRadioButton *_t = static_cast<QArrayRadioButton *>(_o);
+        switch (_id) {
+        case 0: _t->clicked_with_id((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 1: _t->intercept_clicked(); break;
+        default: ;
+        }
+    } else if (_c == QMetaObject::IndexOfMethod) {
+        int *result = reinterpret_cast<int *>(_a[0]);
+        void **func = reinterpret_cast<void **>(_a[1]);
+        {
+            typedef void (QArrayRadioButton::*_t)(int );
+            if (*reinterpret_cast<_t *>(func) == static_cast<_t>(&QArrayRadioButton::clicked_with_id)) {
+                *result = 0;
+            }
+        }
+    }
+}
+
+const QMetaObject QArrayRadioButton::staticMetaObject = {
+    { &QRadioButton::staticMetaObject, qt_meta_stringdata_QArrayRadioButton.data,
+      qt_meta_data_QArrayRadioButton,  qt_static_metacall, 0, 0}
+};
+
+
+const QMetaObject *QArrayRadioButton::metaObject() const
+{
+    return QObject::d_ptr->metaObject ? QObject::d_ptr->dynamicMetaObject() : &staticMetaObject;
+}
+
+void *QArrayRadioButton::qt_metacast(const char *_clname)
+{
+    if (!_clname) return 0;
+    if (!strcmp(_clname, qt_meta_stringdata_QArrayRadioButton.stringdata))
+        return static_cast<void*>(const_cast< QArrayRadioButton*>(this));
+    return QRadioButton::qt_metacast(_clname);
+}
+
+int QArrayRadioButton::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
+{
+    _id = QRadioButton::qt_metacall(_c, _id, _a);
+    if (_id < 0)
+        return _id;
+    if (_c == QMetaObject::InvokeMetaMethod) {
+        if (_id < 2)
+            qt_static_metacall(this, _c, _id, _a);
+        _id -= 2;
+    } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
+        if (_id < 2)
+            *reinterpret_cast<int*>(_a[0]) = -1;
+        _id -= 2;
+    }
+    return _id;
+}
+
+// SIGNAL 0
+void QArrayRadioButton::clicked_with_id(int _t1)
+{
+    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
+    QMetaObject::activate(this, &staticMetaObject, 0, _a);
+}
 struct qt_meta_stringdata_FilteredStructLight_t {
-    QByteArrayData data[14];
-    char stringdata[267];
+    QByteArrayData data[16];
+    char stringdata[296];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -155,7 +268,9 @@ QT_MOC_LITERAL(9, 151, 26),
 QT_MOC_LITERAL(10, 178, 29),
 QT_MOC_LITERAL(11, 208, 22),
 QT_MOC_LITERAL(12, 231, 24),
-QT_MOC_LITERAL(13, 256, 10)
+QT_MOC_LITERAL(13, 256, 10),
+QT_MOC_LITERAL(14, 267, 22),
+QT_MOC_LITERAL(15, 290, 5)
     },
     "FilteredStructLight\0update_images\0\0"
     "frame_no\0save_recon_settings\0"
@@ -164,7 +279,8 @@ QT_MOC_LITERAL(13, 256, 10)
     "save_swarm_config_settings\0"
     "start_reconstruction_sequence\0"
     "handle_frame_filenames\0std::vector<std::string>\0"
-    "image_list"
+    "image_list\0update_time_step_count\0"
+    "count"
 };
 #undef QT_MOC_LITERAL
 
@@ -174,7 +290,7 @@ static const uint qt_meta_data_FilteredStructLight[] = {
        7,       // revision
        0,       // classname
        0,    0, // classinfo
-       8,   14, // methods
+       9,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -182,14 +298,15 @@ static const uint qt_meta_data_FilteredStructLight[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    1,   54,    2, 0x08 /* Private */,
-       4,    0,   57,    2, 0x08 /* Private */,
-       5,    1,   58,    2, 0x08 /* Private */,
-       7,    1,   61,    2, 0x08 /* Private */,
-       8,    0,   64,    2, 0x08 /* Private */,
-       9,    0,   65,    2, 0x08 /* Private */,
-      10,    0,   66,    2, 0x0a /* Public */,
-      11,    1,   67,    2, 0x0a /* Public */,
+       1,    1,   59,    2, 0x08 /* Private */,
+       4,    0,   62,    2, 0x08 /* Private */,
+       5,    1,   63,    2, 0x08 /* Private */,
+       7,    1,   66,    2, 0x08 /* Private */,
+       8,    0,   69,    2, 0x08 /* Private */,
+       9,    0,   70,    2, 0x08 /* Private */,
+      10,    0,   71,    2, 0x0a /* Public */,
+      11,    1,   72,    2, 0x0a /* Public */,
+      14,    1,   75,    2, 0x0a /* Public */,
 
  // slots: parameters
     QMetaType::Void, QMetaType::Int,    3,
@@ -200,6 +317,7 @@ static const uint qt_meta_data_FilteredStructLight[] = {
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void, 0x80000000 | 12,   13,
+    QMetaType::Void, QMetaType::Int,   15,
 
        0        // eod
 };
@@ -217,6 +335,7 @@ void FilteredStructLight::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
         case 5: _t->save_swarm_config_settings(); break;
         case 6: _t->start_reconstruction_sequence(); break;
         case 7: _t->handle_frame_filenames((*reinterpret_cast< std::vector<std::string>(*)>(_a[1]))); break;
+        case 8: _t->update_time_step_count((*reinterpret_cast< int(*)>(_a[1]))); break;
         default: ;
         }
     }
@@ -247,13 +366,13 @@ int FilteredStructLight::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 8)
+        if (_id < 9)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 8;
+        _id -= 9;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 8)
+        if (_id < 9)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 8;
+        _id -= 9;
     }
     return _id;
 }

@@ -32,6 +32,23 @@ signals:
 
 };
 
+class QArrayRadioButton : public QRadioButton {
+	Q_OBJECT
+
+protected:
+	int id_;
+	
+public:
+	QArrayRadioButton(QString& text, int id, QWidget* parent = 0);
+	int get_id() const;
+
+private slots:
+	void intercept_clicked();
+signals:
+	void clicked_with_id(int id);
+
+};
+
 class FilteredStructLight : public QMainWindow
 {
 	Q_OBJECT
@@ -57,8 +74,25 @@ private:
 	static const char* ALIGNMENT_CONSTANT_LABEL;
 	static const char* CLUSTER_CONSTANT_LABEL;
 	static const char* PERIMETER_CONSTANT_LABEL;
+
+
+	static const char* EXPLORE_RANGE_MIN_LABEL;
+	static const char* SEPARATION_RANGE_MIN_LABEL;
+	static const char* ALIGNMENT_RANGE_MIN_LABEL;
+	static const char* CLUSTER_RANGE_MIN_LABEL;
+	static const char* PERIMETER_RANGE_MIN_LABEL;
+
+	static const char* EXPLORE_RANGE_MAX_LABEL;
+	static const char* SEPARATION_RANGE_MAX_LABEL;
+	static const char* ALIGNMENT_RANGE_MAX_LABEL;
+	static const char* CLUSTER_RANGE_MAX_LABEL;
+	static const char* PERIMETER_RANGE_MAX_LABEL;
+
 	static const char* GOTO_WORK_CONSTANT_LABEL;
 	static const char* SEPARATION_DISTANCE_LABEL;
+	static const char* FORMATION_LABEL;
+	static const char* SENSOR_RANGE_LABEL;
+	static const char* DISCOVERY_RANGE_LABEL;
 	static const char* SHOW_FORCES_LABEL;
 	static const char* GRID_RESOLUTION_LABEL;
 	static const char* GRID_LENGTH_LABEL;
@@ -69,6 +103,7 @@ private:
 	static const char* SHOW_BUILDING_LABEL;
 	static const char* INTERIOR_MODEL_FILENAME;
 	static const char* SWARM_CONFIG_FILENAME_LABEL;
+	static const int MAX_FORMATION_NO;
 	static const int MAX_VIDEO_NO;
 
 	QString recon_settings_filepath_;
@@ -164,6 +199,7 @@ private:
 	QSpinBox* grid_length_spin_box_;
 	QPushButton* swarm_reset_button_;
 	QDoubleSpinBox* separation_distance_;
+	QArrayRadioButton** formation_buttons_;
 
 	QCheckBox* show_forces_;
 	QLineEdit* model_filename_;
@@ -173,6 +209,24 @@ private:
 	QPushButton* load_swarm_config_button_;
 	QPushButton* save_swarm_config_button_;
 	QDoubleSpinBox* alignment_constant_;
+
+	QDoubleSpinBox* sensor_range_;
+
+	QDoubleSpinBox* separation_range_min_;
+	QDoubleSpinBox* separation_range_max_;
+	QDoubleSpinBox* alignment_range_min_;
+	QDoubleSpinBox* alignment_range_max_;
+	QDoubleSpinBox* cluster_range_min_;
+	QDoubleSpinBox* cluster_range_max_;
+	QDoubleSpinBox* perimeter_range_min_;
+	QDoubleSpinBox* perimeter_range_max_;
+	QDoubleSpinBox* explore_range_min_;
+	QDoubleSpinBox* explore_range_max_;
+	QPushButton* swarm_pause_button_;
+	QPushButton* swarm_step_button_;
+	QPushButton* swarm_resume_button_;
+	QLabel* time_step_count_label_;
+	QSpinBox* discovery_range_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();
@@ -189,7 +243,8 @@ private:
 	void add_interior_options(QGroupBox* group_box);
 	void add_robot_options(QGroupBox* group_box);
 	void add_grid_options(QGroupBox* group_box);
-	void add_reset_swarm_sim_options(QGroupBox* group_box);
+	void add_swarm_config_save_options(QGroupBox* group_box);
+	void add_swarm_sim_flow_control_options(QGroupBox* group_box);
 	void add_swarm_sim_tab(QTabWidget* tab_widget);
 	void connect_widgets_to_swarm_save_settings();
 
@@ -211,6 +266,7 @@ private slots:
 public slots:
 	void start_reconstruction_sequence();
 	void handle_frame_filenames(std::vector<std::string> image_list);
+	void update_time_step_count(int count);
 
 };
 

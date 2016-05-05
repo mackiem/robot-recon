@@ -3,6 +3,7 @@
 #include "modelviewer.h"
 #include "robotviewer.h"
 
+const int FilteredStructLight::MAX_FORMATION_NO = 4;
 const int FilteredStructLight::MAX_VIDEO_NO = 5;
 const char* FilteredStructLight::RECONSTRUCTION_VIDEO_FILENAME_LABEL = "reconstruction_video_filename";
 const char* FilteredStructLight::CHECKERBOARD_VIDEO_FILENAME_LABEL = "checkerboard_video_filename";
@@ -17,8 +18,24 @@ const char* FilteredStructLight::ALIGNMENT_CONSTANT_LABEL = "alignment_constant"
 const char* FilteredStructLight::CLUSTER_CONSTANT_LABEL = "cluster_constant";
 const char* FilteredStructLight::PERIMETER_CONSTANT_LABEL = "perimeter_constant";
 const char* FilteredStructLight::GOTO_WORK_CONSTANT_LABEL = "goto_work_constant";
-const char* FilteredStructLight::SEPARATION_DISTANCE_LABEL = "separation_distance";
+//const char* FilteredStructLight::SEPARATION_DISTANCE_LABEL = "separation_distance";
 const char* FilteredStructLight::SHOW_FORCES_LABEL = "show_forces";
+
+const char* FilteredStructLight::FORMATION_LABEL = "formation";
+const char* FilteredStructLight::SENSOR_RANGE_LABEL = "sensor_range";
+const char* FilteredStructLight::DISCOVERY_RANGE_LABEL = "discovery_range";
+
+const char* FilteredStructLight::EXPLORE_RANGE_MIN_LABEL = "explore_range_min";
+const char* FilteredStructLight::SEPARATION_RANGE_MIN_LABEL = "separation_range_min";
+const char* FilteredStructLight::ALIGNMENT_RANGE_MIN_LABEL = "alignment_range_min";
+const char* FilteredStructLight::CLUSTER_RANGE_MIN_LABEL = "cluster_range_min";
+const char* FilteredStructLight::PERIMETER_RANGE_MIN_LABEL = "perimeter_range_min";
+
+const char* FilteredStructLight::EXPLORE_RANGE_MAX_LABEL = "explore_range_max";
+const char* FilteredStructLight::SEPARATION_RANGE_MAX_LABEL = "separation_range_max";
+const char* FilteredStructLight::ALIGNMENT_RANGE_MAX_LABEL = "alignment_range_max";
+const char* FilteredStructLight::CLUSTER_RANGE_MAX_LABEL = "cluster_range_max";
+const char* FilteredStructLight::PERIMETER_RANGE_MAX_LABEL = "perimeter_range_max";
 
 const char* FilteredStructLight::GRID_RESOLUTION_LABEL = "grid_resolution";
 const char* FilteredStructLight::GRID_LENGTH_LABEL = "grid_length";
@@ -96,7 +113,36 @@ void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
 	settings.setValue(PERIMETER_CONSTANT_LABEL, perimeter_constant_->value());
 	settings.setValue(GOTO_WORK_CONSTANT_LABEL, goto_work_constant_->value());
 
-	settings.setValue(SEPARATION_DISTANCE_LABEL, separation_distance_->value());
+	settings.setValue(SEPARATION_RANGE_MIN_LABEL, separation_range_min_->value());
+	settings.setValue(SEPARATION_RANGE_MAX_LABEL, separation_range_max_->value());
+
+	settings.setValue(ALIGNMENT_RANGE_MIN_LABEL, alignment_range_min_->value());
+	settings.setValue(ALIGNMENT_RANGE_MAX_LABEL, alignment_range_max_->value());
+
+	settings.setValue(CLUSTER_RANGE_MIN_LABEL, cluster_range_min_->value());
+	settings.setValue(CLUSTER_RANGE_MAX_LABEL, cluster_range_max_->value());
+
+	settings.setValue(PERIMETER_RANGE_MIN_LABEL, perimeter_range_min_->value());
+	settings.setValue(PERIMETER_RANGE_MAX_LABEL, perimeter_range_max_->value());
+
+	settings.setValue(EXPLORE_RANGE_MIN_LABEL, explore_range_min_->value());
+	settings.setValue(EXPLORE_RANGE_MAX_LABEL, explore_range_max_->value());
+
+	settings.setValue(SENSOR_RANGE_LABEL, sensor_range_->value());
+
+	settings.setValue(DISCOVERY_RANGE_LABEL, discovery_range_->value());
+
+	int formation = 0;
+	for (int i = 0; i < MAX_FORMATION_NO; ++i) {
+		if (formation_buttons_[i]->isChecked()) {
+			formation = i;
+			break;
+		}
+	}
+	settings.setValue(FORMATION_LABEL, formation);
+	
+
+	//settings.setValue(SEPARATION_DISTANCE_LABEL, separation_distance_->value());
 
 	settings.setValue(GRID_RESOLUTION_LABEL, grid_resolution_spin_box_->value());
 	settings.setValue(GRID_LENGTH_LABEL, grid_length_spin_box_->value());
@@ -129,8 +175,43 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	emit perimeter_constant_->valueChanged(perimeter_constant_->value());
 	goto_work_constant_->setValue(settings.value(GOTO_WORK_CONSTANT_LABEL, "1").toDouble());
 	emit goto_work_constant_->valueChanged(goto_work_constant_->value());
-	separation_distance_->setValue(settings.value(SEPARATION_DISTANCE_LABEL, "100").toDouble());
-	emit separation_distance_->valueChanged(separation_distance_->value());
+
+	int formation_index = (settings.value(FORMATION_LABEL, "0").toInt());
+	formation_buttons_[formation_index]->toggle();
+
+	sensor_range_->setValue(settings.value(SENSOR_RANGE_LABEL, "5").toDouble());
+	emit sensor_range_->valueChanged(sensor_range_->value());
+
+	discovery_range_->setValue(settings.value(DISCOVERY_RANGE_LABEL, "0").toInt());
+	emit discovery_range_->valueChanged(discovery_range_->value());
+
+	separation_range_min_->setValue(settings.value(SEPARATION_RANGE_MIN_LABEL, "0").toDouble());
+	emit separation_range_min_->valueChanged(separation_range_min_->value());
+	separation_range_max_->setValue(settings.value(SEPARATION_RANGE_MAX_LABEL, "1").toDouble());
+	emit separation_range_max_->valueChanged(separation_range_max_->value());
+
+	alignment_range_min_->setValue(settings.value(ALIGNMENT_RANGE_MIN_LABEL, "0").toDouble());
+	emit alignment_range_min_->valueChanged(alignment_range_min_->value());
+	alignment_range_max_->setValue(settings.value(ALIGNMENT_RANGE_MAX_LABEL, "1").toDouble());
+	emit alignment_range_max_->valueChanged(alignment_range_max_->value());
+
+	cluster_range_min_->setValue(settings.value(CLUSTER_RANGE_MIN_LABEL, "0").toDouble());
+	emit cluster_range_min_->valueChanged(cluster_range_min_->value());
+	cluster_range_max_->setValue(settings.value(CLUSTER_RANGE_MAX_LABEL, "1").toDouble());
+	emit cluster_range_max_->valueChanged(cluster_range_max_->value());
+
+	perimeter_range_min_->setValue(settings.value(PERIMETER_RANGE_MIN_LABEL, "0").toDouble());
+	emit perimeter_range_min_->valueChanged(perimeter_range_min_->value());
+	perimeter_range_max_->setValue(settings.value(PERIMETER_RANGE_MAX_LABEL, "1").toDouble());
+	emit perimeter_range_max_->valueChanged(perimeter_range_max_->value());
+
+	explore_range_min_->setValue(settings.value(EXPLORE_RANGE_MIN_LABEL, "0").toDouble());
+	emit explore_range_min_->valueChanged(explore_range_min_->value());
+	explore_range_max_->setValue(settings.value(EXPLORE_RANGE_MAX_LABEL, "1").toDouble());
+	emit explore_range_max_->valueChanged(explore_range_max_->value());
+
+	//separation_distance_->setValue(settings.value(SEPARATION_DISTANCE_LABEL, "100").toDouble());
+	//emit separation_distance_->valueChanged(separation_distance_->value());
 
 	grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
 	grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
@@ -604,17 +685,17 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 
 	QLabel* x_offset = new QLabel("x", offset_group_box);
 	x_spin_box_ = new QSpinBox(offset_group_box);
-	x_spin_box_->setRange(0, 1000);
+	x_spin_box_->setRange(-1000, 1000);
 	x_spin_box_->setSingleStep(1);
 
 	QLabel* y_offset = new QLabel("y", offset_group_box);
 	y_spin_box_ = new QSpinBox(offset_group_box);
-	y_spin_box_->setRange(0, 1000);
+	y_spin_box_->setRange(-1000, 1000);
 	y_spin_box_->setSingleStep(1);
 
 	QLabel* z_offset = new QLabel("z", offset_group_box);
 	z_spin_box_ = new QSpinBox(offset_group_box);
-	z_spin_box_->setRange(0, 1000);
+	z_spin_box_->setRange(-1000, 1000);
 	z_spin_box_->setSingleStep(1);
 
 	offset_layout->addWidget(x_offset, 0, 0);
@@ -665,8 +746,8 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 
 void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
-	QVBoxLayout* group_box_layout = new QVBoxLayout();
 
+	QVBoxLayout* group_box_layout = new QVBoxLayout();
 	QHBoxLayout* robots_layout = new QHBoxLayout();
 
 	robots_spinbox_ = new QSpinBox(group_box);
@@ -677,12 +758,31 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	group_box_layout->addLayout(robots_layout);
 
+	QGroupBox* formation = new QGroupBox("Formation");
+	QVBoxLayout* formation_vbox_layout = new QVBoxLayout();
+
+	formation_buttons_ = new QArrayRadioButton*[MAX_FORMATION_NO];
+	QStringList formations;
+	formations.push_back("Grid");
+	formations.push_back("Random");
+	formations.push_back("Square");
+	formations.push_back("Close to Edge");
+
+	for (int i = 0; i < MAX_FORMATION_NO; ++i) {
+		formation_buttons_[i] = new QArrayRadioButton(formations[i], i, group_box);
+		formation_vbox_layout->addWidget(formation_buttons_[i]);
+		connect(formation_buttons_[i], &QArrayRadioButton::clicked_with_id, swarm_viewer_, &SwarmViewer::set_formation);
+	}
+	
+	formation->setLayout(formation_vbox_layout);
+	group_box_layout->addWidget(formation);
+
+
 	QGroupBox* constants_group_box = new QGroupBox("Constants");
 	QGridLayout* constants_layout = new QGridLayout();
 
 
 	double max_constant_value = 1000.0;
-
 
 	QLabel* exploration_label = new QLabel("Exploration", group_box);
 	exploration_constant_ = new QDoubleSpinBox(group_box);
@@ -746,22 +846,96 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	constants_layout->addWidget(goto_work_label, 5, 0);
 	constants_layout->addWidget(goto_work_constant_, 5, 1);
 
-	QLabel* separation_distance_label = new QLabel("Separation Distance", group_box);
-	separation_distance_ = new QDoubleSpinBox(group_box);
-	separation_distance_->setMinimum(0.0);
-	separation_distance_->setMaximum(1000.0);
-	separation_distance_->setSingleStep(0.1);
+	//QLabel* separation_distance_label = new QLabel("Separation Distance", group_box);
+	//separation_distance_ = new QDoubleSpinBox(group_box);
+	//separation_distance_->setMinimum(0.0);
+	//separation_distance_->setMaximum(1000.0);
+	//separation_distance_->setSingleStep(0.1);
 
-	constants_layout->addWidget(separation_distance_label, 6, 0);
-	constants_layout->addWidget(separation_distance_, 6, 1);
+	//constants_layout->addWidget(separation_distance_label, 6, 0);
+	//constants_layout->addWidget(separation_distance_, 6, 1);
 
 	constants_group_box->setLayout(constants_layout);
+
+
+	// ranges
+	QGroupBox* range_group_box = new QGroupBox("Ranges", group_box);
+	QVBoxLayout* range_group_box_layout = new QVBoxLayout();
+
+	QLabel* sensor_range_label = new QLabel("Sensor Range");
+	sensor_range_ = new QDoubleSpinBox(range_group_box);
+
+	QHBoxLayout* sensor_layout = new QHBoxLayout();
+	sensor_layout->addWidget(sensor_range_label);
+	sensor_layout->addWidget(sensor_range_);
+
+	range_group_box_layout->addLayout(sensor_layout);
+
+	QLabel* discovery_range_label = new QLabel("Discovery Range");
+	discovery_range_ = new QSpinBox(range_group_box);
+	discovery_range_->setRange(0, 1000);
+
+	QHBoxLayout* discovery_layout = new QHBoxLayout();
+	discovery_layout->addWidget(discovery_range_label);
+	discovery_layout->addWidget(discovery_range_);
+
+	range_group_box_layout->addLayout(discovery_layout);
+
+
+	QGridLayout* range_grid_layout = new QGridLayout();
+
+	QLabel* range_min_label = new QLabel("Min.", group_box);
+	QLabel* range_max_label = new QLabel("Max.", group_box);
+
+	range_grid_layout->addWidget(range_min_label, 0, 1);
+	range_grid_layout->addWidget(range_max_label, 0, 2);
+
+	QLabel* separation_range_label = new QLabel("Separation");
+	separation_range_min_ = new QDoubleSpinBox(range_group_box);
+	separation_range_max_ = new QDoubleSpinBox(range_group_box);
+	range_grid_layout->addWidget(separation_range_label, 1, 0);	
+	range_grid_layout->addWidget(separation_range_min_, 1, 1);	
+	range_grid_layout->addWidget(separation_range_max_, 1, 2);	
+
+	QLabel* alignment_range_label = new QLabel("Alignment");
+	alignment_range_min_ = new QDoubleSpinBox(range_group_box);
+	alignment_range_max_ = new QDoubleSpinBox(range_group_box);
+	range_grid_layout->addWidget(alignment_range_label, 2, 0);	
+	range_grid_layout->addWidget(alignment_range_min_, 2, 1);	
+	range_grid_layout->addWidget(alignment_range_max_, 2, 2);	
+
+	QLabel* cluster_range_label = new QLabel("Cluster");
+	cluster_range_min_ = new QDoubleSpinBox(range_group_box);
+	cluster_range_max_ = new QDoubleSpinBox(range_group_box);
+	range_grid_layout->addWidget(cluster_range_label, 3, 0);	
+	range_grid_layout->addWidget(cluster_range_min_, 3, 1);	
+	range_grid_layout->addWidget(cluster_range_max_, 3, 2);	
+
+	QLabel* perimeter_range_label = new QLabel("Perimeter");
+	perimeter_range_min_ = new QDoubleSpinBox(range_group_box);
+	perimeter_range_max_ = new QDoubleSpinBox(range_group_box);
+	range_grid_layout->addWidget(perimeter_range_label, 4, 0);	
+	range_grid_layout->addWidget(perimeter_range_min_, 4, 1);	
+	range_grid_layout->addWidget(perimeter_range_max_, 4, 2);	
+
+	QLabel* explore_range_label = new QLabel("Explore");
+	explore_range_min_ = new QDoubleSpinBox(range_group_box);
+	explore_range_max_ = new QDoubleSpinBox(range_group_box);
+	range_grid_layout->addWidget(explore_range_label, 5, 0);	
+	range_grid_layout->addWidget(explore_range_min_, 5, 1);	
+	range_grid_layout->addWidget(explore_range_max_, 5, 2);	
+
+	range_group_box_layout->addLayout(range_grid_layout);
+
+	range_group_box->setLayout(range_group_box_layout);
 
 
 	group_box_layout->addWidget(constants_group_box);
 
 	show_forces_ = new QCheckBox("Show forces", group_box); 
 	group_box_layout->addWidget(show_forces_);
+
+	group_box_layout->addWidget(range_group_box);
 
 	group_box->setLayout(group_box_layout);
 
@@ -772,9 +946,74 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	connect(cluster_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_cluster_constant);
 	connect(perimeter_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_perimeter_constant);
 	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_goto_work_constant);
-	connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_distance);
+	//connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_distance);
 
 	connect(show_forces_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_forces);
+
+	connect(sensor_range_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_sensor_range);
+
+	connect(discovery_range_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_discovery_range);
+
+	connect(separation_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_separation_range(separation_range_min_->value(), separation_range_max_->value());
+	}
+	);
+	connect(separation_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_separation_range(separation_range_min_->value(), separation_range_max_->value());
+	}
+	);
+	connect(alignment_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_alignment_range(alignment_range_min_->value(), alignment_range_max_->value());
+	}
+	);
+	connect(alignment_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_alignment_range(alignment_range_min_->value(), alignment_range_max_->value());
+	}
+	);
+	connect(cluster_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_cluster_range(cluster_range_min_->value(), cluster_range_max_->value());
+	}
+	);
+	connect(cluster_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_cluster_range(cluster_range_min_->value(), cluster_range_max_->value());
+	}
+	);
+	connect(perimeter_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_perimeter_range(perimeter_range_min_->value(), perimeter_range_max_->value());
+	}
+	);
+	connect(perimeter_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_perimeter_range(perimeter_range_min_->value(), perimeter_range_max_->value());
+	}
+	);
+	connect(explore_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_explore_range(explore_range_min_->value(), explore_range_max_->value());
+	}
+	);
+	connect(explore_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_explore_range(explore_range_min_->value(), explore_range_max_->value());
+	}
+	);
 
 }
 
@@ -806,8 +1045,8 @@ void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 	connect(grid_length_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_grid_length);
 
 }
-	
-void FilteredStructLight::add_reset_swarm_sim_options(QGroupBox* group_box) {
+
+void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
 
 	swarm_config_filename_ = new QLineEdit(group_box);
@@ -821,11 +1060,15 @@ void FilteredStructLight::add_reset_swarm_sim_options(QGroupBox* group_box) {
 
 	connect(swarm_config_filename_browse_, &QPushButton::clicked, this, 
 		[&] {
-		QString selected_filename = QFileDialog::getOpenFileName(this, QString("Open Swarm Config"), "swarm-config",
+		QString filename = QFileDialog::getOpenFileName(this, QString("Open Swarm Config"), "swarm-config",
 			"Ini Files(*.ini)");
-		swarm_config_filename_->setText(selected_filename);
-		emit load_swarm_config_button_->clicked();
-		emit swarm_reset_button_->clicked();
+		QFile file(filename);
+		if (file.exists()) {
+			swarm_config_filename_->setText(filename);
+			emit load_swarm_config_button_->clicked();
+			emit swarm_reset_button_->clicked();
+		}
+
 	});
 
 	//connect(swarm_config_filename_, &QLineEdit::textChanged, this, 
@@ -856,10 +1099,40 @@ void FilteredStructLight::add_reset_swarm_sim_options(QGroupBox* group_box) {
 	group_box_layout->addLayout(filename_layout);
 	group_box_layout->addLayout(load_save_layout);
 
+	group_box->setLayout(group_box_layout);
+}
+	
+void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_box) {
+	QVBoxLayout* group_box_layout = new QVBoxLayout();
+
+	QHBoxLayout* timing_config_layout = new QHBoxLayout();
+	QLabel* time_taken_label = new QLabel("Time taken (time steps)", group_box);
+	time_step_count_label_ = new QLabel("000", group_box);
+	timing_config_layout->addWidget(time_taken_label);
+	timing_config_layout->addWidget(time_step_count_label_);
+
+	group_box_layout->addLayout(timing_config_layout);
+
+	QHBoxLayout* sim_controls_layout = new QHBoxLayout();
+	swarm_pause_button_ = new QPushButton("Pause", group_box);
+	swarm_step_button_ = new QPushButton("Step", group_box);
+	swarm_resume_button_ = new QPushButton("Resume", group_box);
+
+	sim_controls_layout->addWidget(swarm_pause_button_);
+	sim_controls_layout->addWidget(swarm_step_button_);
+	sim_controls_layout->addWidget(swarm_resume_button_);
+
+	connect(swarm_pause_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::pause);
+	connect(swarm_step_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::step);
+	connect(swarm_resume_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::resume);
+
+	group_box_layout->addLayout(sim_controls_layout);
+	
 	swarm_reset_button_ = new QPushButton("Reset Sim.", group_box);
 	group_box_layout->addWidget(swarm_reset_button_);
 	group_box->setLayout(group_box_layout);
 	connect(swarm_reset_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::reset_sim );
+	connect(swarm_viewer_, &SwarmViewer::update_time_step_count, this, &FilteredStructLight::update_time_step_count);
 }
 
 void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
@@ -884,8 +1157,11 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	robot_viewer_size_policy.setVerticalPolicy(QSizePolicy::Preferred);
 	swarm_viewer_->setSizePolicy(robot_viewer_size_policy);
 
-	QGroupBox* swarm_group_box = new QGroupBox("Reset", swarm_tab);
-	add_reset_swarm_sim_options(swarm_group_box);
+	QGroupBox* save_group_box = new QGroupBox("Config", swarm_tab);
+	add_swarm_config_save_options(save_group_box);
+
+	QGroupBox* flow_control_group_box = new QGroupBox("Flow Control", swarm_tab);
+	add_swarm_sim_flow_control_options(flow_control_group_box);
 
 	// change room size
 	QGroupBox* interior_group_box = new QGroupBox("Interior", swarm_tab);
@@ -899,12 +1175,20 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	QGroupBox* grid_group_box = new QGroupBox("Grid", swarm_tab);
 	add_grid_options(grid_group_box);
 
-	swarm_left_panel_layout->addWidget(swarm_group_box);
+	swarm_left_panel_layout->addWidget(save_group_box);
+	swarm_left_panel_layout->addWidget(flow_control_group_box);
 	swarm_left_panel_layout->addWidget(interior_group_box);
 	swarm_left_panel_layout->addWidget(robots_group_box);
 	swarm_left_panel_layout->addWidget(grid_group_box);
 
-	swarm_viewer_layout->addLayout(swarm_left_panel_layout);
+	QWidget* left_panel = new QWidget(swarm_tab);
+	left_panel->setLayout(swarm_left_panel_layout);
+
+	QScrollArea* scroll_area = new QScrollArea(swarm_tab);
+	scroll_area->setWidgetResizable(true);
+	scroll_area->setWidget(left_panel);
+
+	swarm_viewer_layout->addWidget(scroll_area);
 	swarm_viewer_layout->addWidget(swarm_viewer_);
 
 	swarm_tab->setLayout(swarm_viewer_layout);
@@ -1043,6 +1327,21 @@ void QArrayPushButton::intercept_clicked() {
 }
 
 int QArrayPushButton::get_id() const {
+	return id_;
+}
+
+QArrayRadioButton::QArrayRadioButton(QString& text, int id, QWidget* parent) : id_(id) {
+	QRadioButton(text, parent);
+	setText(text);
+	setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+	connect(this, &QRadioButton::toggled, this, &QArrayRadioButton::intercept_clicked);
+}
+
+void QArrayRadioButton::intercept_clicked() {
+	emit clicked_with_id(id_);
+}
+
+int QArrayRadioButton::get_id() const {
 	return id_;
 }
 
@@ -1243,6 +1542,11 @@ void FilteredStructLight::handle_frame_filenames(std::vector<std::string> image_
 	frame_selection_spin_box_->setMaximum(max_value);
 	frame_selection_spin_box_->setValue(0);
 	emit frame_selection_spin_box_->valueChanged(0);
+}
+
+void FilteredStructLight::update_time_step_count(int count) {
+	QString count_string = QString::number(count);
+	time_step_count_label_->setText(count_string);
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {
@@ -1526,7 +1830,7 @@ void FilteredStructLight::keyReleaseEvent(QKeyEvent* e) {
 	switch (e->key()) {
 	case Qt::Key_Escape:
 		// Quit the application
-		shutdown_cam_thread();
+		//shutdown_cam_thread();
 		QApplication::quit();
 		break;
 	default:

@@ -179,6 +179,12 @@
     <ClCompile Include="swarmtree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_swarmviewer.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_swarmviewer.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\..\Program Files\gevorkyan.org\MicroProfiler\x86\micro-profiler.initializer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

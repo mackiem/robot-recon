@@ -66,6 +66,7 @@ Quadtree<int>(grid_resolution, -1), grid_cube_length_(grid_cube_length), grid_re
 	//empty_value_ = -1;
 	//setEmptyValue(empty_value_);
 	mark_floor_plan();
+	//create_perimeter_list();
 
 	// create pool
 	pool_size_ = 100000;
@@ -83,10 +84,15 @@ SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_resolution
 	//empty_value_ = -1;
 	//setEmptyValue(empty_value_);
 	mark_floor_plan();
+	//create_perimeter_list();
 	// create pool
 	pool_size_ = 100000;
 	current_pool_count_ = 100000;
 	heap_pool_.resize(pool_size_);
+}
+
+ std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_perimeter_list() {
+	 return explore_perimeter_list_;
 }
 
 void SwarmOccupancyTree::get_adjacent_cells(const glm::ivec3& position, std::vector<glm::ivec3>& cells, int sensor_range) const {
@@ -438,7 +444,7 @@ void SwarmOccupancyTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
 	float division_factor = (get_grid_cube_length() / 2.f);
 	int no_of_segments = (length / division_factor) + 1;
 #ifdef DEBUG
-	std::cout << "No of segments : " << no_of_segments << std::endl;
+	//std::cout << "No of segments : " << no_of_segments << std::endl;
 #endif
 
 	glm::vec3 direction;
@@ -519,7 +525,7 @@ bool SwarmOccupancyTree::find_closest_perimeter(const glm::ivec3& robot_grid_pos
 	return find_closest_position_from_list(static_perimeter_list_, robot_grid_position, perimeter_position);
 }
 
-bool SwarmOccupancyTree::line_of_sight_test(const glm::vec3& robot_position, const glm::vec3& point_to_test) const {
+bool SwarmOccupancyTree::going_through_interior_test(const glm::vec3& robot_position, const glm::vec3& point_to_test) const {
 
 	float length = glm::length((point_to_test - robot_position));
 	float division_factor = (1.f / 4.f);
@@ -573,7 +579,7 @@ bool SwarmOccupancyTree::find_closest_position_from_list(const std::set<glm::ive
 
 	for (auto j = 0; j < perimeter_vector.size(); ++j) {
 		glm::vec3 b = perimeter_vector[j].grid_position_;
-		bool interior_found = line_of_sight_test(a, b);
+		bool interior_found = going_through_interior_test(a, b);
 
 		if (!interior_found) {
 			explore_position = glm::ivec3(b);
@@ -609,13 +615,13 @@ bool SwarmOccupancyTree::find_closest_position_from_list(const std::set<glm::ive
 		}
 	}
 
-	std::sort(perimeter_vector.begin(), perimeter_vector.end());
+	std::stable_sort(perimeter_vector.begin(), perimeter_vector.end());
 	glm::vec3 a = (robot_grid_position);
 	bool perimeter_found = false;
 	
 	for (auto j = 0; j < perimeter_vector.size(); ++j) {
 		glm::vec3 b = perimeter_vector[j].grid_position_;
-		bool interior_found = line_of_sight_test(a, b);
+		bool interior_found = going_through_interior_test(a, b);
 
 		if (!interior_found) {
 			explore_position = glm::ivec3(b);
@@ -634,5 +640,5 @@ bool SwarmOccupancyTree::next_cell_to_explore(const glm::ivec3& robot_grid_posit
 
 bool SwarmOccupancyTree::next_cell_to_explore(const glm::ivec3& robot_grid_position,
 	glm::ivec3& explore_position, float range_min, float range_max) {
-	return find_closest_position_from_list(empty_space_list_, robot_grid_position, explore_position, range_min, range_max);
+	return find_closest_position_from_list(explore_perimeter_list_, robot_grid_position, explore_position, range_min, range_max);
 }
