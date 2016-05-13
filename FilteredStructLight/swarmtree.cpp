@@ -91,8 +91,16 @@ SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_resolution
 	heap_pool_.resize(pool_size_);
 }
 
- std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_perimeter_list() {
+ std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_unexplored_perimeter_list() {
 	 return explore_perimeter_list_;
+}
+
+std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_static_perimeter_list() {
+	 return static_perimeter_list_;
+}
+
+std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_interior_list() {
+	 return interior_list_;
 }
 
 void SwarmOccupancyTree::get_adjacent_cells(const glm::ivec3& position, std::vector<glm::ivec3>& cells, int sensor_range) const {
@@ -469,8 +477,8 @@ void SwarmOccupancyTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
 
 
 void SwarmOccupancyTree::create_perimeter_list() {
-	for (int x = 0; x < resolution_per_side_ - 1; ++x) {
-		for (int z = 0; z < resolution_per_side_ - 1; ++z) {
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
 			glm::ivec3 grid_position(x, 0, z);
 			if (!is_unexplored_perimeter(grid_position)) {
 				std::vector<glm::ivec3> adjacent_cells;
@@ -487,9 +495,21 @@ void SwarmOccupancyTree::create_perimeter_list() {
 	static_perimeter_list_ = explore_perimeter_list_;
 }
 
+void SwarmOccupancyTree::create_interior_list() {
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
+			glm::ivec3 grid_position(x, 0, z);
+			if (is_interior(grid_position)) {
+				interior_list_.insert(grid_position);
+			}
+		}
+	}
+}
+
+
 void SwarmOccupancyTree::create_empty_space_list() {
-	for (int x = 0; x < resolution_per_side_ - 1; ++x) {
-		for (int z = 0; z < resolution_per_side_ - 1; ++z) {
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
 			glm::ivec3 grid_position(x, 0, z);
 			if (!is_interior(grid_position)) {
 				empty_space_list_.insert(grid_position);

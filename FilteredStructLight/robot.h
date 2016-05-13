@@ -26,7 +26,7 @@ struct GridOverlay : public VisObject {
 struct Range {
 	float min_;
 	float max_;
-	Range(int min, int max) : min_(min), max_(max) {};
+	Range(float min, float max) : min_(min), max_(max) {};
 
 	Range() {
 	}
@@ -112,6 +112,10 @@ private:
 	Range cluster_range_;
 	Range perimeter_range_;
 	Range explore_range_;
+	Range obstacle_avoidance_range_;
+
+	float neighbor_count_;
+	float preferred_neighbor_count_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;
@@ -162,6 +166,7 @@ public:
 		double seperation_distance, glm::vec3 position, QGLShaderProgram* shader);
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
 
+	glm::vec3 calculate_obstacle_avoidance_direction(glm::vec3 resultant_force);
 	void set_show_forces(bool show);
 	void update_robots(const std::vector<std::shared_ptr<Robot>>& robots);
 	//void handle_input();

@@ -96,6 +96,11 @@ Robot::Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<Swarm
 	mass_ = 10;
 	max_velocity_ = 50;
 
+	obstacle_avoidance_range_ = Range(0, 1.5);
+
+	neighbor_count_ = 0;
+	preferred_neighbor_count_ = 5;
+
 	//sensor_range_ = 5;
 
 	//separation_range_ = Range(0, 1);
@@ -116,17 +121,21 @@ Robot::Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<Swarm
 	cv::Vec4f yellow(1.f, 1.f, 0.f, 1.f);
 	cv::Vec4f blue(0.f, 0.f, 1.f, 1.f);
 	cv::Vec4f black(0.f, 0.f, 0.f, 1.f);
-	cv::Vec4f orange = (cv::Vec4f(255.f, 153.f, 153.f, 255.f)) / 255.f;
-	cv::Vec4f pink = cv::Vec4f(0.f, 255.f, 204.f, 255.f) / 255.f;
+	cv::Vec4f orange = (cv::Vec4f(255.f, 131.f, 0.f, 255.f)) / 255.f;
+	cv::Vec4f cyan = cv::Vec4f(0.f, 255.f, 204.f, 255.f) / 255.f;
 
 
 	init_force_visualization(0, explore_force_, blue);
 	init_force_visualization(1, separation_force_, green);
 	init_force_visualization(2, resultant_direction_, black);
 	init_force_visualization(3, perimeter_force_, yellow);
-	init_force_visualization(4, cluster_force_, orange);
-	init_force_visualization(5, alignment_force_, black);
+	init_force_visualization(4, cluster_force_, cyan);
+	init_force_visualization(5, alignment_force_, orange);
 
+	float separation_force_max = explore_constant * explore_range.max_ +
+		perimeter_constant * perimeter_range.max_;
+	float k_separation_constant = separation_force_max / separation_range_.max_;
+	std::cout << "separation constnat " << k_separation_constant << std::endl;
 }
 
 Robot& Robot::operator=(const Robot& other) {
@@ -263,29 +272,27 @@ void Robot::calculate_separation_force(const std::vector<int>& other_robots, con
 	separation_force_ = glm::vec3(0.f, 0.f, 0.f);
 	
 	for (auto& other_robot_id : other_robots) {
-
 		if (other_robot_id != id_) {
 			auto separation_vector = position_ - robots_[other_robot_id]->position_;
 			auto separation_length = glm::length(separation_vector);
 			if (separation_length > 1e-6) {
 				float length = separation_length / static_cast<float>(occupancy_grid_->get_grid_cube_length());
 				if (separation_range_.within_range(length)) {
-					separation_force_ += calculate_direction(position_ + separation_vector, separation_constant_);
-				//glm::normalize(separation_vector)
+					float inverse_length = (separation_range_.max_ - length) * static_cast<float>(occupancy_grid_->get_grid_cube_length());
+					auto inverse_separation_vector = inverse_length * glm::normalize(separation_vector);
+					separation_force_ += calculate_direction(position_ + inverse_separation_vector, separation_constant_);
 				}
-				
 			}
-
 		}
 	}
 
-	for (auto& interior_cell_position : interior_cells) {
-		auto separation_vector = position_ - interior_cell_position;
-		float length = glm::length(separation_vector) / static_cast<float>(occupancy_grid_->get_grid_cube_length());
-		if (separation_range_.within_range(length)) {
-			separation_force_ += calculate_direction(position_ + separation_vector, separation_constant_);
-		}
-	}
+	//for (auto& interior_cell_position : interior_cells) {
+	//	auto separation_vector = position_ - interior_cell_position;
+	//	float length = glm::length(separation_vector) / static_cast<float>(occupancy_grid_->get_grid_cube_length());
+	//	if (separation_range_.within_range(length)) {
+	//		separation_force_ += calculate_direction(position_ + separation_vector, separation_constant_);
+	//	}
+	//}
 
 	separation_force_.y = 0.f;
 }
@@ -315,19 +322,23 @@ void Robot::calculate_alignment_force(const std::vector<int>& other_robots) {
 			return;
 		}
 
-		//std::sort(velocities.begin(), velocities.end(), Vec3Comparator());
+		glm::vec3 picked_velocity = velocities[0];
 
-		//glm::vec3 median_velocity = velocities[velocities.size() / 2];
+		if (glm::length(picked_velocity) > 1e-5) {
 
-		glm::vec3 avg_velocity = avg_velocities / (float)velocities.size();
+			//std::sort(velocities.begin(), velocities.end(), Vec3Comparator());
+			//glm::vec3 median_velocity = velocities[velocities.size() / 2];
+			//glm::vec3 avg_velocity = avg_velocities / static_cast<float>(velocities.size());
+			//explore_force_ = glm::vec3(0.f);
+			//perimeter_force_ = glm::vec3(0.f);
 
-		
 
-		auto move_to_position = position_ + avg_velocity * delta_time;
-		//auto move_to_position = position_ + median_velocity * delta_time;
-		move_to_position.y = 10.f;
-		alignment_force_ = calculate_direction(move_to_position, alignment_constant_);
-		alignment_force_.y = 0.f;
+			auto move_to_position = position_ + picked_velocity * delta_time;
+			//auto move_to_position = position_ + median_velocity * delta_time;
+			move_to_position.y = 10.f;
+			alignment_force_ = calculate_direction(move_to_position, alignment_constant_);
+		}
+		//alignment_force_.y = 0.f;
 	}	
 	
 }
@@ -339,67 +350,169 @@ void Robot::calculate_cluster_force(const std::vector<int>& other_robots) {
 
 	if (other_robots.size() > 0) {
 		std::vector<PerimeterPos> other_robot_distance_vector;
+		std::vector<int> robot_ids;
+		std::vector<float> neighborhood_counts;
 		for (auto itr = other_robots.begin(); itr != other_robots.end(); ++itr) {
 			auto other_robot = *itr;
 			float grid_length = glm::length(glm::vec3(occupancy_grid_->map_to_grid(robots_[other_robot]->position_) -
 				occupancy_grid_->map_to_grid(position_)));
-			if (cluster_range_.within_range(grid_length)) {
+			if (cluster_range_.within_range(grid_length) && id_ != other_robot) {
 				other_robot_distance_vector.push_back(PerimeterPos(grid_length, occupancy_grid_->map_to_grid(robots_[other_robot]->position_)));
+				robot_ids.push_back(other_robot);
+				neighborhood_counts.push_back(robots_[other_robot]->neighbor_count_);
+			}
+		}
+
+		// calculate neighborhood count
+		//neighbor_count_ = 0;
+		//for (auto& other_robot_distance : other_robot_distance_vector) {
+		//	neighbor_count_ += (cluster_range_.max_ - other_robot_distance.distance_);
+		//}
+		//neighbor_count_ /= (cluster_range_.max_ - cluster_range_.min_);
+
+		// simply, all the robots within range
+		neighbor_count_ = other_robot_distance_vector.size();
+
+
+		// pick a neighbor with lower than preferred count and move towards that(first)
+		if (neighbor_count_ < (preferred_neighbor_count_)) {
+			glm::vec3 centroid;
+			int cluster_size = 0;
+			for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
+				if (neighborhood_counts[i] >= preferred_neighbor_count_) {
+					// cluster found, move towards it
+					centroid += robots_[robot_ids[i]]->position_;
+					cluster_size++;
+				}
+			}
+
+			if (cluster_size > 0) {
+				centroid /= cluster_size;
+				glm::vec3 move_towards_position = centroid;
+				cluster_force_ = calculate_direction(move_towards_position, cluster_constant_);
+				cluster_force_.y = 0.f;
 			}
 		}
 
 
-		glm::vec3 centroid;
-		int cluster_size = 0;
-		for (auto& other_robots_distance : other_robot_distance_vector) {
-				centroid += occupancy_grid_->map_to_position(other_robots_distance.grid_position_);
-				cluster_size++;
-		}
 
-		if (cluster_size > 0) {
-			centroid /= cluster_size;
-			cluster_force_ = calculate_direction(centroid, cluster_constant_);
-			cluster_force_.y = 0.f;
-		}
+
+		//if (neighbor_count_ > (preferred_neighbor_count_ + 1)) {
+		//	glm::vec3 centroid;
+		//	int cluster_size = 0;
+		//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
+		//		if (neighborhood_counts[i] < preferred_neighbor_count_) {
+		//			// small cluster found, move towards it
+		//			centroid += robots_[robot_ids[i]]->position_;
+		//			cluster_size++;
+		//		}
+		//	}
+		//	if (cluster_size > 0) {
+		//		centroid /= cluster_size;
+		//		glm::vec3 move_towards_position = centroid;
+		//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
+		//		cluster_force_.y = 0.f;
+		//	}
+		//} else if (neighbor_count_ < (preferred_neighbor_count_ - 1)) {
+		//	glm::vec3 centroid;
+		//	int cluster_size = 0;
+		//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
+		//		if (neighborhood_counts[i] > preferred_neighbor_count_) {
+		//			// small cluster found, move towards it
+		//			centroid += robots_[robot_ids[i]]->position_;
+		//			cluster_size++;
+		//		}
+		//	}
+		//	if (cluster_size > 0) {
+		//		centroid /= cluster_size;
+		//		glm::vec3 move_towards_position = centroid;
+		//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
+		//		cluster_force_.y = 0.f;
+		//	}
+		//}
+
+
+
+
+		//glm::vec3 centroid;
+		//int cluster_size = 0;
+		//for (auto& other_robots_distance : other_robot_distance_vector) {
+		//		centroid += occupancy_grid_->map_to_position(other_robots_distance.grid_position_);
+		//		cluster_size++;
+		//}
+
+		//if (cluster_size > 0) {
+		//	centroid /= cluster_size;
+		//	cluster_force_ = calculate_direction(centroid, cluster_constant_);
+		//	cluster_force_.y = 0.f;
+		//}
 	} 	
 }
 
 
 void Robot::calculate_perimeter_force(const std::vector<glm::vec3>& interior_cells) {
 
-	
-
 	// for perimeter, get the closest two
 	perimeter_force_ = glm::vec3(0.f, 0.f, 0.f);
 
-	if (interior_cells.size() > 1) {
-		std::vector<PerimeterPos> perimeter_vector;
-		glm::ivec3 explore_direction;
+	auto static_perimeter_list = occupancy_grid_->get_static_perimeter_list();
 
-		for (auto itr = interior_cells.begin(); itr != interior_cells.end(); ++itr) {
-			auto perimeter_position = *itr;
+	std::set<PerimeterPos> perimeter_vector;
 
-			std::vector<glm::ivec3> adjacent_cells;
-			adjacent_cells.reserve(9);
-			occupancy_grid_->get_adjacent_cells(occupancy_grid_->map_to_grid(perimeter_position), adjacent_cells, 1);
-			bool found_non_interior_position = false;
-			// perimeter has to be an adjacent cell
-			for (auto& adjacent_cell : adjacent_cells) {
-				if (!occupancy_grid_->is_interior(adjacent_cell)) {
-					//found_non_interior_position = true;
-					//break;
+	for (auto& perimeter_grid_position : static_perimeter_list) {
+		auto robot_grid_position = occupancy_grid_->map_to_grid(position_);
+		float distance = glm::length(glm::vec3(perimeter_grid_position - robot_grid_position));
+		if (perimeter_range_.within_range(distance)) {
+			perimeter_vector.insert(PerimeterPos(distance, perimeter_grid_position));
+		}
+	}
 
-					auto robot_grid_position = occupancy_grid_->map_to_grid(position_);
-					auto perimeter_grid_position = (adjacent_cell);
-					bool interior_found = occupancy_grid_->going_through_interior_test(robot_grid_position, perimeter_grid_position);
+	if (perimeter_vector.size() > 0) {
 
-					float distance = glm::length(glm::vec3(perimeter_grid_position - robot_grid_position));
-					if (!interior_found && perimeter_range_.within_range(distance)) {
-						//perimeter_vector.push_back(PerimeterPos(distance, perimeter_grid_position));
-						perimeter_vector.push_back(PerimeterPos(distance, perimeter_grid_position));
-					}
-				}
+		//std::stable_sort(perimeter_vector.begin(), perimeter_vector.end());
+
+		int count = 0;
+		std::vector<glm::ivec3> closest_perimeter_positions;
+		for (auto itr = perimeter_vector.begin(); itr != perimeter_vector.end(); ++itr) {
+			if (count == 1) {
+				break;
 			}
+			closest_perimeter_positions.push_back(itr->grid_position_);
+			count++;
+		}
+
+		glm::vec3 walk_along_direction;
+		glm::vec3 perimeter_position = occupancy_grid_->map_to_position(closest_perimeter_positions[0]);
+		perimeter_position.y = 10.f;
+		walk_along_direction = perimeter_position - position_;
+
+		perimeter_force_ = calculate_direction(position_ + walk_along_direction, perimeter_constant_);
+	}
+
+		//for (auto itr = interior_cells.begin(); itr != interior_cells.end(); ++itr) {
+		//	auto perimeter_position = *itr;
+
+		//	std::vector<glm::ivec3> adjacent_cells;
+		//	adjacent_cells.reserve(9);
+		//	occupancy_grid_->get_adjacent_cells(occupancy_grid_->map_to_grid(perimeter_position), adjacent_cells, 1);
+		//	bool found_non_interior_position = false;
+		//	// perimeter has to be an adjacent cell
+		//	for (auto& adjacent_cell : adjacent_cells) {
+		//		if (!occupancy_grid_->is_interior(adjacent_cell)) {
+		//			//found_non_interior_position = true;
+		//			//break;
+
+		//			auto robot_grid_position = occupancy_grid_->map_to_grid(position_);
+		//			auto perimeter_grid_position = (adjacent_cell);
+		//			bool interior_found = occupancy_grid_->going_through_interior_test(robot_grid_position, perimeter_grid_position);
+
+		//			float distance = glm::length(glm::vec3(perimeter_grid_position - robot_grid_position));
+		//			if (!interior_found && perimeter_range_.within_range(distance)) {
+		//				//perimeter_vector.push_back(PerimeterPos(distance, perimeter_grid_position));
+		//				perimeter_vector.insert(PerimeterPos(distance, perimeter_grid_position));
+		//			}
+		//		}
+		//	}
 				
 			//if (found_non_interior_position) {
 			//	SwarmUtils::print_vector("perimeter", perimeter_position);
@@ -412,58 +525,8 @@ void Robot::calculate_perimeter_force(const std::vector<glm::vec3>& interior_cel
 			//		perimeter_vector.push_back(PerimeterPos(distance, perimeter_grid_position));
 			//	}
 			//}
-		}
-		
+		//}
 
-		if (perimeter_vector.size() > 0) {
-
-			std::stable_sort(perimeter_vector.begin(), perimeter_vector.end());
-
-			glm::vec3 walk_along_direction;
-			glm::vec3 perimeter_position = occupancy_grid_->map_to_position(perimeter_vector[0].grid_position_);
-			perimeter_position.y = 10.f;
-			walk_along_direction = perimeter_position - position_;
-
-			//if (perimeter_vector.size() == 1) {
-			//	// just go there
-
-			//} else {
-			//	// figure out how to walk along
-			//	//std::sort(perimeter_vector.begin(), perimeter_vector.end());
-
-			//	int count = 0;
-			//	std::vector<glm::ivec3> closest_perimeter_positions;
-			//	for (auto itr = perimeter_vector.begin(); itr != perimeter_vector.end(); ++itr) {
-			//		if (count == 2) {
-			//			break;
-			//		}
-			//		closest_perimeter_positions.push_back(itr->grid_position_);
-			//		count++;
-			//	}
-
-			//	glm::vec3 perimeter_direction = occupancy_grid_->map_to_position(closest_perimeter_positions[1]) -
-			//		occupancy_grid_->map_to_position(closest_perimeter_positions[0]);
-			//	perimeter_direction.y = 10.f;
-
-			//	// project perimeter with last resultant direction, proj (resultant direction) on to (perimeter) = proj_(p)r
-			//	if (std::abs(glm::dot(perimeter_direction, resultant_direction_) > 1e-6)) {
-			//		walk_along_direction =
-			//			perimeter_direction * glm::dot(perimeter_direction, resultant_direction_) / glm::dot(perimeter_direction, perimeter_direction);
-			//	}
-			//	else {
-			//		// it's orthogonal, so just change direction to wall direction
-			//		walk_along_direction = perimeter_direction;
-			//	}
-			//	walk_along_direction.y = 0.f;
-			//	
-			//}
-
-
-			perimeter_force_ = calculate_direction(position_ + walk_along_direction, perimeter_constant_);
-		}
-	}
-
-	
 }
 
 void Robot::calculate_explore_force() {
@@ -475,24 +538,18 @@ void Robot::calculate_explore_force() {
 
 		if (something_to_explore) {
 			auto move_to_position = occupancy_grid_->map_to_position(explore_cell);
-			//std::cout << "robot id : " << id_ << " ";
-			//SwarmUtils::print_vector("current position", current_cell);
-			//SwarmUtils::print_vector("explore position", explore_cell);
-
 			// force to move to that cell (in 2D)
 			move_to_position.y = 10.f;
 
 			explore_force_ = calculate_direction(move_to_position, explore_constant_);
 			
-			if (glm::length(perimeter_force_) > 1e-6
-				&& glm::length(explore_force_) > 1e-6) {
-				float dot_value = glm::dot(glm::normalize(perimeter_force_), glm::normalize(explore_force_));
-				float perimeter_constant = std::pow((dot_value + 1) /  2.f, 0.5f);
+			//if (glm::length(perimeter_force_) > 1e-6
+			//	&& glm::length(explore_force_) > 1e-6) {
+			//	float dot_value = glm::dot(glm::normalize(perimeter_force_), glm::normalize(explore_force_));
+			//	float perimeter_constant = std::pow((dot_value + 1) /  2.f, 0.5f);
 
-				perimeter_force_ = perimeter_constant * perimeter_force_;
-			}
-
-
+			//	perimeter_force_ = perimeter_constant * perimeter_force_;
+			//}
 		} else {
 			explore_force_ = glm::vec3(0.f);
 		}
@@ -504,14 +561,104 @@ void Robot::calculate_explore_force() {
 
 }
 
+glm::vec3 Robot::calculate_obstacle_avoidance_direction(glm::vec3 resultant_force) {
+
+	auto interior_list = occupancy_grid_->get_interior_list();
+
+	std::vector<PerimeterPos> interior_vector;
+
+	for (auto& interior_grid_position : interior_list) {
+		auto robot_grid_position = occupancy_grid_->map_to_grid(position_);
+		float distance = glm::length(glm::vec3(interior_grid_position - robot_grid_position));
+		//if (cluster_range_.within_range(distance)) {
+			interior_vector.push_back(PerimeterPos(distance, interior_grid_position));
+		//}
+	}
+
+	if (interior_vector.size() > 0) {
+
+		std::stable_sort(interior_vector.begin(), interior_vector.end());
+
+		int count = 0;
+		std::vector<glm::ivec3> closest_interior_positions;
+		for (auto itr = interior_vector.begin(); itr != interior_vector.end(); ++itr) {
+			if (count == 2) {
+				break;
+			}
+			if (obstacle_avoidance_range_.within_range((*itr).distance_)) {
+				closest_interior_positions.push_back(itr->grid_position_);
+				count++;
+			}
+		}
+
+		if (closest_interior_positions.size() > 0) {
+			// check if resultant direction and perimeter are going in the same direction 
+
+
+			glm::vec3 final_direction;
+			if (closest_interior_positions.size() == 1) {
+				// just go there
+				glm::vec3 closest_perimeter_position = occupancy_grid_->map_to_position(closest_interior_positions[0]);
+				closest_perimeter_position.y = 10.f;
+
+				glm::vec3 position_to_perimeter = closest_perimeter_position - position_;
+
+				if (glm::dot(resultant_force, position_to_perimeter) < 0) {
+					return resultant_force;
+				}
+
+				// away from the perimeter
+				final_direction = position_ - closest_perimeter_position;
+
+			}
+			else  if (closest_interior_positions.size() > 1) {
+				// figure out how to walk along
+				//std::sort(perimeter_vector.begin(), perimeter_vector.end());
+				glm::vec3 interior_direction = occupancy_grid_->map_to_position(closest_interior_positions[1]) -
+					occupancy_grid_->map_to_position(closest_interior_positions[0]);
+				interior_direction.y = 10.f;
+
+				glm::vec3 closest_perimeter_position = occupancy_grid_->map_to_position(closest_interior_positions[0]);
+				glm::vec3 position_to_perimeter = closest_perimeter_position - position_;
+
+				if (glm::dot(resultant_force, position_to_perimeter) < 0) {
+					return resultant_force;
+				}
+
+				// project perimeter with current resultant direction, proj (resultant direction) on to (perimeter) = proj_(p)r
+				if (std::abs(glm::dot(interior_direction, resultant_force)) > 1e-6) {
+					final_direction =
+						interior_direction * glm::dot(interior_direction, resultant_force) / glm::dot(interior_direction, interior_direction);
+				}
+				else {
+					// it's orthogonal, so just change direction to wall direction
+					final_direction = interior_direction;
+				}
+				final_direction.y = 0.f;
+			}
+			if (glm::length(final_direction) > 1e-6) {
+				final_direction = glm::normalize(final_direction);
+			}
+		return final_direction;
+		}
+		else {
+			return resultant_force;
+		}
+
+	} else {
+		return resultant_force;
+	}
+	
+}
+
 glm::vec3 Robot::calculate_resultant_direction(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells) {
 
 	// calculate important forces
 	calculate_separation_force(other_robots, interior_cells);
 	calculate_cluster_force(other_robots);
-	calculate_alignment_force(other_robots);
 	calculate_perimeter_force(interior_cells);
 	calculate_explore_force();
+	calculate_alignment_force(other_robots);
 
 	// add forces together to get direction of motion
 	glm::vec3 actual_force = separation_force_ + alignment_force_ + cluster_force_ + explore_force_ + perimeter_force_;
@@ -571,6 +718,7 @@ void Robot::update_visualization_structs() {
 			update_force_visualization(3, perimeter_force_);
 			update_force_visualization(4, cluster_force_);
 			update_force_visualization(5, alignment_force_);
+			update_force_visualization(2, 100.f * resultant_direction_);
 		}
 		// update rendered mesh
 		for (auto& render_entity : mesh_) {
@@ -602,13 +750,14 @@ void Robot::update() {
 
 		last_updated_time_ = current_timestamp.count();
 
-	} else {
+	}
+	else {
 
-		auto delta_time = (current_timestamp.count() - last_updated_time_) / 1000.f;
+		//auto delta_time = (current_timestamp.count() - last_updated_time_) / 1000.f;
 
-		float time_step_duration = 1.f / 30.f; // 60 hz 
+		//float time_step_duration = 1.f / 30.f; // 60 hz 
 
-		accumulator_ += delta_time;
+		//accumulator_ += delta_time;
 
 		// get next direction for motion
 		std::vector<glm::ivec3> adjacent_cells;
@@ -616,7 +765,8 @@ void Robot::update() {
 		get_adjacent_cells(position_, adjacent_cells);
 		auto robot_ids = get_other_robots(adjacent_cells);
 		auto interior_cells = get_interior_cell_positions(adjacent_cells);
-	    resultant_direction_ = calculate_resultant_direction(robot_ids, interior_cells);
+		resultant_direction_ = calculate_resultant_direction(robot_ids, interior_cells);
+		resultant_direction_ = calculate_obstacle_avoidance_direction(resultant_direction_);
 
 		// calculate new position
 		float small_dist = occupancy_grid_->get_grid_cube_length() * 0.1f;
@@ -632,9 +782,9 @@ void Robot::update() {
 		//	position_ = old_position;
 		//} 
 
-
-
-
+		if (is_colliding_with_interior(interior_cells)) {
+			position_ = old_position;
+		} 
 
 		// update grid data structure
    		int explored = id_;

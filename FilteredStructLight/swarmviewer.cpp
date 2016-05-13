@@ -47,7 +47,7 @@ void RobotUpdateThread::run() {
 		}
 		if (!paused_) {
 			step_count_--;
-			if (occupancy_grid_->get_perimeter_list().size() > 0) {
+			if (occupancy_grid_->get_unexplored_perimeter_list().size() > 0) {
 				emit update_time_step_count(++time_step_count_);
 			}
 		}
@@ -444,7 +444,7 @@ void SwarmViewer::change_to_top_down_view() {
 }
 
 void SwarmViewer::update_perimiter_positions_in_overlay() {
-	auto perimeter_list = occupancy_grid_->get_perimeter_list();
+	auto perimeter_list = occupancy_grid_->get_unexplored_perimeter_list();
 	cv::Vec4f dark_green(60.f, 179.f, 113.f, 255.f);
 	dark_green /= 255.f;
 	for (auto& perimeter_pos : perimeter_list) {
@@ -555,6 +555,7 @@ void SwarmViewer::reset_sim() {
 	load_interior_model();
 	occupancy_grid_->create_perimeter_list();
 	occupancy_grid_->create_empty_space_list();
+	occupancy_grid_->create_interior_list();
 
 	create_robots();
 	// assumption - global position of other robots are known
@@ -722,7 +723,7 @@ void SwarmViewer::create_lights() {
 		light.light_color_location_ = m_shader.uniformLocation(light_color_name.str().c_str());
 
 		//glm::vec3 light_position(0, 0, -100);
-		glm::vec3 light_position(position(rng), position(rng), position(rng));
+		glm::vec3 light_position(position(rng), 500.f, position(rng));
 		glm::vec3 light_color(color(rng), color(rng), color(rng));
 
 		light.color_ = light_color;

@@ -105,6 +105,7 @@ private:
 	std::set<glm::ivec3, IVec3Comparator> empty_space_list_;
 
 	std::set<glm::ivec3, IVec3Comparator> static_perimeter_list_;
+	std::set<glm::ivec3, IVec3Comparator> interior_list_;
 	//int empty_value_;
 
 	int pool_size_;
@@ -122,7 +123,11 @@ public:
 	bool find_closest_position_from_list(const std::set<glm::ivec3, IVec3Comparator>& explore_perimeter_list, const glm::ivec3& robot_grid_position,
 		glm::ivec3& explore_position, float range_min, float range_max);
  
-	std::set<glm::ivec3, IVec3Comparator> get_perimeter_list();
+	std::set<glm::ivec3, IVec3Comparator> get_unexplored_perimeter_list();
+	std::set<glm::ivec3, IVec3Comparator> get_static_perimeter_list();
+	std::set<glm::ivec3, IVec3Comparator> get_interior_list();
+
+	void create_interior_list();
 	int get_interior_mark();
 	void mark_floor_plan();
 	SwarmOccupancyTree(int grid_cube_length, int grid_resolution);

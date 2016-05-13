@@ -784,14 +784,6 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	double max_constant_value = 1000.0;
 
-	QLabel* exploration_label = new QLabel("Exploration", group_box);
-	exploration_constant_ = new QDoubleSpinBox(group_box);
-	exploration_constant_->setMinimum(0.0);
-	exploration_constant_->setMaximum(max_constant_value);
-	exploration_constant_->setSingleStep(0.1);
-
-	constants_layout->addWidget(exploration_label, 0, 0);
-	constants_layout->addWidget(exploration_constant_, 0, 1);
 
 
 	QLabel* separation_label = new QLabel("Separation", group_box);
@@ -830,6 +822,14 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	constants_layout->addWidget(perimeter_label, 4, 0);
 	constants_layout->addWidget(perimeter_constant_, 4, 1);
 
+	QLabel* exploration_label = new QLabel("Exploration", group_box);
+	exploration_constant_ = new QDoubleSpinBox(group_box);
+	exploration_constant_->setMinimum(0.0);
+	exploration_constant_->setMaximum(max_constant_value);
+	exploration_constant_->setSingleStep(0.1);
+
+	constants_layout->addWidget(exploration_label, 0, 0);
+	constants_layout->addWidget(exploration_constant_, 0, 1);
 
 
 	QLabel* goto_work_label = new QLabel("Go to Work", group_box);
