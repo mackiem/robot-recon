@@ -759,6 +759,7 @@ void SwarmViewer::update_sim_results(double timesteps, double multi_sampling, do
 	multi_sampling_result_ = multi_sampling;
 	coverage_result_ = coverage;
 	sim_results_updated_ = true;
+	//emit update_sim_results_to_optimizer(timesteps, multi_sampling, coverage);
 }
 
 void SwarmViewer::get_sim_results(double& timesteps, double& multi_sampling, double& coverage) {
@@ -904,7 +905,7 @@ std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 		int z = no_of_robots_per_side;
 		int x = 0;
 
-		std::cout << "No of robots : " << no_of_robots_per_side << " " << robot_positions.size() << std::endl;
+		//std::cout << "No of robots : " << no_of_robots_per_side << " " << robot_positions.size() << std::endl;
 		no_of_robots_ = robot_positions.size();
 		break;
 	}
@@ -938,7 +939,7 @@ std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 		//int z = no_of_robots_per_side;
 		//int x = 0;
 
-		std::cout << "No of robots : " << robot_positions.size() << std::endl;
+		//std::cout << "No of robots : " << robot_positions.size() << std::endl;
 		no_of_robots_ = robot_positions.size();
 		break;
 	}

@@ -35,7 +35,7 @@ class SwarmMCMCOptimizer : public QObject {
 
 public:
 	void set_viewer(SwarmViewer* swarm_viewer);
-	double run_simulation(double separation_delta);
+	double run_simulation(double separation_constant, double cluster_constant);
 
 signals:
 	void finished();

@@ -1,6 +1,7 @@
 #include "swarmopt.h"
 #include <math.h>
 #include <malloc.h>
+#include <QtCore/qeventloop.h>
 
 
 extern "C" int mylmdif_(int (*fcn)(int *, int *, double *, double *, int *), int *m, int *n, double *x, double *fvec, double *ftol, double *xtol, double *gtol, int *maxfev, 
@@ -279,7 +280,7 @@ void SwarmMCMCOptimizer::set_viewer(SwarmViewer* swarm_viewer) {
 	swarm_viewer_ = swarm_viewer;
 }
 
-double SwarmMCMCOptimizer::run_simulation(double separation_constant) {
+double SwarmMCMCOptimizer::run_simulation(double separation_constant, double cluster_constant) {
 
 	 // 0 - separation constant
 	 // 1 - alignment constant
@@ -302,6 +303,9 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant) {
 	//double scaling_constant = 100.f;
 	separation_constant = (separation_constant > 0) ? separation_constant : 0;
 	swarm_viewer_->set_separation_constant(separation_constant);
+
+	cluster_constant = (cluster_constant > 0) ? cluster_constant : 0;
+	swarm_viewer_->set_cluster_constant(cluster_constant);
 	//swarm_viewer_g->set_alignment_constant(params[1]);
 	//swarm_viewer_g->set_cluster_constant(params[2]);
 	//swarm_viewer_g->set_perimeter_constant(params[3]);
@@ -317,13 +321,17 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant) {
 
 
 	//swarm_viewer_g->set_preferred_neighbor_count(params[9]);
-	emit swarm_viewer_->optimizer_reset_sim();
+
+	//QEventLoop loop;
+	//loop.connect()
 	double current_time_taken;
 	double current_multi_sampling;
 	double current_coverage;
 
-	swarm_viewer_->get_sim_results(current_time_taken, current_multi_sampling, current_coverage);
 
+	emit swarm_viewer_->optimizer_reset_sim();
+
+	swarm_viewer_->get_sim_results(current_time_taken, current_multi_sampling, current_coverage);
 	//std::cout << "Time taken for step : " << current_time_taken << std::endl;
 	//std::cout << "Multi sampling for step : " << current_multi_sampling << std::endl;
 	//std::cout << "Current coverage : " << current_coverage << std::endl;
@@ -335,8 +343,8 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant) {
 	// maximize coverage
 
 	double score = 0.0;
-	score += std::pow(10000 - current_time_taken, 2);
-	//score += std::pow(current_multi_sampling - max_multi_sampling_, 2);
+	score += (5000.0 - current_time_taken) / 5000.0;
+	score += (current_multi_sampling) / static_cast<double>(swarm_viewer_->no_of_robots_);
 	//score += std::pow(current_coverage - max_coverage_, 2);
 
 	return score;
@@ -374,13 +382,15 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 
 	// initialize params
 	double current_separation_constant = swarm_viewer_->separation_constant_;
-	double scaling_constant = 100.f;
+	double current_cluster_constant = swarm_viewer_->cluster_constant_;
+	double scaling_constant = 10.f;
 	
 	// current score
-	double current_score = run_simulation(current_separation_constant);
+	double current_score = run_simulation(current_separation_constant, current_cluster_constant);
 
 	double best_score = current_score;
 	double best_separation_constant = current_separation_constant;
+	double best_cluster_constant = current_cluster_constant;
 
 	int no_of_iterations = 1000000;
 
@@ -394,12 +404,16 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 		double separation_delta = normal_distribution(mt);
 		double next_separation_constant = (current_separation_constant + scaling_constant * separation_delta);
 
-		double next_score = run_simulation(next_separation_constant);
+		double cluster_delta = normal_distribution(mt);
+		double next_cluster_constant = (current_cluster_constant + scaling_constant * cluster_delta);
+
+		double next_score = run_simulation(next_separation_constant, next_cluster_constant);
 
 		if (next_score > best_score) {
 			best_score = next_score;
 			best_separation_constant = next_separation_constant;
-			std::cout << "Best time step : " << best_score << " best separation constant : " << best_separation_constant << std::endl;
+			best_cluster_constant = next_cluster_constant;
+			std::cout << "Best time step : " << best_score << " best separation constant : " << best_separation_constant << " best cluster constant : " << best_cluster_constant << std::endl;
 		}
 
 		double uniform_random_value = uniform_real_distribution(mt);
@@ -409,6 +423,7 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 
 			current_score = next_score;
 			current_separation_constant = next_separation_constant;
+			current_cluster_constant = next_cluster_constant;
 			//std::cout << "Accepted time step : " << current_score << " accepted separation constant : " << current_separation_constant << std::endl;
 		}
 	}

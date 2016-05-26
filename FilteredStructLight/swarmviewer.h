@@ -197,6 +197,7 @@ signals:
 	void physics_thread_step();
 	void physics_thread_resume();
 	void optimizer_reset_sim();
+	void update_sim_results_to_optimizer(double timesteps, double multi_sampling, double coverage);
 
 public slots:
 
