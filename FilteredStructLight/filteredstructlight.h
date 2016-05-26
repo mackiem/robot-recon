@@ -227,6 +227,8 @@ private:
 	QPushButton* swarm_resume_button_;
 	QLabel* time_step_count_label_;
 	QSpinBox* discovery_range_;
+	QPushButton* run_least_squared_optimization_button_;
+	QPushButton* run_mcmc_optimization_button_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();

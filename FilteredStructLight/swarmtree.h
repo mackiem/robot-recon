@@ -10,6 +10,12 @@ public:
 OutOfGridBoundsException(const char* message) : std::exception(message) {};
 };
 
+struct IVec3Hasher {
+	std::size_t operator()(const glm::ivec3& k) const {
+		return k.x + 100000 * k.z;
+	}
+};
+
 struct ExploredPosition {
 	glm::ivec3 grid_pos_;
 	bool explored_;
@@ -34,6 +40,18 @@ struct IVec3Comparator {
 		}
 	}
 };
+
+struct IVec3Equals {
+	bool operator()(const glm::ivec3& lhs_grid_pos, const glm::ivec3& rhs_grid_pos) const {
+		if ((lhs_grid_pos.x == rhs_grid_pos.x) &&
+			(lhs_grid_pos.y == rhs_grid_pos.y) && 
+			(lhs_grid_pos.z == rhs_grid_pos.z)) {
+			return true;
+		}
+		return false;
+	}
+};
+
 
 struct Vec3Comparator {
 	bool operator()(const glm::vec3& lhs_grid_pos, const glm::vec3& rhs_grid_pos) const {
@@ -101,6 +119,11 @@ private:
 	int grid_resolution_;
 	glm::ivec3 offset_;
 
+	//std::shared_ptr<std::unordered_map<glm::ivec3, std::unordered_map<int, std::unordered_map<int, int>>
+	//	, IVec3Hasher, IVec3Equals>> sampling_tracker_;
+	std::shared_ptr<std::map<glm::ivec3, std::map<int, std::map<int, int>>
+		, IVec3Comparator>> sampling_tracker_;
+
 	std::set<glm::ivec3, IVec3Comparator> explore_perimeter_list_;
 	std::set<glm::ivec3, IVec3Comparator> empty_space_list_;
 
@@ -122,6 +145,16 @@ public:
 		glm::ivec3& explore_position);
 	bool find_closest_position_from_list(const std::set<glm::ivec3, IVec3Comparator>& explore_perimeter_list, const glm::ivec3& robot_grid_position,
 		glm::ivec3& explore_position, float range_min, float range_max);
+
+	bool closest_perimeter(const glm::ivec3& robot_grid_position,
+		glm::ivec3& perimeter_position, float range_min, float range_max);
+
+	bool find_closest_2_positions_from_list(const std::set<glm::ivec3, IVec3Comparator>& perimeter_list,
+		const glm::ivec3& robot_grid_position,
+		std::vector<glm::ivec3>& explore_positions, float range_min, float range_max);
+
+	bool closest_2_interior_positions(const glm::ivec3& robot_grid_position,
+		std::vector<glm::ivec3>& perimeter_position, float range_min, float range_max);
  
 	std::set<glm::ivec3, IVec3Comparator> get_unexplored_perimeter_list();
 	std::set<glm::ivec3, IVec3Comparator> get_static_perimeter_list();
@@ -136,12 +169,16 @@ public:
 	bool visited(std::set<BFSNode>* visited_nodes, const BFSNode& bfs_node) const;
 	bool visited(const SwarmOccupancyTree& visited_nodes, const BFSNode& bfs_node) const;
 	//bool visited(std::set<glm::ivec3>* visited_nodes, const glm::ivec3& bfs_node) const;
-	bool is_unexplored_perimeter(const glm::ivec3& grid_position) const;
+	//bool is_unexplored_perimeter(const glm::ivec3& grid_position) const;
+
+	void init_coverage_map(std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>& coverage_map_) const;
 
 	void mark_visited(SwarmOccupancyTree& swarm_oct_tree, const BFSNode& bfs_node) const;
 	bool frontier_bread_first_search(const glm::ivec3& current_cell, glm::ivec3& result_cell, 
 		int max_depth) const;
 	void mark_interior_line(glm::vec3 a, glm::vec3 b);
+	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id);
+	double calculate_multi_sampling_factor();
 	static int INTERIOR_MARK;
 	static int SEARCH_VISITED;
 	static int SEARCH_NOT_VISITED;

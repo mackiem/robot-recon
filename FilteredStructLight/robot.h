@@ -116,6 +116,7 @@ private:
 
 	float neighbor_count_;
 	float preferred_neighbor_count_;
+	float magic_k_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;
@@ -139,6 +140,11 @@ private:
 	QMutex explored_mutex_;
 
 	int discovery_range_;
+	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals> coverage_map_;
+
+	int pool_size_;
+	int current_pool_count_;
+	std::shared_ptr<std::vector<std::vector<glm::ivec3>>> heap_pool_;
 
 public:
 	static int MAX_DEPTH;
@@ -158,12 +164,25 @@ public:
 	glm::vec3 calculate_force_from_piecewise_squared_function(const glm::vec3& separation_vector, float constant, float distance_from_threshold);
 
 	glm::vec3 calculate_resultant_direction(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells);
-	Robot(UniformLocations& locations, unsigned id,
-		std::shared_ptr<SwarmOccupancyTree> octree,
-		std::shared_ptr<SwarmCollisionTree> collision_tree, 
-		double explore_constant, double seperation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant, 
+	void init_coverage_map();
+	//Robot(UniformLocations& locations, unsigned id,
+	//	std::shared_ptr<SwarmOccupancyTree> octree,
+	//	std::shared_ptr<SwarmCollisionTree> collision_tree, 
+
+	//	double seperation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double explore_constant,
+	//	Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, 
+	//	Range obstacle_avoidance_near_range, Range obstacle_avoidance_walking_range, 
+	//	int preferred_neighborhood_count, 
+
+	//	double sensor_range, int discovery_range,
+	//	 glm::vec3 position, QGLShaderProgram* shader);
+	Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOccupancyTree> octree, std::shared_ptr<SwarmCollisionTree> collision_tree,
+		double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
 		Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, double sensor_range, int discovery_range,
-		double seperation_distance, glm::vec3 position, QGLShaderProgram* shader);
+		double separation_distance, glm::vec3 position, QGLShaderProgram* shader);
+
+
+
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
 
 	glm::vec3 calculate_obstacle_avoidance_direction(glm::vec3 resultant_force);
@@ -171,7 +190,7 @@ public:
 	void update_robots(const std::vector<std::shared_ptr<Robot>>& robots);
 	//void handle_input();
 	virtual void update(glm::mat4 global_model);
-	void update();
+	void update(int timestamp);
 
 	Robot& operator=(const Robot& other);
 
@@ -182,7 +201,9 @@ public:
 	bool is_colliding_with_interior(const std::vector<glm::vec3>& interior_positions) const;
 	bool is_colliding_with_robots(const std::vector<int>& robot_ids) const;
 	void update_visualization_structs();
-
+	void calculate_sampling_factor();
+	double calculate_coverage();
+	void reallocate_pools();
 	// calculate forces, 3 types of forces for now
 	// calculate acceleration and integrate for velocity and position
 

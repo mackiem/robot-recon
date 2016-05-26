@@ -7,7 +7,7 @@
 #include "swarmtree.h"
 #include <QtCore/QThread>
 
-class RobotUpdateThread : public QThread {
+class RobotWorker : public QObject {
 	Q_OBJECT
 	std::vector<std::shared_ptr<Robot>>* robots_;
 	bool aborted_;
@@ -15,9 +15,11 @@ class RobotUpdateThread : public QThread {
 	int time_step_count_;
 	int step_count_;
 	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
-
+	bool sampling_updated_;
 public:
-	RobotUpdateThread();
+	RobotWorker();
+	double calculate_coverage();
+
 	void set_robots(std::vector<std::shared_ptr<Robot>>* robots) {
 		robots_ = robots;
 	}
@@ -29,21 +31,18 @@ public:
 		aborted_ = true;
 	}
 
-	void init() {
-		aborted_ = false;
-		time_step_count_ = 0;
-		step_count_ = -1;
-	}
+	void init();
 
-	void run() Q_DECL_OVERRIDE;	
 
 public slots:
 	void pause();
 	void resume();
 	void step();
+	void do_work();	
 
 signals:
 	void update_time_step_count(int count);
+	void update_sim_results(double timesteps, double multi_sampling, double coverage);
 
 
 };
@@ -67,14 +66,13 @@ public:
 };
 
 
-
-
 private:
 	enum Formation {
 		GRID = 0,
 		RANDOM = 1,
-		SQUARE,
-		SQUARE_CLOSE_TO_EDGE
+		SQUARE = 2,
+		SQUARE_CLOSE_TO_EDGE = 3,
+		CIRCLE = 4
 	};
 
 	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
@@ -86,7 +84,6 @@ private:
 	GLint inverse_transpose_loc_;
 	GLint mvp_loc_;
 	GLint view_position_loc_;
-	int grid_resolution_per_side_;
 	bool show_forces_;
 	Range separation_range_;
 	Range alignment_range_;
@@ -95,6 +92,10 @@ private:
 	Range explore_range_;
 	double sensor_range_;
 	int discovery_range_;
+	bool sim_results_updated_;
+	double time_steps_result_;
+	double multi_sampling_result_;
+	double coverage_result_;
 
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
@@ -111,15 +112,9 @@ private:
 
 	std::map<int, cv::Vec4f> robot_color_map_;
 
-	RobotUpdateThread robot_update_thread_;
+	QThread robot_update_thread_;
+	RobotWorker* robot_worker_;
 
-	int no_of_robots_;
-	float explore_constant_;
-	float separation_constant_;
-	float goto_work_constant_;
-	float cluster_constant_;
-	float perimeter_constant_;
-	float alignment_constant_;
 
 	float separation_distance_;
 	int formation_;
@@ -154,20 +149,21 @@ private:
 	int step_count_;
 	int time_step_count_; 
 	std::shared_ptr<GridOverlay> overlay_;
+	glm::mat4 model_rotation_;
 
 protected:
 
 	void load_inital_models() override;
 	void initialize_position();
 	virtual void set_shaders() override;
-	void derive_floor_plan(VertexBufferData bufferdata, float scale, const glm::vec3& offset);
+	void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset);
 	void load_interior_model();
 	void change_to_top_down_view();
 	void update_perimiter_positions_in_overlay();
 	virtual void custom_init_code() override;
 	virtual void custom_draw_code() override;
 	virtual void draw_mesh(RenderMesh& mesh) override;
-
+	void shutdown_worker();
 	bool intersect(const cv::Vec3f& n, float d,
 		const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt) const;
 	void quad_tree_test();
@@ -175,6 +171,7 @@ protected:
 public:
 	static const int OCCUPANCY_GRID_HEIGHT;
 	SwarmViewer(const QGLFormat& format, QWidget* parent = 0);
+	virtual ~SwarmViewer();
 	void create_light_model(RenderMesh& light_mesh);
 	void create_robot_model(RenderMesh& light_mesh, cv::Vec4f color);
 	void create_lights();
@@ -182,14 +179,28 @@ public:
 	void create_robots();
 	//void create_occupancy_grid_overlay(int grid_resolution, int grid_size, bool initialize = false);
 	void create_occupancy_grid(int grid_resolution, int grid_size);
+	int grid_resolution_per_side_;
+	int no_of_robots_;
+	void get_sim_results(double& timesteps, double& multi_sampling, double& coverage);
+
+
+	double explore_constant_;
+	double separation_constant_;
+	double goto_work_constant_;
+	double cluster_constant_;
+	double perimeter_constant_;
+	double alignment_constant_;
 
 signals:
 	void update_time_step_count(int count);
 	void physics_thread_pause();
 	void physics_thread_step();
 	void physics_thread_resume();
+	void optimizer_reset_sim();
 
 public slots:
+
+void update_sim_results(double timesteps, double multi_sampling, double coverage);
 void set_no_of_robots(int no_of_robots);
 
 void set_separation_distance(float distance);
@@ -208,8 +219,8 @@ void set_perimeter_constant(double constant);
 void set_goto_work_constant(double constant);
 
 void set_show_interior(int show);
-
-void reset_sim();
+	void set_model_rotation(double x_rotation, double y_rotation, double z_rotation);
+	void reset_sim();
 
 void set_show_forces(int show);
 
@@ -229,5 +240,8 @@ void set_discovery_range(int discovery_range);
 void pause();
 void step();
 void resume();
+
+void run_least_squared_optimization();
+void run_mcmc_optimization();
 
 };

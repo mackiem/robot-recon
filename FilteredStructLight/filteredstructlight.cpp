@@ -3,7 +3,7 @@
 #include "modelviewer.h"
 #include "robotviewer.h"
 
-const int FilteredStructLight::MAX_FORMATION_NO = 4;
+const int FilteredStructLight::MAX_FORMATION_NO = 5;
 const int FilteredStructLight::MAX_VIDEO_NO = 5;
 const char* FilteredStructLight::RECONSTRUCTION_VIDEO_FILENAME_LABEL = "reconstruction_video_filename";
 const char* FilteredStructLight::CHECKERBOARD_VIDEO_FILENAME_LABEL = "checkerboard_video_filename";
@@ -685,17 +685,17 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 
 	QLabel* x_offset = new QLabel("x", offset_group_box);
 	x_spin_box_ = new QSpinBox(offset_group_box);
-	x_spin_box_->setRange(-1000, 1000);
+	x_spin_box_->setRange(-10000, 10000);
 	x_spin_box_->setSingleStep(1);
 
 	QLabel* y_offset = new QLabel("y", offset_group_box);
 	y_spin_box_ = new QSpinBox(offset_group_box);
-	y_spin_box_->setRange(-1000, 1000);
+	y_spin_box_->setRange(-10000, 10000);
 	y_spin_box_->setSingleStep(1);
 
 	QLabel* z_offset = new QLabel("z", offset_group_box);
 	z_spin_box_ = new QSpinBox(offset_group_box);
-	z_spin_box_->setRange(-1000, 1000);
+	z_spin_box_->setRange(-10000, 10000);
 	z_spin_box_->setSingleStep(1);
 
 	offset_layout->addWidget(x_offset, 0, 0);
@@ -767,6 +767,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	formations.push_back("Random");
 	formations.push_back("Square");
 	formations.push_back("Close to Edge");
+	formations.push_back("Circle");
 
 	for (int i = 0; i < MAX_FORMATION_NO; ++i) {
 		formation_buttons_[i] = new QArrayRadioButton(formations[i], i, group_box);
@@ -1049,6 +1050,12 @@ void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
 
+	run_mcmc_optimization_button_ = new QPushButton("Run MCMC Optimization", group_box);
+	group_box_layout->addWidget(run_mcmc_optimization_button_);
+
+	run_least_squared_optimization_button_ = new QPushButton("Run Least Squares Optimization", group_box);
+	group_box_layout->addWidget(run_least_squared_optimization_button_);
+
 	swarm_config_filename_ = new QLineEdit(group_box);
 	swarm_config_filename_browse_ = new QPushButton("...", group_box);
 	swarm_config_filename_browse_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
@@ -1078,6 +1085,8 @@ void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
 	load_swarm_config_button_ = new QPushButton("Load Conf.", group_box);
 	save_swarm_config_button_ = new QPushButton("Save Conf.", group_box);
 
+	connect(run_least_squared_optimization_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::run_least_squared_optimization);
+	connect(run_mcmc_optimization_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::run_mcmc_optimization);
 
 	connect(load_swarm_config_button_, &QPushButton::clicked, this, 
 		[&] {

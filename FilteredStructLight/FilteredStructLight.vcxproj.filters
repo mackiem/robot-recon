@@ -185,6 +185,15 @@
     <ClCompile Include="GeneratedFiles\Release\moc_swarmviewer.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="swarmopt.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Debug\moc_swarmopt.cpp">
+      <Filter>Generated Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="GeneratedFiles\Release\moc_swarmopt.cpp">
+      <Filter>Generated Files\Release</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="filteredstructlight.h">
@@ -218,6 +227,9 @@
       <Filter>Header Files</Filter>
     </CustomBuild>
     <CustomBuild Include="swarmviewer.h">
+      <Filter>Header Files</Filter>
+    </CustomBuild>
+    <CustomBuild Include="swarmopt.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
   </ItemGroup>

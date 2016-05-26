@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
 #include "swarmutils.h"
+#include "swarmopt.h"
 
 //const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/house interior.obj";
 //const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/box-floor-plan.obj";
@@ -17,6 +18,7 @@ const int SwarmViewer::DEFAULT_NO_OF_ROBOTS = 3;
 
 #define NO_OF_LIGHTS 2
 #define NO_OF_ROBOTS 10
+#define PI 3.14159265
 
 const std::string SwarmViewer::OCCUPANCY_GRID_NAME = "occupancy_grid";
 const std::string SwarmViewer::OCCUPANCY_GRID_OVERLAY_NAME = "occupancy_grid_overlay";
@@ -34,42 +36,74 @@ void SwarmViewer::Light::update(glm::mat4 global_model) {
 	glUniform3fv(light_position_location_, 1, glm::value_ptr(world_position));
 }
 
-RobotUpdateThread::RobotUpdateThread() : aborted_(false), paused_(false) {
+RobotWorker::RobotWorker() : aborted_(false), paused_(false), sampling_updated_(false) {
 	//refresh_rate_ = 1.f / 30.f;
 	//accumulator_ = 0.f;
 	
 };
 
-void RobotUpdateThread::run() {
+double RobotWorker::calculate_coverage() {
+	double coverage = 0.0;
+	for (auto& robot : *robots_) {
+		coverage += robot->calculate_coverage();
+	}
+	if (robots_->size() > 0) {
+		coverage /= robots_->size();
+	}
+	return coverage;
+}
+	
+
+void RobotWorker::do_work() {
 	while (!aborted_) {
 		if (step_count_ == 0) {
 			paused_ = true;
 		}
 		if (!paused_) {
 			step_count_--;
+			if (time_step_count_ > 5000) {
+				double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
+				double coverage = calculate_coverage();
+				emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
+				sampling_updated_ = true;
+			}
+
 			if (occupancy_grid_->get_unexplored_perimeter_list().size() > 0) {
 				emit update_time_step_count(++time_step_count_);
+			} else {
+				if (!sampling_updated_) {
+					double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
+					double coverage = calculate_coverage();
+					emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
+					sampling_updated_ = true;
+				}
 			}
 		}
 		if (!paused_) {
 			for (auto& robot : *robots_) {
-				robot->update();
+				robot->update(time_step_count_);
 			}
-			time_step_count_++;
 		}
 	}
 }
 
-void RobotUpdateThread::pause() {
+void RobotWorker::init() {
+	sampling_updated_ = false;
+	aborted_ = false;
+	time_step_count_ = 0;
+	step_count_ = -1;
+}
+
+void RobotWorker::pause() {
 	paused_ = true;
 }
 
-void RobotUpdateThread::resume() {
+void RobotWorker::resume() {
 	paused_ = false;
 	step_count_ = -1;
 }
 
-void RobotUpdateThread::step() {
+void RobotWorker::step() {
 	if (paused_) {
 		step_count_ = 1;
 		paused_ = false;
@@ -219,9 +253,12 @@ void SwarmViewer::set_shaders() {
 
 
 
-void SwarmViewer::derive_floor_plan(VertexBufferData bufferdata, float scale, const glm::vec3& offset) {
+void SwarmViewer::derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset) {
 	std::vector<std::vector<cv::Vec3f>> triangle_list;
 	cv::Vec3f vertex_offset(offset.x, offset.y, offset.z);
+	glm::mat3 rot_mat = glm::mat3(model_rotation_);
+	cv::Mat rotation_mat = convert_mat(rot_mat);
+
 	for (size_t i = 0; i < bufferdata.count.size(); ++i) {
 		// get triangle vertices
 
@@ -230,7 +267,9 @@ void SwarmViewer::derive_floor_plan(VertexBufferData bufferdata, float scale, co
 		std::vector<cv::Vec3f> triangle;
 		for (size_t j = 0; j < bufferdata.count[i]; ++j) {
 			int index = bufferdata.indices[index_offset + j];
-			cv::Vec3f triangle_point = (scale * (bufferdata.positions[base_vertex + index] + vertex_offset));
+			cv::Mat rotated_point_matrix = rotation_mat * cv::Mat(bufferdata.positions[base_vertex + index]);
+			cv::Vec3f rotated_point((float*)rotated_point_matrix.datastart);
+			cv::Vec3f triangle_point = scale * (rotated_point + vertex_offset);
 			triangle.push_back(triangle_point);
 			if ((j+1) % 3 == 0 && j > 0) {
 				triangle_list.push_back(triangle);
@@ -352,20 +391,23 @@ void SwarmViewer::quad_tree_test() {
 void SwarmViewer::load_interior_model() {
 	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
 
-	std::vector<cv::Vec3f> vertices;
-	std::vector<cv::Vec3f> normals;
-	std::vector<cv::Vec4f> colors;
-	std::vector<cv::Vec2f> uvs;
-	std::vector<unsigned int> indices;
-	std::vector<int> count;
-	std::vector<int> offset;
-	std::vector<int> base_index;
+	//std::vector<cv::Vec3f> vertices;
+	//std::vector<cv::Vec3f> normals;
+	//std::vector<cv::Vec4f> colors;
+	//std::vector<cv::Vec2f> uvs;
+	//std::vector<unsigned int> indices;
+	//std::vector<int> count;
+	//std::vector<int> offset;
+	//std::vector<int> base_index;
 
 
 	std::string model_filename = (interior_model_filename_.compare("") == 0) ? DEFAULT_INTERIOR_MODEL_FILENAME
 		: interior_model_filename_;
 
-	load_obj(model_filename,  vertices, normals, uvs, indices, count, offset, base_index);
+	//load_obj(model_filename,  vertices, normals, uvs, indices, count, offset, base_index);
+
+	VertexBufferData* vertex_buffer_data = new VertexBufferData();
+	load_obj(model_filename,  *vertex_buffer_data);
 
 	cv::Vec4f color(0.8f, 0.5f, 0.5f, 1.f);
 
@@ -373,18 +415,22 @@ void SwarmViewer::load_interior_model() {
 	std::mt19937 rng(rd());
 	std::uniform_real_distribution<float> color_distribution(0.4, 1.0);
 
-	cv::Vec4f random_color;
-	for (auto i = 0u; i < vertices.size(); ++i) {
+
+	
+	vertex_buffer_data->colors = std::vector<cv::Vec4f>(vertex_buffer_data->positions.size(), color);
+
+	//for (auto i = 0u; i < vertices.size(); ++i) {
 		//if (i % 3 == 0) {
 		//	random_color = cv::Vec4f(color_distribution(rng), color_distribution(rng), color_distribution(rng), 1.f);
 		//}
 		//colors.push_back(random_color);
-		colors.push_back(color);
-	}
+	//	colors.push_back(color);
+	//}
 
 
 	RenderEntity interior_model(GL_TRIANGLES, &m_shader);
-	interior_model.upload_data_to_gpu(vertices, colors, normals, uvs, indices, count, offset, base_index);
+	//interior_model.upload_data_to_gpu(vertices, colors, normals, uvs, indices, count, offset, base_index);
+	interior_model.upload_data_to_gpu(*vertex_buffer_data);
 
 	//GLenum error = glGetError();
 
@@ -398,27 +444,30 @@ void SwarmViewer::load_interior_model() {
 
 	glm::mat4 model = glm::scale(glm::mat4(1.f), glm::vec3(scale, scale, scale));
 	model = glm::translate(model, interior_offset_);
+	model = model * model_rotation_;
 	update_model(interior_model_object->mesh_, model);
 
-	VertexBufferData bufferdata;
-	bufferdata.positions = vertices;
-	bufferdata.normals = normals;
-	bufferdata.colors = colors;
-	bufferdata.base_index = base_index;
-	bufferdata.indices = indices;
-	bufferdata.offset = offset;
-	bufferdata.uvs = uvs;
-	bufferdata.count = count;
+	//VertexBufferData* bufferdata = new VertexBufferData();
+	//bufferdata->positions = vertices;
+	//bufferdata->normals = normals;
+	//bufferdata->colors = colors;
+	//bufferdata->base_index = base_index;
+	//bufferdata->indices = indices;
+	//bufferdata->offset = offset;
+	//bufferdata->uvs = uvs;
+	//bufferdata->count = count;
 
 	if (interior_model_filename_.compare("") > 0) {
-		derive_floor_plan(bufferdata, scale, interior_offset_);
+		derive_floor_plan(*vertex_buffer_data, scale, interior_offset_);
 	}
 
 	default_vis_objects_.push_back(interior_model_object);
 
+
 	//default_scene_.push_back(interior_model_mesh);
 
 	//create_lights();
+	delete vertex_buffer_data;
 }
 
 void SwarmViewer::change_to_top_down_view() {
@@ -527,16 +576,31 @@ void SwarmViewer::custom_draw_code() {
 void SwarmViewer::draw_mesh(RenderMesh& mesh) {
 }
 
-void SwarmViewer::reset_sim() {
+void SwarmViewer::shutdown_worker() {
 	if (robot_update_thread_.isRunning()) {
-		disconnect(this, &SwarmViewer::physics_thread_pause, &robot_update_thread_, &RobotUpdateThread::pause);
-		disconnect(this, &SwarmViewer::physics_thread_resume, &robot_update_thread_, &RobotUpdateThread::resume);
-		disconnect(this, &SwarmViewer::physics_thread_step, &robot_update_thread_, &RobotUpdateThread::step);
-		disconnect(&robot_update_thread_, &RobotUpdateThread::update_time_step_count, this, &SwarmViewer::update_time_step_count);
-		robot_update_thread_.abort();
+		disconnect(this, &SwarmViewer::physics_thread_pause, robot_worker_, &RobotWorker::pause);
+		disconnect(this, &SwarmViewer::physics_thread_resume, robot_worker_, &RobotWorker::resume);
+		disconnect(this, &SwarmViewer::physics_thread_step, robot_worker_, &RobotWorker::step);
+		disconnect(robot_worker_, &RobotWorker::update_time_step_count, this, &SwarmViewer::update_time_step_count);
+		disconnect(robot_worker_, &RobotWorker::update_sim_results, this, &SwarmViewer::update_sim_results);
+		robot_worker_->abort();
+		robot_update_thread_.quit();
 		robot_update_thread_.wait();
+		delete robot_worker_;
 	}
+	
+}
 
+SwarmViewer::~SwarmViewer() {
+	shutdown_worker();
+}
+
+void SwarmViewer::reset_sim() {
+	makeCurrent();
+	shutdown_worker();
+
+	//set_model_rotation(-90.f, 0.f, -90.f);
+	sim_results_updated_ = false;
 	step_count_ = -1;
 	time_step_count_ = 0;
 
@@ -580,15 +644,19 @@ void SwarmViewer::reset_sim() {
 		robot->set_grid_overlay(overlay_.get());
 	}
 
-	robot_update_thread_.init();
-	connect(this, &SwarmViewer::physics_thread_pause, &robot_update_thread_, &RobotUpdateThread::pause);
-	connect(this, &SwarmViewer::physics_thread_resume, &robot_update_thread_, &RobotUpdateThread::resume);
-	connect(this, &SwarmViewer::physics_thread_step, &robot_update_thread_, &RobotUpdateThread::step);
-	connect(&robot_update_thread_, &RobotUpdateThread::update_time_step_count, this, &SwarmViewer::update_time_step_count);
+	robot_worker_ = new RobotWorker();
+	robot_worker_->init();
+	connect(this, &SwarmViewer::physics_thread_pause, robot_worker_, &RobotWorker::pause);
+	connect(this, &SwarmViewer::physics_thread_resume, robot_worker_, &RobotWorker::resume);
+	connect(this, &SwarmViewer::physics_thread_step, robot_worker_, &RobotWorker::step);
+	connect(robot_worker_, &RobotWorker::update_time_step_count, this, &SwarmViewer::update_time_step_count);
+	connect(robot_worker_, &RobotWorker::update_sim_results, this, &SwarmViewer::update_sim_results);
+	connect(&robot_update_thread_, &QThread::started, robot_worker_, &RobotWorker::do_work);
 
-	robot_update_thread_.set_robots(&robots_);
-	robot_update_thread_.set_occupancy_tree(occupancy_grid_);
-	robot_update_thread_.start();
+	robot_worker_->set_robots(&robots_);
+	robot_worker_->set_occupancy_tree(occupancy_grid_);
+	robot_worker_->moveToThread(&robot_update_thread_);
+	robot_update_thread_.start(QThread::HighestPriority);
 }
 
 void SwarmViewer::set_show_forces(int show) {
@@ -636,6 +704,44 @@ void SwarmViewer::resume() {
 	step_count_ = -1;
 }
 
+void SwarmViewer::run_least_squared_optimization() {
+	int preferred_neighborhood_count = 5;
+
+	SwarmOptimizer* optimizer_worker = new SwarmOptimizer();
+	QThread* optimizer_thread = new QThread();
+
+	connect(optimizer_thread, SIGNAL(started()), optimizer_worker, SLOT(optimize_swarm_params()));
+	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(quit()));
+	connect(optimizer_thread, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
+	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
+
+
+	optimizer_worker->set_optimize_swarm_params(this, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_, explore_constant_,
+		separation_range_, alignment_range_, cluster_range_, preferred_neighborhood_count);
+
+	optimizer_worker->moveToThread(optimizer_thread);
+	optimizer_thread->start();
+}
+
+void SwarmViewer::run_mcmc_optimization() {
+
+	int preferred_neighborhood_count = 5;
+
+	SwarmMCMCOptimizer* optimizer_worker = new SwarmMCMCOptimizer();
+	QThread* optimizer_thread = new QThread();
+
+	connect(optimizer_thread, SIGNAL(started()), optimizer_worker, SLOT(optimize_swarm_params()));
+	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(quit()));
+	connect(optimizer_thread, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
+	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
+
+
+	optimizer_worker->set_viewer(this);
+
+	optimizer_worker->moveToThread(optimizer_thread);
+	optimizer_thread->start();
+}
+
 void SwarmViewer::set_sensor_range(double sensor_range) {
 	sensor_range_ = sensor_range;
 }
@@ -648,10 +754,28 @@ void SwarmViewer::set_formation(int formation) {
 	formation_ = formation;
 }
 
+void SwarmViewer::update_sim_results(double timesteps, double multi_sampling, double coverage) {
+	time_steps_result_ = timesteps;
+	multi_sampling_result_ = multi_sampling;
+	coverage_result_ = coverage;
+	sim_results_updated_ = true;
+}
+
+void SwarmViewer::get_sim_results(double& timesteps, double& multi_sampling, double& coverage) {
+	while (!sim_results_updated_) {
+		QThread::currentThread()->sleep(10);
+	}
+	timesteps = time_steps_result_;
+	multi_sampling = multi_sampling_result_;
+	coverage = coverage_result_;
+	sim_results_updated_ = false;
+}
+
 SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer(format, parent)
 {
 
 	quad_tree_test();
+	connect(this, SIGNAL(optimizer_reset_sim()), this, SLOT(reset_sim()));
 
 	//grid_ = VisObject(uniform_locations_);
 	//grid_overlay_ = VisObject(uniform_locations_);
@@ -745,22 +869,33 @@ void SwarmViewer::create_lights() {
 
 std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 	std::vector<glm::vec3> robot_positions;
+
 	switch (type) {
 	case SQUARE: {
-
 		int no_of_robots_per_side = ((no_of_robots_ - 4)/ 4.f) + 2;
-		glm::ivec3 robots_mid_point((no_of_robots_per_side / 2) - 1, 0, (no_of_robots_per_side / 2) - 1);
-		glm::ivec3 mid_point((grid_resolution_per_side_ / 2) - 1, 0, (grid_resolution_per_side_ / 2) - 1);
+		glm::ivec3 robots_mid_point((no_of_robots_per_side / 2.f) - 1, 0, (no_of_robots_per_side / 2.f) - 1);
+		glm::ivec3 mid_point((grid_resolution_per_side_ / 2.f) - 1, 0, (grid_resolution_per_side_ / 2.f) - 1);
 		glm::ivec3 offset = mid_point - robots_mid_point;
 		
 		for (int x = 0; x < no_of_robots_per_side; ++x) {
 			for (int z = 0; z < no_of_robots_per_side; z++) {
 				if ((z == 0 || z == (no_of_robots_per_side - 1)) || (x == 0 || x == no_of_robots_per_side - 1)) {
+
 					glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z) + offset;
+
+					glm::vec3 push_back_offset;
+					glm::vec3 real_mid_point (grid_resolution_per_side_ * grid_length_ / 2.f, 0, grid_resolution_per_side_ * grid_length_ / 2.f);
+					glm::vec3 vector_from_mid_point = glm::vec3(occupancy_grid_->map_to_position(robot_grid_position) - real_mid_point);
+					auto length_from_mid_point = glm::length(vector_from_mid_point);
+					
+					if (length_from_mid_point > 1e-6) {
+						push_back_offset = 4 * grid_length_ * (glm::normalize(vector_from_mid_point));
+					}
+
 					if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
 						&& !occupancy_grid_->is_interior(robot_grid_position)) {
-						robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
-						//SwarmUtils::print_vector("Grid Pos : ", robot_grid_position);
+						auto robot_position = occupancy_grid_->map_to_position(robot_grid_position) + push_back_offset;
+						robot_positions.push_back(robot_position);
 					}
 				}
 			}
@@ -847,15 +982,37 @@ std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 		rng.seed(rd());
 		std::uniform_int_distribution<int> position_generator(0, grid_resolution_per_side_ - 1);
 		int robot_count = 0;
-		while (no_of_robots_ != robot_count) {
+		int iterations = 0;
+		while (no_of_robots_ != robot_count || (no_of_robots_ < iterations)) {
 			glm::ivec3 robot_grid_position(position_generator(rng), 0, position_generator(rng));
 			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
 				&& !occupancy_grid_->is_interior(robot_grid_position)) {
 				robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
 				robot_count++;
 			}
+			iterations++;
 		}
 		break;
+	}
+	case CIRCLE: {
+		float perimeter_length = 2 * grid_length_ * no_of_robots_;
+		float radius = perimeter_length / (2 * PI);
+		glm::vec3 real_mid_point(grid_resolution_per_side_ * grid_length_ / 2.f, 0, grid_resolution_per_side_ * grid_length_ / 2.f);
+		glm::vec3 center = real_mid_point;
+
+		for (int i = 0; i < no_of_robots_; ++i) {
+			float theta = 2 * PI * i / no_of_robots_;
+			float x = center.x + radius * glm::cos(theta);
+			float z = center.z + radius * glm::sin(theta);
+			auto robot_position = glm::vec3(x, 0.f, z);
+			auto robot_grid_position = occupancy_grid_->map_to_grid(robot_position);
+			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+				&& !occupancy_grid_->is_interior(robot_grid_position)) {
+				robot_positions.push_back(robot_position);
+			}
+		}
+		no_of_robots_ = robot_positions.size();
+
 	}
 
 	default: break;
@@ -1025,5 +1182,13 @@ void SwarmViewer::set_goto_work_constant(double constant) {
 
 void SwarmViewer::set_show_interior(int show) {
 	show_interior_ = show;
+}
+
+void SwarmViewer::set_model_rotation(double x_rotation, double y_rotation, double z_rotation) {
+	glm::mat4 rotateX = glm::rotate(glm::mat4(1.f), glm::radians((float)x_rotation), glm::vec3(1.f, 0.f, 0.f));
+	glm::mat4 rotateY = glm::rotate(rotateX, glm::radians((float)y_rotation), glm::vec3(0.f, 1.f, 0.f));
+	glm::mat4 rotateZ = glm::rotate(rotateY,  glm::radians((float)z_rotation), glm::vec3(0.f, 0.f, 1.f));
+	
+	model_rotation_ = rotateZ;
 }
 

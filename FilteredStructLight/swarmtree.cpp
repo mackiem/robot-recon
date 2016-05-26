@@ -72,6 +72,13 @@ Quadtree<int>(grid_resolution, -1), grid_cube_length_(grid_cube_length), grid_re
 	pool_size_ = 100000;
 	current_pool_count_ = 100000;
 	heap_pool_.resize(pool_size_);
+
+	//sampling_tracker_ = std::make_shared<std::unordered_map<glm::ivec3, 
+	//	std::unordered_map<int, std::unordered_map<int, int>>, IVec3Hasher, IVec3Equals>>();
+
+	sampling_tracker_ = std::make_shared < std::map < glm::ivec3, std::map < int, std::map<int, int> >
+		, IVec3Comparator >> ();
+
 	//heap_pool_.resize(pool_size_);
 	//std::fill(heap_pool_.begin(), heap_pool_.end(), )
 }
@@ -145,15 +152,15 @@ bool SwarmOccupancyTree::visited(const SwarmOccupancyTree& visited_nodes, const 
 	return (visited_result == SEARCH_VISITED);
 }
 
-bool SwarmOccupancyTree::is_unexplored_perimeter(const glm::ivec3& grid_position) const {
-	if (!is_out_of_bounds(grid_position)) {
-		// throw error
-	}
-
-	int explored = at(grid_position.x, grid_position.z);
-
-	return (explored == INTERIOR_MARK);
-}
+//bool SwarmOccupancyTree::is_unexplored_perimeter(const glm::ivec3& grid_position) const {
+//	if (!is_out_of_bounds(grid_position)) {
+//		// throw error
+//	}
+//
+//	int explored = at(grid_position.x, grid_position.z);
+//
+//	return (explored == INTERIOR_MARK);
+//}
 
 void SwarmOccupancyTree::mark_visited(SwarmOccupancyTree& swarm_oct_tree, const BFSNode& bfs_node) const {
 	auto pos = bfs_node.grid_position_;
@@ -358,13 +365,13 @@ bool SwarmOccupancyTree::frontier_bread_first_search(const glm::ivec3& current_p
 		//	return true;
 		//}
 
-		if (!is_unexplored_perimeter(current_cell.grid_position_)
+		if (!is_interior(current_cell.grid_position_)
 			&& !has_explored(current_cell.grid_position_)) {
 			std::vector<glm::ivec3> adjacent_cells;
 			adjacent_cells.reserve(9);
 			get_adjacent_cells(current_cell.grid_position_, adjacent_cells, 1);
 			for (auto& adjacent_cell : adjacent_cells) {
-				if (is_unexplored_perimeter(adjacent_cell)) {
+				if (is_interior(adjacent_cell)) {
 					result_cell = current_cell.grid_position_;
 					//std::cout << "Max size of visited nodes : " << max << std::endl;
 					//std::cout << "Not visited count : " << not_visited_count << std::endl;
@@ -476,16 +483,49 @@ void SwarmOccupancyTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
 }
 
 
+void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id) {
+	auto entry = sampling_tracker_->find(grid_cell);
+	if (entry != sampling_tracker_->end()) {
+		entry->second[timestep][robot_id] = 1;
+	}
+}
+
+double SwarmOccupancyTree::calculate_multi_sampling_factor() {
+	double sampling_factor = 0.0;
+	for (auto& interior_cell_entry : *sampling_tracker_) {
+		double no_of_samples_per_timestep = 0.0;
+		for (auto& robots_per_timestep : interior_cell_entry.second) {
+			int no_of_robots_at_timestep = robots_per_timestep.second.size();
+			no_of_samples_per_timestep += no_of_robots_at_timestep;
+		}
+
+		int total_samples_of_interior_cell = interior_cell_entry.second.size();
+		if (total_samples_of_interior_cell > 0) {
+			no_of_samples_per_timestep /= total_samples_of_interior_cell;
+		}
+
+		sampling_factor += no_of_samples_per_timestep;
+		//SwarmUtils::print_vector("Interior Vector", interior_cell_entry.first);
+		//std::cout << "Avg. Sampling : " << no_of_samples_per_timestep << "\n";
+	}
+		
+	if (sampling_tracker_->size() > 0) {
+		//std::cout << "Sampling Factor : " << sampling_factor / sampling_tracker_->size() << "\n";
+		sampling_factor /= sampling_tracker_->size();
+	}
+	return sampling_factor;
+}
+
 void SwarmOccupancyTree::create_perimeter_list() {
 	for (int x = 0; x < resolution_per_side_; ++x) {
 		for (int z = 0; z < resolution_per_side_; ++z) {
 			glm::ivec3 grid_position(x, 0, z);
-			if (!is_unexplored_perimeter(grid_position)) {
+			if (!is_interior(grid_position)) {
 				std::vector<glm::ivec3> adjacent_cells;
 				adjacent_cells.reserve(9);
 				get_adjacent_cells(grid_position, adjacent_cells, 1);
 				for (auto& adjacent_cell : adjacent_cells) {
-					if (is_unexplored_perimeter(adjacent_cell)) {
+					if (is_interior(adjacent_cell)) {
 						explore_perimeter_list_.insert(grid_position);
 					}
 				}
@@ -500,7 +540,32 @@ void SwarmOccupancyTree::create_interior_list() {
 		for (int z = 0; z < resolution_per_side_; ++z) {
 			glm::ivec3 grid_position(x, 0, z);
 			if (is_interior(grid_position)) {
-				interior_list_.insert(grid_position);
+				std::vector<glm::ivec3> adjacent_cells;
+				adjacent_cells.reserve(9);
+				get_adjacent_cells(grid_position, adjacent_cells, 1);
+				bool perimeter_found = false;
+				for (auto& adjacent_cell : adjacent_cells) {
+					if (!is_interior(adjacent_cell)) {
+						perimeter_found = true;
+						break;
+					}
+				}
+
+				if (perimeter_found) {
+					interior_list_.insert(grid_position);
+					//std::unordered_map<int, std::unordered_map<int, int>> timestamp_robots;
+					std::map<int, std::map<int, int>> timestamp_robots;
+					//timestamp_robots.rereserve(100);
+					//for (int i = -10; i < 0; ++i) {
+					//	std::unordered_map<int, int> temp_map;
+					//	for (int j = -10; j < 0; ++j) {
+					//		temp_map[j] = 0;
+					//	}
+
+					//	timestamp_robots[i] = temp_map;
+					//}
+					(*sampling_tracker_)[grid_position] = timestamp_robots;
+				}
 			}
 		}
 	}
@@ -516,6 +581,19 @@ void SwarmOccupancyTree::create_empty_space_list() {
 			}
 		}
 	}
+}
+
+void SwarmOccupancyTree::init_coverage_map(std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>& coverage_map) const
+{
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
+			glm::ivec3 grid_position(x, 0, z);
+			if (!is_interior(grid_position)) {
+				coverage_map[grid_position] = 0;
+			}
+		}
+	}
+	
 }
 
 void SwarmOccupancyTree::mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position) {
@@ -584,7 +662,7 @@ bool SwarmOccupancyTree::find_closest_position_from_list(const std::set<glm::ive
 	}
 
 
-	std::vector<PerimeterPos> perimeter_vector = heap_pool_[current_pool_count_++];
+	std::vector<PerimeterPos>& perimeter_vector = heap_pool_[current_pool_count_++];
 
 	int k = 0;
 	for (auto itr = perimeter_list.begin(); itr != perimeter_list.end(); ++itr) {
@@ -652,6 +730,57 @@ bool SwarmOccupancyTree::find_closest_position_from_list(const std::set<glm::ive
 	return false;
 }
 
+bool SwarmOccupancyTree::find_closest_2_positions_from_list(const std::set<glm::ivec3, IVec3Comparator>& perimeter_list,
+	const glm::ivec3& robot_grid_position,
+	std::vector<glm::ivec3>& explore_positions, float range_min, float range_max) {
+
+	// create a pool, to stop micro memory allocations all the time
+	if (current_pool_count_ == pool_size_) {
+		current_pool_count_ = 0;
+		std::vector<PerimeterPos> sample_vector;
+		sample_vector.reserve(perimeter_list.size());
+		std::fill(heap_pool_.begin(), heap_pool_.end(), sample_vector);
+	}
+
+
+	std::vector<PerimeterPos> perimeter_vector = heap_pool_[current_pool_count_++];
+
+	int k = 0;
+	for (auto itr = perimeter_list.begin(); itr != perimeter_list.end(); ++itr) {
+		auto perimeter_grid_position = *itr;
+		float grid_distance = glm::length(glm::vec3(perimeter_grid_position - robot_grid_position));
+
+		if (range_min <= grid_distance && grid_distance < range_max) {
+			perimeter_vector.push_back(PerimeterPos(grid_distance, perimeter_grid_position));
+		}
+	}
+
+	std::stable_sort(perimeter_vector.begin(), perimeter_vector.end());
+	glm::vec3 a = (robot_grid_position);
+	bool perimeter_found = false;
+	
+	int explore_positions_count = 0;
+
+	for (auto j = 0; j < perimeter_vector.size(); ++j) {
+		glm::vec3 b = perimeter_vector[j].grid_position_;
+		bool interior_found = going_through_interior_test(a, b);
+
+		if (!interior_found) {
+			explore_positions.push_back(glm::ivec3(b));
+			explore_positions_count++;
+
+			if (explore_positions_count == 2) {
+				return true;
+			}
+		}
+	}
+	if (explore_positions_count > 0) {
+		return true;
+	}
+	
+	return false;
+}
+
 bool SwarmOccupancyTree::next_cell_to_explore(const glm::ivec3& robot_grid_position,
 	glm::ivec3& explore_position) {
 	return find_closest_position_from_list(empty_space_list_, robot_grid_position, explore_position);
@@ -661,4 +790,14 @@ bool SwarmOccupancyTree::next_cell_to_explore(const glm::ivec3& robot_grid_posit
 bool SwarmOccupancyTree::next_cell_to_explore(const glm::ivec3& robot_grid_position,
 	glm::ivec3& explore_position, float range_min, float range_max) {
 	return find_closest_position_from_list(explore_perimeter_list_, robot_grid_position, explore_position, range_min, range_max);
+}
+
+bool SwarmOccupancyTree::closest_perimeter(const glm::ivec3& robot_grid_position,
+	glm::ivec3& perimeter_position, float range_min, float range_max) {
+	return find_closest_position_from_list(static_perimeter_list_, robot_grid_position, perimeter_position, range_min, range_max);
+}
+
+bool SwarmOccupancyTree::closest_2_interior_positions(const glm::ivec3& robot_grid_position,
+	std::vector<glm::ivec3>& perimeter_position, float range_min, float range_max) {
+	return find_closest_2_positions_from_list(interior_list_, robot_grid_position, perimeter_position, range_min, range_max);
 }

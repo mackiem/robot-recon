@@ -892,6 +892,13 @@ glm::mat4 RobotViewer::convert(cv::Mat& input_mat) {
 	return model;
 }
 
+cv::Mat RobotViewer::convert_mat(glm::mat3& input_mat) {
+
+	cv::Mat mat(3, 3, CV_32F, glm::value_ptr(input_mat));
+	cv::Mat transposed_mat = mat.t();
+	return transposed_mat;
+}
+
 RenderEntity RobotViewer::get_line_entity(cv::Vec3f a, cv::Vec3f b, cv::Vec4f line_color, cv::Mat& model, RenderEntity::Type type) {
 	makeCurrent();
 

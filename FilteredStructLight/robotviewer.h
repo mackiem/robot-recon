@@ -124,6 +124,7 @@ public:
 	void draw_table_top(cv::Mat& model);
 	void draw_robot(cv::Mat& model);
 
+	cv::Mat convert_mat(glm::mat3& input_mat);
 	void clear_models();
 	glm::mat4 convert(cv::Mat& mat);
 
