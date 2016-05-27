@@ -424,7 +424,7 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 			current_score = next_score;
 			current_separation_constant = next_separation_constant;
 			current_cluster_constant = next_cluster_constant;
-			//std::cout << "Accepted time step : " << current_score << " accepted separation constant : " << current_separation_constant << std::endl;
+			std::cout << "Iteration : " << i << " Accepted time step : " << current_score << " accepted separation constant : " << current_separation_constant << std::endl;
 		}
 	}
 

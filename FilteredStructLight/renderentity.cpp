@@ -149,6 +149,22 @@ void RenderEntity::draw() {
 	}
 }
 
+RenderEntity::~RenderEntity() {
+}
+
+void VisObject::clear_gpu_structs() {
+	for (auto& entity : mesh_) {
+		glBindVertexArray(entity.vao_);
+		glDeleteBuffers(5, entity.vbo_);
+		glBindVertexArray(NULL);
+		glDeleteVertexArrays(1, &entity.vao_);
+	}
+	
+}
+
+VisObject::~VisObject() {
+}
+
 VisObject::VisObject(UniformLocations& locations) : locations_(locations) {
 }
 

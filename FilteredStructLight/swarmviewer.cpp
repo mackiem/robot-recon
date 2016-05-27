@@ -604,6 +604,22 @@ void SwarmViewer::reset_sim() {
 	step_count_ = -1;
 	time_step_count_ = 0;
 
+	for (auto& vis_object : default_vis_objects_) {
+		vis_object->clear_gpu_structs();
+	}
+
+	for (auto& vis_object : reset_vis_objects_) {
+		vis_object->clear_gpu_structs();
+	}
+
+	for (auto& vis_object : robots_) {
+		vis_object->clear_gpu_structs();
+	}
+
+	for (auto& vis_object : lights_) {
+		vis_object.clear_gpu_structs();
+	}
+
 	default_vis_objects_.clear();
 	robot_color_map_.clear();
 	reset_vis_objects_.clear();

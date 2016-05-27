@@ -72,6 +72,8 @@ public:
 
 	void draw();
 
+	~RenderEntity();
+
 private:
 	RenderEntity::Type type_;
 };
@@ -90,9 +92,8 @@ class VisObject {
 protected:
 	UniformLocations& locations_;
 public:
-	virtual ~VisObject() {
-	}
-
+	void clear_gpu_structs();
+	virtual ~VisObject();
 	RenderMesh mesh_;
 	VisObject(UniformLocations& locations);
 	virtual void update(glm::mat4 global_model);
