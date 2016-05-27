@@ -38,7 +38,7 @@ void Robot::change_state(SwarmingState state) {
 	current_swarming_state_ = state;
 }
 
-void Robot::update_robots(const std::vector<std::shared_ptr<Robot>>& robots) {
+void Robot::update_robots(const std::vector<Robot*>& robots) {
 	robots_ = robots;
 }
 
@@ -67,7 +67,7 @@ void Robot::calculate_work_force() {
 	work_force_ = glm::vec3(0.f, 0.f, 0.f);
 }
 
-Robot::Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOccupancyTree> octree, std::shared_ptr<SwarmCollisionTree> collision_tree, 
+Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, 
 	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
 	Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, double sensor_range, int discovery_range,
 	double separation_distance, glm::vec3 position, QGLShaderProgram* shader) : VisObject(locations), all_goals_explored_(false),
@@ -138,7 +138,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<Swarm
 
 
 	// create pool
-	heap_pool_ = std::make_shared<std::vector<std::vector<glm::ivec3>>>();
+	heap_pool_ = new std::vector<std::vector<glm::ivec3>>();
 	pool_size_ = 10000;
 	current_pool_count_ = 10000;
 	heap_pool_->resize(pool_size_);
@@ -202,6 +202,10 @@ Robot& Robot::operator=(const Robot& other) {
 		max_velocity_ = other.max_velocity_;
 	}
 	return *this;
+}
+
+Robot::~Robot() {
+	delete heap_pool_;
 }
 
 void Robot::init_force_visualization(const int& mesh_id, const glm::vec3& force, const cv::Vec4f& color) {

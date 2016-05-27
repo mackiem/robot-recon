@@ -9,12 +9,12 @@
 #include <memory>
 
 struct GridOverlay : public VisObject {
-	std::shared_ptr<SwarmOccupancyTree> occupany_grid_;
+	SwarmOccupancyTree* occupany_grid_;
 	unsigned int grid_resolution_per_side_;
 	float grid_length_;
 	QGLShaderProgram* shader_;
 	std::map<int, cv::Vec4f> robot_color_map_;
-	GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOccupancyTree> octree, unsigned int grid_resolution, 
+	GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree, unsigned int grid_resolution, 
 		float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
 
 	void update_grid_position(const glm::ivec3& position, const cv::Vec4f& color);
@@ -89,7 +89,7 @@ private:
 
 	// seperation force requirements
 	//glm::vec3 center_of_mass_;
-	std::vector<std::shared_ptr<Robot>> robots_;
+	std::vector<Robot*> robots_;
 	float minimum_separation_distance_;
 	float separation_distance_threshold_;
 
@@ -131,8 +131,8 @@ private:
 	glm::vec3 calculate_direction(glm::vec3 move_to_position, float constant) const;
 
 
-	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
-	std::shared_ptr<SwarmCollisionTree> collision_grid_;
+	SwarmOccupancyTree* occupancy_grid_;
+	SwarmCollisionTree* collision_grid_;
 	QGLShaderProgram* shader_;
 	bool show_forces_;
 
@@ -144,7 +144,7 @@ private:
 
 	int pool_size_;
 	int current_pool_count_;
-	std::shared_ptr<std::vector<std::vector<glm::ivec3>>> heap_pool_;
+	std::vector<std::vector<glm::ivec3>>* heap_pool_;
 
 public:
 	static int MAX_DEPTH;
@@ -176,7 +176,7 @@ public:
 
 	//	double sensor_range, int discovery_range,
 	//	 glm::vec3 position, QGLShaderProgram* shader);
-	Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOccupancyTree> octree, std::shared_ptr<SwarmCollisionTree> collision_tree,
+	Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree,
 		double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
 		Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, double sensor_range, int discovery_range,
 		double separation_distance, glm::vec3 position, QGLShaderProgram* shader);
@@ -187,12 +187,13 @@ public:
 
 	glm::vec3 calculate_obstacle_avoidance_direction(glm::vec3 resultant_force);
 	void set_show_forces(bool show);
-	void update_robots(const std::vector<std::shared_ptr<Robot>>& robots);
+	void update_robots(const std::vector<Robot*>& robots);
 	//void handle_input();
 	virtual void update(glm::mat4 global_model);
 	void update(int timestamp);
 
 	Robot& operator=(const Robot& other);
+	virtual ~Robot();
 
 	std::vector<glm::vec3> get_interior_cell_positions(const std::vector<glm::ivec3>& grid_positions) const;
 	std::vector<int> get_other_robots(const std::vector<glm::ivec3>& grid_positions) const;

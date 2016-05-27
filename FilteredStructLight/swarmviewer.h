@@ -9,22 +9,22 @@
 
 class RobotWorker : public QObject {
 	Q_OBJECT
-	std::vector<std::shared_ptr<Robot>>* robots_;
+	std::vector<Robot*> robots_;
 	bool aborted_;
 	bool paused_;
 	int time_step_count_;
 	int step_count_;
-	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
+	SwarmOccupancyTree* occupancy_grid_;
 	bool sampling_updated_;
 public:
 	RobotWorker();
 	double calculate_coverage();
 
-	void set_robots(std::vector<std::shared_ptr<Robot>>* robots) {
+	void set_robots(std::vector<Robot*> robots) {
 		robots_ = robots;
 	}
 
-	void set_occupancy_tree(std::shared_ptr<SwarmOccupancyTree> occupancy_grid) {
+	void set_occupancy_tree(SwarmOccupancyTree* occupancy_grid) {
 		occupancy_grid_ = occupancy_grid;
 	}
 	void abort() {
@@ -75,8 +75,8 @@ private:
 		CIRCLE = 4
 	};
 
-	std::shared_ptr<SwarmOccupancyTree> occupancy_grid_;
-	std::shared_ptr<SwarmCollisionTree> collision_grid_;
+	SwarmOccupancyTree* occupancy_grid_;
+	SwarmCollisionTree* collision_grid_;
 
 
 	std::string interior_model_filename_;
@@ -101,14 +101,14 @@ private:
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
 	static const std::string OCCUPANCY_GRID_OVERLAY_NAME;
-	std::vector<std::shared_ptr<Robot>> robots_;
-	std::vector<Light> lights_;
+	std::vector<Robot*> robots_;
+	std::vector<Light*> lights_;
 	QTimer* timer_;
 	UniformLocations uniform_locations_;
 
-	std::vector<std::shared_ptr<VisObject>> reset_vis_objects_;
+	std::vector<VisObject*> reset_vis_objects_;
 	
-	std::vector<std::shared_ptr<VisObject>> default_vis_objects_;
+	std::vector<VisObject*> default_vis_objects_;
 
 	std::map<int, cv::Vec4f> robot_color_map_;
 
@@ -148,7 +148,7 @@ private:
 	bool paused_;
 	int step_count_;
 	int time_step_count_; 
-	std::shared_ptr<GridOverlay> overlay_;
+	GridOverlay* overlay_;
 	glm::mat4 model_rotation_;
 
 protected:
@@ -172,6 +172,7 @@ public:
 	static const int OCCUPANCY_GRID_HEIGHT;
 	SwarmViewer(const QGLFormat& format, QWidget* parent = 0);
 	virtual ~SwarmViewer();
+	void cleanup();
 	void create_light_model(RenderMesh& light_mesh);
 	void create_robot_model(RenderMesh& light_mesh, cv::Vec4f color);
 	void create_lights();

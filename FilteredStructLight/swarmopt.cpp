@@ -354,36 +354,26 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant, double clu
 void SwarmMCMCOptimizer::optimize_swarm_params() {
 
 	//Algorithm.MCMC(params)
-
 	//	1. initialize params(just randomly select values)
-
 	//	2. current_score = Score(params)
-
 	//	3. best_score = current_score
 	//	4. Repeat for a lot of iterations
-
 	//	5.     obtain next_params by randomly changing params
-
 	//	(One approach is to select one param and add a small delta to change its value.)
 	//	6.     next_score = Score(next_params)
-
 	//	7.     If next_score > best_score
-
 	//	8.         best_score = next_score
 	//	9.         best_params = params
 	//	10.   If next_score >= score or next_score / score >= uniform_rand(0, 1)
-
 	//	11.       params = next_params
-
 	//	12.       score = next_score
-
 	//	13. Return best_params
 
 
 	// initialize params
 	double current_separation_constant = swarm_viewer_->separation_constant_;
 	double current_cluster_constant = swarm_viewer_->cluster_constant_;
-	double scaling_constant = 10.f;
+	double scaling_constant = 1.f;
 	
 	// current score
 	double current_score = run_simulation(current_separation_constant, current_cluster_constant);
@@ -396,16 +386,24 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 
 	std::random_device rd;
 	std::mt19937 mt(rd());
-	std::normal_distribution<> normal_distribution(1, 0.5);
+	std::normal_distribution<> normal_distribution(0.0, 1.0);
 	std::uniform_real_distribution<> uniform_real_distribution(0, 1);
 	
 
 	for (int i = 0; i < no_of_iterations; ++i) {
-		double separation_delta = normal_distribution(mt);
-		double next_separation_constant = (current_separation_constant + scaling_constant * separation_delta);
+		double next_separation_constant = -1.0;
+		while (next_separation_constant < 0 || next_separation_constant > 20) {
+			double separation_delta = normal_distribution(mt);
+			next_separation_constant = (current_separation_constant + scaling_constant * separation_delta);
+		}
+		std::cout << "next separation constant : " << next_separation_constant << "\n";
 
-		double cluster_delta = normal_distribution(mt);
-		double next_cluster_constant = (current_cluster_constant + scaling_constant * cluster_delta);
+		double next_cluster_constant = -1.0;
+		while (next_cluster_constant < 0 || next_cluster_constant > 20) {
+			double cluster_delta = normal_distribution(mt);
+			next_cluster_constant = (current_cluster_constant + scaling_constant * cluster_delta);
+		}
+		std::cout << "next cluster constant : " << next_separation_constant << "\n";
 
 		double next_score = run_simulation(next_separation_constant, next_cluster_constant);
 
@@ -424,7 +422,8 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 			current_score = next_score;
 			current_separation_constant = next_separation_constant;
 			current_cluster_constant = next_cluster_constant;
-			std::cout << "Iteration : " << i << " Accepted time step : " << current_score << " accepted separation constant : " << current_separation_constant << std::endl;
+			std::cout << "Iteration : " << i << " Accepted time step : " << current_score << 
+				" accepted separation constant : " << current_separation_constant << std::endl;
 		}
 	}
 

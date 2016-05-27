@@ -44,11 +44,11 @@ RobotWorker::RobotWorker() : aborted_(false), paused_(false), sampling_updated_(
 
 double RobotWorker::calculate_coverage() {
 	double coverage = 0.0;
-	for (auto& robot : *robots_) {
+	for (auto& robot : robots_) {
 		coverage += robot->calculate_coverage();
 	}
-	if (robots_->size() > 0) {
-		coverage /= robots_->size();
+	if (robots_.size() > 0) {
+		coverage /= robots_.size();
 	}
 	return coverage;
 }
@@ -61,7 +61,7 @@ void RobotWorker::do_work() {
 		}
 		if (!paused_) {
 			step_count_--;
-			if (time_step_count_ > 5000) {
+			if (time_step_count_ > 1000) {
 				double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
 				double coverage = calculate_coverage();
 				emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
@@ -80,7 +80,7 @@ void RobotWorker::do_work() {
 			}
 		}
 		if (!paused_) {
-			for (auto& robot : *robots_) {
+			for (auto& robot : robots_) {
 				robot->update(time_step_count_);
 			}
 		}
@@ -110,7 +110,7 @@ void RobotWorker::step() {
 	}
 }
 
-GridOverlay::GridOverlay(UniformLocations& locations, std::shared_ptr<SwarmOccupancyTree> octree, 
+GridOverlay::GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree, 
 	unsigned grid_resolution, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader) : 
 	VisObject(locations), occupany_grid_(octree), grid_resolution_per_side_(grid_resolution), grid_length_(grid_length), robot_color_map_(robot_color_map), shader_(shader)  {
 	
@@ -437,7 +437,7 @@ void SwarmViewer::load_interior_model() {
 	RenderMesh interior_model_mesh;
 	interior_model_mesh.push_back(interior_model);
 	
-	std::shared_ptr<VisObject> interior_model_object = std::make_shared<VisObject>(uniform_locations_);
+	VisObject* interior_model_object = new VisObject(uniform_locations_);
 	interior_model_object->mesh_ = interior_model_mesh;
 
 	float scale = interior_scale_;
@@ -562,7 +562,7 @@ void SwarmViewer::custom_draw_code() {
 	}
 
 	for (auto& light : lights_) {
-		light.update(model_);
+		light->update(model_);
 		//light.draw(model_, camera_, projection_);
 	}
 
@@ -595,29 +595,25 @@ SwarmViewer::~SwarmViewer() {
 	shutdown_worker();
 }
 
-void SwarmViewer::reset_sim() {
-	makeCurrent();
-	shutdown_worker();
-
-	//set_model_rotation(-90.f, 0.f, -90.f);
-	sim_results_updated_ = false;
-	step_count_ = -1;
-	time_step_count_ = 0;
-
+void SwarmViewer::cleanup() {
 	for (auto& vis_object : default_vis_objects_) {
 		vis_object->clear_gpu_structs();
+		delete vis_object;
 	}
 
 	for (auto& vis_object : reset_vis_objects_) {
 		vis_object->clear_gpu_structs();
+		delete vis_object;
 	}
 
 	for (auto& vis_object : robots_) {
 		vis_object->clear_gpu_structs();
+		delete vis_object;
 	}
 
 	for (auto& vis_object : lights_) {
-		vis_object.clear_gpu_structs();
+		vis_object->clear_gpu_structs();
+		delete vis_object;
 	}
 
 	default_vis_objects_.clear();
@@ -626,9 +622,30 @@ void SwarmViewer::reset_sim() {
 	robots_.clear();
 	lights_.clear();
 
-	occupancy_grid_ = std::make_shared<SwarmOccupancyTree>(grid_length_, grid_resolution_);
+	if (occupancy_grid_) {
+		delete occupancy_grid_;
+	}
+	if (collision_grid_) {
+		delete collision_grid_;
+	}
+	
+}
+
+void SwarmViewer::reset_sim() {
+	makeCurrent();
+	shutdown_worker();
+	cleanup();
+
+	//set_model_rotation(-90.f, 0.f, -90.f);
+	sim_results_updated_ = false;
+	step_count_ = -1;
+	time_step_count_ = 0;
+
+
+
+	occupancy_grid_ = new SwarmOccupancyTree(grid_length_, grid_resolution_);
 	grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
-	collision_grid_ = std::make_shared<SwarmCollisionTree>(grid_resolution_);
+	collision_grid_ = new SwarmCollisionTree(grid_resolution_);
 
 	change_to_top_down_view();
 
@@ -649,15 +666,16 @@ void SwarmViewer::reset_sim() {
 
 	create_lights();
 
-	overlay_ = std::shared_ptr<GridOverlay>(new GridOverlay(uniform_locations_, 
-		occupancy_grid_, grid_resolution_per_side_, grid_length_, robot_color_map_, &m_shader));
+	overlay_ = new GridOverlay(uniform_locations_, 
+		occupancy_grid_, grid_resolution_per_side_, grid_length_, robot_color_map_, &m_shader);
+
 	update_perimiter_positions_in_overlay();
 
 
 	reset_vis_objects_.push_back(overlay_);
 
 	for (auto& robot : robots_) {
-		robot->set_grid_overlay(overlay_.get());
+		robot->set_grid_overlay(overlay_);
 	}
 
 	robot_worker_ = new RobotWorker();
@@ -669,10 +687,10 @@ void SwarmViewer::reset_sim() {
 	connect(robot_worker_, &RobotWorker::update_sim_results, this, &SwarmViewer::update_sim_results);
 	connect(&robot_update_thread_, &QThread::started, robot_worker_, &RobotWorker::do_work);
 
-	robot_worker_->set_robots(&robots_);
+	robot_worker_->set_robots(robots_);
 	robot_worker_->set_occupancy_tree(occupancy_grid_);
 	robot_worker_->moveToThread(&robot_update_thread_);
-	robot_update_thread_.start(QThread::HighestPriority);
+	robot_update_thread_.start();
 }
 
 void SwarmViewer::set_show_forces(int show) {
@@ -780,7 +798,7 @@ void SwarmViewer::update_sim_results(double timesteps, double multi_sampling, do
 
 void SwarmViewer::get_sim_results(double& timesteps, double& multi_sampling, double& coverage) {
 	while (!sim_results_updated_) {
-		QThread::currentThread()->sleep(10);
+		QThread::currentThread()->sleep(1);
 	}
 	timesteps = time_steps_result_;
 	multi_sampling = multi_sampling_result_;
@@ -793,6 +811,8 @@ SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer
 
 	quad_tree_test();
 	connect(this, SIGNAL(optimizer_reset_sim()), this, SLOT(reset_sim()));
+	occupancy_grid_ = nullptr;
+	collision_grid_ = nullptr;
 
 	//grid_ = VisObject(uniform_locations_);
 	//grid_overlay_ = VisObject(uniform_locations_);
@@ -850,34 +870,34 @@ void SwarmViewer::create_lights() {
 	create_light_model(light_bulb);
 
 	for (size_t i = 0; i < NO_OF_LIGHTS; ++i) {
-		Light light(uniform_locations_);
+		Light* light = new Light(uniform_locations_);
 
 		std::stringstream light_name;
 		light_name << "lights[" << i << "]";
 
 		std::stringstream light_position_name;
 		light_position_name << light_name.str() << ".position";
-		light.light_position_location_ = m_shader.uniformLocation(light_position_name.str().c_str());
+		light->light_position_location_ = m_shader.uniformLocation(light_position_name.str().c_str());
 
 		std::stringstream light_color_name;
 		light_color_name << light_name.str() << ".color";
-		light.light_color_location_ = m_shader.uniformLocation(light_color_name.str().c_str());
+		light->light_color_location_ = m_shader.uniformLocation(light_color_name.str().c_str());
 
 		//glm::vec3 light_position(0, 0, -100);
 		glm::vec3 light_position(position(rng), 500.f, position(rng));
 		glm::vec3 light_color(color(rng), color(rng), color(rng));
 
-		light.color_ = light_color;
-		light.position_ = light_position;
+		light->color_ = light_color;
+		light->position_ = light_position;
 
-		glUniform3fv(light.light_color_location_, 1, glm::value_ptr(light_color));
+		glUniform3fv(light->light_color_location_, 1, glm::value_ptr(light_color));
 
 		glm::mat4 RT = glm::translate(glm::mat4(1.f), light_position);
 		RenderMesh light_mesh = light_bulb;
 		update_model(light_mesh, RT);
 		//default_scene_.push_back(light);
 		 
-		light.mesh_ = light_mesh;
+		light->mesh_ = light_mesh;
 
 		lights_.push_back(light);
 	}
@@ -1064,11 +1084,11 @@ void SwarmViewer::create_robots() {
 		//robot.mesh_.push_back(robot_mesh[0]);
 		//robots_.push_back(robot);
 
-		std::shared_ptr<Robot> robot(new Robot(uniform_locations_, 
+		Robot* robot = new Robot(uniform_locations_, 
 			i, occupancy_grid_, collision_grid_, explore_constant_, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_,
 			goto_work_constant_,
 			explore_range_, separation_range_, alignment_range_, cluster_range_, perimeter_range_, sensor_range_, discovery_range_,
-			separation_distance_, robot_positions[i], &m_shader));
+			separation_distance_, robot_positions[i], &m_shader);
 
 		robot->mesh_.push_back(robot_mesh[0]);
 		robots_.push_back(robot);
@@ -1142,7 +1162,7 @@ void SwarmViewer::create_occupancy_grid(int grid_resolution_per_side, int grid_s
 	RenderMesh mesh;
 	mesh.push_back(occupancy_grid);
 
-	std::shared_ptr<VisObject> grid = std::make_shared<VisObject>(uniform_locations_);
+	VisObject* grid =  new VisObject(uniform_locations_);
 	grid->mesh_ = mesh;
 
 	reset_vis_objects_.push_back(grid);
