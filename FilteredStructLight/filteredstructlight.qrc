@@ -7,6 +7,5 @@
     <file>swarm_vert.glsl</file>
     <file>swarm_frag.glsl</file>
     <file>projector.qml</file>
-    <file>settings.ini</file>
   </qresource>
 </RCC>

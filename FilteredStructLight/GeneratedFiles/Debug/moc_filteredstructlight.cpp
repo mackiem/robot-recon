@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'filteredstructlight.h'
 **
-** Created by: The Qt Meta Object Compiler version 67 (Qt 5.3.2)
+** Created by: The Qt Meta Object Compiler version 67 (Qt 5.5.1)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
@@ -12,7 +12,7 @@
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'filteredstructlight.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
-#error "This file was generated using the moc from 5.3.2. It"
+#error "This file was generated using the moc from 5.5.1. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
 #endif
@@ -20,20 +20,21 @@
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_QArrayPushButton_t {
     QByteArrayData data[5];
-    char stringdata[55];
+    char stringdata0[55];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    qptrdiff(offsetof(qt_meta_stringdata_QArrayPushButton_t, stringdata) + ofs \
+    qptrdiff(offsetof(qt_meta_stringdata_QArrayPushButton_t, stringdata0) + ofs \
         - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_QArrayPushButton_t qt_meta_stringdata_QArrayPushButton = {
     {
-QT_MOC_LITERAL(0, 0, 16),
-QT_MOC_LITERAL(1, 17, 15),
-QT_MOC_LITERAL(2, 33, 0),
-QT_MOC_LITERAL(3, 34, 2),
-QT_MOC_LITERAL(4, 37, 17)
+QT_MOC_LITERAL(0, 0, 16), // "QArrayPushButton"
+QT_MOC_LITERAL(1, 17, 15), // "clicked_with_id"
+QT_MOC_LITERAL(2, 33, 0), // ""
+QT_MOC_LITERAL(3, 34, 2), // "id"
+QT_MOC_LITERAL(4, 37, 17) // "intercept_clicked"
+
     },
     "QArrayPushButton\0clicked_with_id\0\0id\0"
     "intercept_clicked"
@@ -72,6 +73,7 @@ void QArrayPushButton::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int
 {
     if (_c == QMetaObject::InvokeMetaMethod) {
         QArrayPushButton *_t = static_cast<QArrayPushButton *>(_o);
+        Q_UNUSED(_t)
         switch (_id) {
         case 0: _t->clicked_with_id((*reinterpret_cast< int(*)>(_a[1]))); break;
         case 1: _t->intercept_clicked(); break;
@@ -91,7 +93,7 @@ void QArrayPushButton::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int
 
 const QMetaObject QArrayPushButton::staticMetaObject = {
     { &QPushButton::staticMetaObject, qt_meta_stringdata_QArrayPushButton.data,
-      qt_meta_data_QArrayPushButton,  qt_static_metacall, 0, 0}
+      qt_meta_data_QArrayPushButton,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -102,8 +104,8 @@ const QMetaObject *QArrayPushButton::metaObject() const
 
 void *QArrayPushButton::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
-    if (!strcmp(_clname, qt_meta_stringdata_QArrayPushButton.stringdata))
+    if (!_clname) return Q_NULLPTR;
+    if (!strcmp(_clname, qt_meta_stringdata_QArrayPushButton.stringdata0))
         return static_cast<void*>(const_cast< QArrayPushButton*>(this));
     return QPushButton::qt_metacast(_clname);
 }
@@ -128,25 +130,26 @@ int QArrayPushButton::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 // SIGNAL 0
 void QArrayPushButton::clicked_with_id(int _t1)
 {
-    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
+    void *_a[] = { Q_NULLPTR, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 struct qt_meta_stringdata_QArrayRadioButton_t {
     QByteArrayData data[5];
-    char stringdata[56];
+    char stringdata0[56];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    qptrdiff(offsetof(qt_meta_stringdata_QArrayRadioButton_t, stringdata) + ofs \
+    qptrdiff(offsetof(qt_meta_stringdata_QArrayRadioButton_t, stringdata0) + ofs \
         - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_QArrayRadioButton_t qt_meta_stringdata_QArrayRadioButton = {
     {
-QT_MOC_LITERAL(0, 0, 17),
-QT_MOC_LITERAL(1, 18, 15),
-QT_MOC_LITERAL(2, 34, 0),
-QT_MOC_LITERAL(3, 35, 2),
-QT_MOC_LITERAL(4, 38, 17)
+QT_MOC_LITERAL(0, 0, 17), // "QArrayRadioButton"
+QT_MOC_LITERAL(1, 18, 15), // "clicked_with_id"
+QT_MOC_LITERAL(2, 34, 0), // ""
+QT_MOC_LITERAL(3, 35, 2), // "id"
+QT_MOC_LITERAL(4, 38, 17) // "intercept_clicked"
+
     },
     "QArrayRadioButton\0clicked_with_id\0\0"
     "id\0intercept_clicked"
@@ -185,6 +188,7 @@ void QArrayRadioButton::qt_static_metacall(QObject *_o, QMetaObject::Call _c, in
 {
     if (_c == QMetaObject::InvokeMetaMethod) {
         QArrayRadioButton *_t = static_cast<QArrayRadioButton *>(_o);
+        Q_UNUSED(_t)
         switch (_id) {
         case 0: _t->clicked_with_id((*reinterpret_cast< int(*)>(_a[1]))); break;
         case 1: _t->intercept_clicked(); break;
@@ -204,7 +208,7 @@ void QArrayRadioButton::qt_static_metacall(QObject *_o, QMetaObject::Call _c, in
 
 const QMetaObject QArrayRadioButton::staticMetaObject = {
     { &QRadioButton::staticMetaObject, qt_meta_stringdata_QArrayRadioButton.data,
-      qt_meta_data_QArrayRadioButton,  qt_static_metacall, 0, 0}
+      qt_meta_data_QArrayRadioButton,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -215,8 +219,8 @@ const QMetaObject *QArrayRadioButton::metaObject() const
 
 void *QArrayRadioButton::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
-    if (!strcmp(_clname, qt_meta_stringdata_QArrayRadioButton.stringdata))
+    if (!_clname) return Q_NULLPTR;
+    if (!strcmp(_clname, qt_meta_stringdata_QArrayRadioButton.stringdata0))
         return static_cast<void*>(const_cast< QArrayRadioButton*>(this));
     return QRadioButton::qt_metacast(_clname);
 }
@@ -241,36 +245,37 @@ int QArrayRadioButton::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 // SIGNAL 0
 void QArrayRadioButton::clicked_with_id(int _t1)
 {
-    void *_a[] = { 0, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
+    void *_a[] = { Q_NULLPTR, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 struct qt_meta_stringdata_FilteredStructLight_t {
     QByteArrayData data[16];
-    char stringdata[296];
+    char stringdata0[296];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    qptrdiff(offsetof(qt_meta_stringdata_FilteredStructLight_t, stringdata) + ofs \
+    qptrdiff(offsetof(qt_meta_stringdata_FilteredStructLight_t, stringdata0) + ofs \
         - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_FilteredStructLight_t qt_meta_stringdata_FilteredStructLight = {
     {
-QT_MOC_LITERAL(0, 0, 19),
-QT_MOC_LITERAL(1, 20, 13),
-QT_MOC_LITERAL(2, 34, 0),
-QT_MOC_LITERAL(3, 35, 8),
-QT_MOC_LITERAL(4, 44, 19),
-QT_MOC_LITERAL(5, 64, 19),
-QT_MOC_LITERAL(6, 84, 19),
-QT_MOC_LITERAL(7, 104, 19),
-QT_MOC_LITERAL(8, 124, 26),
-QT_MOC_LITERAL(9, 151, 26),
-QT_MOC_LITERAL(10, 178, 29),
-QT_MOC_LITERAL(11, 208, 22),
-QT_MOC_LITERAL(12, 231, 24),
-QT_MOC_LITERAL(13, 256, 10),
-QT_MOC_LITERAL(14, 267, 22),
-QT_MOC_LITERAL(15, 290, 5)
+QT_MOC_LITERAL(0, 0, 19), // "FilteredStructLight"
+QT_MOC_LITERAL(1, 20, 13), // "update_images"
+QT_MOC_LITERAL(2, 34, 0), // ""
+QT_MOC_LITERAL(3, 35, 8), // "frame_no"
+QT_MOC_LITERAL(4, 44, 19), // "save_recon_settings"
+QT_MOC_LITERAL(5, 64, 19), // "save_swarm_settings"
+QT_MOC_LITERAL(6, 84, 19), // "swarm_conf_filepath"
+QT_MOC_LITERAL(7, 104, 19), // "load_swarm_settings"
+QT_MOC_LITERAL(8, 124, 26), // "load_swarm_config_settings"
+QT_MOC_LITERAL(9, 151, 26), // "save_swarm_config_settings"
+QT_MOC_LITERAL(10, 178, 29), // "start_reconstruction_sequence"
+QT_MOC_LITERAL(11, 208, 22), // "handle_frame_filenames"
+QT_MOC_LITERAL(12, 231, 24), // "std::vector<std::string>"
+QT_MOC_LITERAL(13, 256, 10), // "image_list"
+QT_MOC_LITERAL(14, 267, 22), // "update_time_step_count"
+QT_MOC_LITERAL(15, 290, 5) // "count"
+
     },
     "FilteredStructLight\0update_images\0\0"
     "frame_no\0save_recon_settings\0"
@@ -326,6 +331,7 @@ void FilteredStructLight::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
 {
     if (_c == QMetaObject::InvokeMetaMethod) {
         FilteredStructLight *_t = static_cast<FilteredStructLight *>(_o);
+        Q_UNUSED(_t)
         switch (_id) {
         case 0: _t->update_images((*reinterpret_cast< int(*)>(_a[1]))); break;
         case 1: _t->save_recon_settings(); break;
@@ -343,7 +349,7 @@ void FilteredStructLight::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
 
 const QMetaObject FilteredStructLight::staticMetaObject = {
     { &QMainWindow::staticMetaObject, qt_meta_stringdata_FilteredStructLight.data,
-      qt_meta_data_FilteredStructLight,  qt_static_metacall, 0, 0}
+      qt_meta_data_FilteredStructLight,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -354,8 +360,8 @@ const QMetaObject *FilteredStructLight::metaObject() const
 
 void *FilteredStructLight::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
-    if (!strcmp(_clname, qt_meta_stringdata_FilteredStructLight.stringdata))
+    if (!_clname) return Q_NULLPTR;
+    if (!strcmp(_clname, qt_meta_stringdata_FilteredStructLight.stringdata0))
         return static_cast<void*>(const_cast< FilteredStructLight*>(this));
     return QMainWindow::qt_metacast(_clname);
 }

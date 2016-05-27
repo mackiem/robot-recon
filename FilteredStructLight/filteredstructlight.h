@@ -1,11 +1,9 @@
 #ifndef FILTEREDSTRUCTLIGHT_H
 #define FILTEREDSTRUCTLIGHT_H
 
-#include "cameradisplaywidget.h"
+#include "gl_core_3_3.h"
 #include <QtWidgets/QMainWindow>
 #include <QtWidgets>
-#include "camthread.h"
-#include "reconstruct.h"
 #include "robotreconstruction.h"
 
 #define CAM_CALIB_PAIRS 6
@@ -108,8 +106,6 @@ private:
 
 	QString recon_settings_filepath_;
 
-	CamThread* cam_thread_;
-	Reconstruct3D* reconstructor_;
 
 	RobotReconstruction* robot_reconstruction_;
 
@@ -119,7 +115,6 @@ private:
 	QPushButton* view_cameras_;
 
 	QWidget* right_panel_;
-	GLWidget* opengl_widget_;
 
 	QSlider* threshold_slider_;
 	QCheckBox* threshold_toggle_checkbox_;
@@ -233,9 +228,7 @@ private:
 
 	void shutdown_cam_thread();
 
-	void create_camera_pairs(CameraPairs& pairs);
 
-	void add_reconstruction_tab(CameraPairs& camera_pairs, QTabWidget* tab_widget);
 	void add_reconstruction_options(QGroupBox* recon_options_group_box);
 	void connect_recon_line_edits_to_save_settings();
 	void add_display_options(QGroupBox* display_options_group_box);
@@ -252,7 +245,6 @@ private:
 
 	void add_calibration_options(QGroupBox* calibration_group_box);
 
-	void add_camera_calibration_tab(QTabWidget* tab_widget);
 	void add_robot_calibration_tab(QTabWidget* tab_widget);
 
 	std::vector<std::string> frame_filenames_;

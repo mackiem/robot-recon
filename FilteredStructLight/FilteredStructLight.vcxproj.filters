@@ -50,38 +50,11 @@
     <ClCompile Include="GeneratedFiles\qrc_filteredstructlight.cpp">
       <Filter>Generated Files</Filter>
     </ClCompile>
-    <ClCompile Include="cameradisplaywidget.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_cameradisplaywidget.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_cameradisplaywidget.cpp">
-      <Filter>Generated Files\Release</Filter>
-    </ClCompile>
     <ClCompile Include="gl_core_3_3.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="camthread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_camthread.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_camthread.cpp">
-      <Filter>Generated Files\Release</Filter>
-    </ClCompile>
     <ClCompile Include="projectorwindow.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="reconstruct.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Debug\moc_reconstruct.cpp">
-      <Filter>Generated Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="GeneratedFiles\Release\moc_reconstruct.cpp">
-      <Filter>Generated Files\Release</Filter>
     </ClCompile>
     <ClCompile Include="modelviewer.cpp">
       <Filter>Source Files</Filter>
@@ -91,9 +64,6 @@
     </ClCompile>
     <ClCompile Include="GeneratedFiles\Release\moc_modelviewer.cpp">
       <Filter>Generated Files\Release</Filter>
-    </ClCompile>
-    <ClCompile Include="gaussfit.cpp">
-      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="dpmpar.c">
       <Filter>Source Files</Filter>
@@ -205,15 +175,6 @@
     <CustomBuild Include="filteredstructlight.qrc">
       <Filter>Resource Files</Filter>
     </CustomBuild>
-    <CustomBuild Include="cameradisplaywidget.h">
-      <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="camthread.h">
-      <Filter>Header Files</Filter>
-    </CustomBuild>
-    <CustomBuild Include="reconstruct.h">
-      <Filter>Header Files</Filter>
-    </CustomBuild>
     <CustomBuild Include="modelviewer.h">
       <Filter>Header Files</Filter>
     </CustomBuild>
@@ -247,9 +208,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="fsl_common.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="gaussfit.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="f2c.h">

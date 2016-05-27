@@ -1,5 +1,4 @@
 #include "planefit.h"
-#include "gaussfit.h"
 #include <math.h>
 #include <malloc.h>
 
