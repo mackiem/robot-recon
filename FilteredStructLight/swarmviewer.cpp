@@ -62,10 +62,14 @@ void RobotWorker::do_work() {
 		if (!paused_) {
 			step_count_--;
 			if (time_step_count_ > 1000) {
-				double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
-				double coverage = calculate_coverage();
-				emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
-				sampling_updated_ = true;
+				if (!sampling_updated_) {
+					double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
+					double coverage = calculate_coverage();
+					std::cout << "End - time steps : " << time_step_count_ << "  " <<
+						occupancy_grid_->get_unexplored_perimeter_list().size() << "\n";
+					emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
+					sampling_updated_ = true;
+				}
 			}
 
 			if (occupancy_grid_->get_unexplored_perimeter_list().size() > 0) {
@@ -74,6 +78,8 @@ void RobotWorker::do_work() {
 				if (!sampling_updated_) {
 					double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
 					double coverage = calculate_coverage();
+					std::cout << "End - time steps : " << time_step_count_ << "  " << 
+						occupancy_grid_->get_unexplored_perimeter_list().size() << "\n";
 					emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
 					sampling_updated_ = true;
 				}
@@ -391,82 +397,43 @@ void SwarmViewer::quad_tree_test() {
 void SwarmViewer::load_interior_model() {
 	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
 
-	//std::vector<cv::Vec3f> vertices;
-	//std::vector<cv::Vec3f> normals;
-	//std::vector<cv::Vec4f> colors;
-	//std::vector<cv::Vec2f> uvs;
-	//std::vector<unsigned int> indices;
-	//std::vector<int> count;
-	//std::vector<int> offset;
-	//std::vector<int> base_index;
-
-
 	std::string model_filename = (interior_model_filename_.compare("") == 0) ? DEFAULT_INTERIOR_MODEL_FILENAME
 		: interior_model_filename_;
-
-	//load_obj(model_filename,  vertices, normals, uvs, indices, count, offset, base_index);
 
 	VertexBufferData* vertex_buffer_data = new VertexBufferData();
 	load_obj(model_filename,  *vertex_buffer_data);
 
-	cv::Vec4f color(0.8f, 0.5f, 0.5f, 1.f);
-
-	std::random_device rd;
-	std::mt19937 rng(rd());
-	std::uniform_real_distribution<float> color_distribution(0.4, 1.0);
-
-
-	
-	vertex_buffer_data->colors = std::vector<cv::Vec4f>(vertex_buffer_data->positions.size(), color);
-
-	//for (auto i = 0u; i < vertices.size(); ++i) {
-		//if (i % 3 == 0) {
-		//	random_color = cv::Vec4f(color_distribution(rng), color_distribution(rng), color_distribution(rng), 1.f);
-		//}
-		//colors.push_back(random_color);
-	//	colors.push_back(color);
-	//}
-
-
-	RenderEntity interior_model(GL_TRIANGLES, &m_shader);
-	//interior_model.upload_data_to_gpu(vertices, colors, normals, uvs, indices, count, offset, base_index);
-	interior_model.upload_data_to_gpu(*vertex_buffer_data);
-
-	//GLenum error = glGetError();
-
-	RenderMesh interior_model_mesh;
-	interior_model_mesh.push_back(interior_model);
-	
-	VisObject* interior_model_object = new VisObject(uniform_locations_);
-	interior_model_object->mesh_ = interior_model_mesh;
-
 	float scale = interior_scale_;
 
-	glm::mat4 model = glm::scale(glm::mat4(1.f), glm::vec3(scale, scale, scale));
-	model = glm::translate(model, interior_offset_);
-	model = model * model_rotation_;
-	update_model(interior_model_object->mesh_, model);
+	if (render_) {
+		cv::Vec4f color(0.8f, 0.5f, 0.5f, 1.f);
+		vertex_buffer_data->colors = std::vector<cv::Vec4f>(vertex_buffer_data->positions.size(), color);
 
-	//VertexBufferData* bufferdata = new VertexBufferData();
-	//bufferdata->positions = vertices;
-	//bufferdata->normals = normals;
-	//bufferdata->colors = colors;
-	//bufferdata->base_index = base_index;
-	//bufferdata->indices = indices;
-	//bufferdata->offset = offset;
-	//bufferdata->uvs = uvs;
-	//bufferdata->count = count;
+		RenderEntity interior_model(GL_TRIANGLES, &m_shader);
+		//interior_model.upload_data_to_gpu(vertices, colors, normals, uvs, indices, count, offset, base_index);
+		interior_model.upload_data_to_gpu(*vertex_buffer_data);
+
+
+		RenderMesh interior_model_mesh;
+		interior_model_mesh.push_back(interior_model);
+
+		VisObject* interior_model_object = new VisObject(uniform_locations_);
+		interior_model_object->mesh_ = interior_model_mesh;
+
+
+		glm::mat4 model = glm::scale(glm::mat4(1.f), glm::vec3(scale, scale, scale));
+		model = glm::translate(model, interior_offset_);
+		model = model * model_rotation_;
+		update_model(interior_model_object->mesh_, model);
+
+		default_vis_objects_.push_back(interior_model_object);
+	}
+
 
 	if (interior_model_filename_.compare("") > 0) {
 		derive_floor_plan(*vertex_buffer_data, scale, interior_offset_);
 	}
 
-	default_vis_objects_.push_back(interior_model_object);
-
-
-	//default_scene_.push_back(interior_model_mesh);
-
-	//create_lights();
 	delete vertex_buffer_data;
 }
 
@@ -529,47 +496,34 @@ void SwarmViewer::custom_init_code() {
 }
 
 void SwarmViewer::custom_draw_code() {
-	glm::mat4 mvp;
+	if (render_) {
+		glm::mat4 mvp;
 
-	glUniform3fv(view_position_loc_, 1, glm::value_ptr(eye_));
+		glUniform3fv(view_position_loc_, 1, glm::value_ptr(eye_));
 
-	draw_scene(default_scene_);
+		draw_scene(default_scene_);
 
-	if (show_interior_) {
-		for (auto& vis_object : default_vis_objects_) {
+		if (show_interior_) {
+			for (auto& vis_object : default_vis_objects_) {
+				vis_object->update(model_);
+				vis_object->draw(model_, camera_, projection_);
+			}
+		}
+
+		for (auto& vis_object : reset_vis_objects_) {
 			vis_object->update(model_);
 			vis_object->draw(model_, camera_, projection_);
 		}
+
+		for (auto& robot : robots_) {
+			robot->update_visualization_structs();
+			robot->draw(model_, camera_, projection_);
+		}
+
+		for (auto& light : lights_) {
+			light->update(model_);
+		}
 	}
-
-	for (auto& vis_object : reset_vis_objects_) {
-		vis_object->update(model_);
-		vis_object->draw(model_, camera_, projection_);
-	}
-
-	// assumption - global position of other robots are known
-	//for (auto& robot : robots_) {
-	//	robot->update_robots(robots_);
-	//}
-
-
-	for (auto& robot : robots_) {
-		//if (!paused_) {
-		//	robot->update(model_);
-		//}
-		robot->update_visualization_structs();
-		robot->draw(model_, camera_, projection_);
-	}
-
-	for (auto& light : lights_) {
-		light->update(model_);
-		//light.draw(model_, camera_, projection_);
-	}
-
-	// draw grid
-	//create_occupancy_grid_overlay(grid_resolution_per_side_, grid_length_);
-	//grid_overlay_.draw(model_, camera_, projection_);
-	//grid_.draw(model_, camera_, projection_);
 
 }
 
@@ -642,12 +596,10 @@ void SwarmViewer::reset_sim() {
 	time_step_count_ = 0;
 
 
-
 	occupancy_grid_ = new SwarmOccupancyTree(grid_length_, grid_resolution_);
 	grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
 	collision_grid_ = new SwarmCollisionTree(grid_resolution_);
 
-	change_to_top_down_view();
 
 	load_interior_model();
 	occupancy_grid_->create_perimeter_list();
@@ -661,21 +613,23 @@ void SwarmViewer::reset_sim() {
 		robot->set_show_forces(show_forces_);
 	}
 
-	create_occupancy_grid(grid_resolution_per_side_, grid_length_);
-	robot_color_map_[occupancy_grid_->get_interior_mark()] = cv::Vec4f(1.f, 1.f, 1.f, 1.f);
-
-	create_lights();
-
-	overlay_ = new GridOverlay(uniform_locations_, 
-		occupancy_grid_, grid_resolution_per_side_, grid_length_, robot_color_map_, &m_shader);
-
-	update_perimiter_positions_in_overlay();
 
 
-	reset_vis_objects_.push_back(overlay_);
 
-	for (auto& robot : robots_) {
-		robot->set_grid_overlay(overlay_);
+	// graphics setup
+	change_to_top_down_view();
+	if (render_) {
+		create_occupancy_grid(grid_resolution_per_side_, grid_length_);
+		robot_color_map_[occupancy_grid_->get_interior_mark()] = cv::Vec4f(1.f, 1.f, 1.f, 1.f);
+		create_lights();
+
+		overlay_ = new GridOverlay(uniform_locations_,
+			occupancy_grid_, grid_resolution_per_side_, grid_length_, robot_color_map_, &m_shader);
+		update_perimiter_positions_in_overlay();
+		reset_vis_objects_.push_back(overlay_);
+		for (auto& robot : robots_) {
+			robot->set_grid_overlay(overlay_);
+		}
 	}
 
 	robot_worker_ = new RobotWorker();
@@ -813,6 +767,7 @@ SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer
 	connect(this, SIGNAL(optimizer_reset_sim()), this, SLOT(reset_sim()));
 	occupancy_grid_ = nullptr;
 	collision_grid_ = nullptr;
+	render_ = true;
 
 	//grid_ = VisObject(uniform_locations_);
 	//grid_overlay_ = VisObject(uniform_locations_);
@@ -1088,7 +1043,7 @@ void SwarmViewer::create_robots() {
 			i, occupancy_grid_, collision_grid_, explore_constant_, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_,
 			goto_work_constant_,
 			explore_range_, separation_range_, alignment_range_, cluster_range_, perimeter_range_, sensor_range_, discovery_range_,
-			separation_distance_, robot_positions[i], &m_shader);
+			separation_distance_, robot_positions[i], &m_shader, render_);
 
 		robot->mesh_.push_back(robot_mesh[0]);
 		robots_.push_back(robot);

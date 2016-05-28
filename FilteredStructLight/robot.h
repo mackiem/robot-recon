@@ -145,6 +145,7 @@ private:
 	int pool_size_;
 	int current_pool_count_;
 	std::vector<std::vector<glm::ivec3>>* heap_pool_;
+	bool render_;
 
 public:
 	static int MAX_DEPTH;
@@ -179,7 +180,7 @@ public:
 	Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree,
 		double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
 		Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, double sensor_range, int discovery_range,
-		double separation_distance, glm::vec3 position, QGLShaderProgram* shader);
+		double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render);
 
 
 

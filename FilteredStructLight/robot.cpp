@@ -70,7 +70,7 @@ void Robot::calculate_work_force() {
 Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, 
 	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
 	Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, double sensor_range, int discovery_range,
-	double separation_distance, glm::vec3 position, QGLShaderProgram* shader) : VisObject(locations), all_goals_explored_(false),
+	double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render) : VisObject(locations), all_goals_explored_(false),
 	accumulator_(0.f), id_(id), position_(position), timeout_(5000), last_timeout_(0),
 	last_updated_time_(0), 
 	explore_range_(explore_range), separation_range_(separation_range), alignment_range_(alignment_range),
@@ -78,7 +78,8 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	cluster_range_(cluster_range), sensor_range_(sensor_range), discovery_range_(discovery_range), 
 	explore_constant_(explore_constant), separation_constant_(separation_constant), alignment_constant_(alignment_constant),
 	work_constant_(work_constant), perimeter_constant_(perimeter_constant),
-	cluster_constant_(cluster_constant), separation_distance_threshold_(separation_distance), occupancy_grid_(octree),  collision_grid_(collision_tree), shader_(shader) {
+	cluster_constant_(cluster_constant), separation_distance_threshold_(separation_distance), occupancy_grid_(octree),  
+	collision_grid_(collision_tree), shader_(shader), render_(render) {
 
 	std::random_device rd;
 	rng_.seed(rd());
@@ -127,12 +128,14 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	cv::Vec4f cyan = cv::Vec4f(0.f, 255.f, 204.f, 255.f) / 255.f;
 
 
-	init_force_visualization(0, explore_force_, blue);
-	init_force_visualization(1, separation_force_, green);
-	init_force_visualization(2, resultant_direction_, black);
-	init_force_visualization(3, perimeter_force_, yellow);
-	init_force_visualization(4, cluster_force_, cyan);
-	init_force_visualization(5, alignment_force_, orange);
+	if (render_) {
+		init_force_visualization(0, explore_force_, blue);
+		init_force_visualization(1, separation_force_, green);
+		init_force_visualization(2, resultant_direction_, black);
+		init_force_visualization(3, perimeter_force_, yellow);
+		init_force_visualization(4, cluster_force_, cyan);
+		init_force_visualization(5, alignment_force_, orange);
+	}
 
 	init_coverage_map();
 
@@ -900,9 +903,11 @@ void Robot::update(int timestamp) {
 
 			for (auto adjacent_sensor_cell : sensor_cells) {
 				if (!occupancy_grid_->is_interior(adjacent_sensor_cell)) {
-					explored_mutex_.lock();
-					explored_cells_.push_back(adjacent_sensor_cell);
-					explored_mutex_.unlock();
+					if (render_) {
+						explored_mutex_.lock();
+						explored_cells_.push_back(adjacent_sensor_cell);
+						explored_mutex_.unlock();
+					}
 					occupancy_grid_->set(adjacent_sensor_cell.x, adjacent_sensor_cell.z, explored);
 					occupancy_grid_->mark_explored_in_perimeter_list(adjacent_sensor_cell);
 					//occupancy_grid_->mark_explored_in_empty_space_list(adjacent_sensor_cell);

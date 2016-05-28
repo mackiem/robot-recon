@@ -78,7 +78,7 @@ private:
 	SwarmOccupancyTree* occupancy_grid_;
 	SwarmCollisionTree* collision_grid_;
 
-
+	bool render_;
 	std::string interior_model_filename_;
 	GLint model_loc_;
 	GLint inverse_transpose_loc_;

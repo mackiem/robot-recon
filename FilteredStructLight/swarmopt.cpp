@@ -2,6 +2,7 @@
 #include <math.h>
 #include <malloc.h>
 #include <QtCore/qeventloop.h>
+#include <chrono>
 
 
 extern "C" int mylmdif_(int (*fcn)(int *, int *, double *, double *, int *), int *m, int *n, double *x, double *fvec, double *ftol, double *xtol, double *gtol, int *maxfev, 
@@ -382,7 +383,7 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 	double best_separation_constant = current_separation_constant;
 	double best_cluster_constant = current_cluster_constant;
 
-	int no_of_iterations = 1000000;
+	int no_of_iterations = 10;
 
 	std::random_device rd;
 	std::mt19937 mt(rd());
@@ -390,20 +391,23 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 	std::uniform_real_distribution<> uniform_real_distribution(0, 1);
 	
 
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+
 	for (int i = 0; i < no_of_iterations; ++i) {
 		double next_separation_constant = -1.0;
 		while (next_separation_constant < 0 || next_separation_constant > 20) {
 			double separation_delta = normal_distribution(mt);
 			next_separation_constant = (current_separation_constant + scaling_constant * separation_delta);
 		}
-		std::cout << "next separation constant : " << next_separation_constant << "\n";
+		//std::cout << "next separation constant : " << next_separation_constant << "\n";
 
 		double next_cluster_constant = -1.0;
 		while (next_cluster_constant < 0 || next_cluster_constant > 20) {
 			double cluster_delta = normal_distribution(mt);
 			next_cluster_constant = (current_cluster_constant + scaling_constant * cluster_delta);
 		}
-		std::cout << "next cluster constant : " << next_separation_constant << "\n";
+		//std::cout << "next cluster constant : " << next_cluster_constant << "\n";
 
 		double next_score = run_simulation(next_separation_constant, next_cluster_constant);
 
@@ -427,7 +431,10 @@ void SwarmMCMCOptimizer::optimize_swarm_params() {
 		}
 	}
 
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
+	std::cout << "Time taken (s) : " << 
+		std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / (1000 * static_cast<double>(no_of_iterations)) << std::endl;
 
 
 }

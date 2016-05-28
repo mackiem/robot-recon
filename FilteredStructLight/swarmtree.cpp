@@ -76,8 +76,12 @@ Quadtree<int>(grid_resolution, -1), grid_cube_length_(grid_cube_length), grid_re
 	//sampling_tracker_ = std::make_shared<std::unordered_map<glm::ivec3, 
 	//	std::unordered_map<int, std::unordered_map<int, int>>, IVec3Hasher, IVec3Equals>>();
 
-	sampling_tracker_ = std::make_shared < std::map < glm::ivec3, std::map < int, std::map<int, int> >
-		, IVec3Comparator >> ();
+	sampling_tracker_ = new std::vector<Sampling>();
+	sampling_tracker_->reserve(pool_size_);
+	//sampling_tracker_ = new std::unordered_map<glm::ivec3, std::map<int, std::map<int, int>>
+	//	, IVec3Hasher, IVec3Equals>();
+	//sampling_tracker_ = std::make_shared < std::map < glm::ivec3, std::map < int, std::map<int, int> >
+	//	, IVec3Comparator >> ();
 
 	//heap_pool_.resize(pool_size_);
 	//std::fill(heap_pool_.begin(), heap_pool_.end(), )
@@ -484,35 +488,41 @@ void SwarmOccupancyTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
 
 
 void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id) {
-	auto entry = sampling_tracker_->find(grid_cell);
-	if (entry != sampling_tracker_->end()) {
-		entry->second[timestep][robot_id] = 1;
-	}
+	//auto entry = sampling_tracker_->find(grid_cell);
+	//if (entry != sampling_tracker_->end()) {
+		//entry->second[timestep][robot_id] = 1;
+	//}
+	//(*sampling_tracker_)[grid_cell][timestep][robot_id] = 1;
+	Sampling sample;
+	sample.grid_cell = grid_cell;
+	sample.timestamp = timestep;
+	sample.robot_id = robot_id;
+	sampling_tracker_->push_back(sample);
 }
 
 double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 	double sampling_factor = 0.0;
-	for (auto& interior_cell_entry : *sampling_tracker_) {
-		double no_of_samples_per_timestep = 0.0;
-		for (auto& robots_per_timestep : interior_cell_entry.second) {
-			int no_of_robots_at_timestep = robots_per_timestep.second.size();
-			no_of_samples_per_timestep += no_of_robots_at_timestep;
-		}
+	//for (auto& interior_cell_entry : *sampling_tracker_) {
+	//	double no_of_samples_per_timestep = 0.0;
+	//	for (auto& robots_per_timestep : interior_cell_entry.second) {
+	//		int no_of_robots_at_timestep = robots_per_timestep.second.size();
+	//		no_of_samples_per_timestep += no_of_robots_at_timestep;
+	//	}
 
-		int total_samples_of_interior_cell = interior_cell_entry.second.size();
-		if (total_samples_of_interior_cell > 0) {
-			no_of_samples_per_timestep /= total_samples_of_interior_cell;
-		}
+	//	int total_samples_of_interior_cell = interior_cell_entry.second.size();
+	//	if (total_samples_of_interior_cell > 0) {
+	//		no_of_samples_per_timestep /= total_samples_of_interior_cell;
+	//	}
 
-		sampling_factor += no_of_samples_per_timestep;
-		//SwarmUtils::print_vector("Interior Vector", interior_cell_entry.first);
-		//std::cout << "Avg. Sampling : " << no_of_samples_per_timestep << "\n";
-	}
-		
-	if (sampling_tracker_->size() > 0) {
-		//std::cout << "Sampling Factor : " << sampling_factor / sampling_tracker_->size() << "\n";
-		sampling_factor /= sampling_tracker_->size();
-	}
+	//	sampling_factor += no_of_samples_per_timestep;
+	//	//SwarmUtils::print_vector("Interior Vector", interior_cell_entry.first);
+	//	//std::cout << "Avg. Sampling : " << no_of_samples_per_timestep << "\n";
+	//}
+	//	
+	//if (sampling_tracker_->size() > 0) {
+	//	//std::cout << "Sampling Factor : " << sampling_factor / sampling_tracker_->size() << "\n";
+	//	sampling_factor /= sampling_tracker_->size();
+	//}
 	return sampling_factor;
 }
 
@@ -564,7 +574,7 @@ void SwarmOccupancyTree::create_interior_list() {
 
 					//	timestamp_robots[i] = temp_map;
 					//}
-					(*sampling_tracker_)[grid_position] = timestamp_robots;
+					//(*sampling_tracker_)[grid_position] = timestamp_robots;
 				}
 			}
 		}
@@ -602,6 +612,11 @@ void SwarmOccupancyTree::mark_explored_in_list(std::set<glm::ivec3, IVec3Compara
 		position_list.erase(result);
 	}
 }
+
+SwarmOccupancyTree::~SwarmOccupancyTree() {
+	delete sampling_tracker_;
+}
+
 void SwarmOccupancyTree::mark_explored_in_perimeter_list(const glm::ivec3& grid_position) {
 	mark_explored_in_list(explore_perimeter_list_, grid_position);
 }

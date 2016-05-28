@@ -5,6 +5,7 @@
 #include <queue>
 #include <functional>
 
+#define GRID_MAX 100000
 class OutOfGridBoundsException : public std::exception {
 public:
 OutOfGridBoundsException(const char* message) : std::exception(message) {};
@@ -12,7 +13,7 @@ OutOfGridBoundsException(const char* message) : std::exception(message) {};
 
 struct IVec3Hasher {
 	std::size_t operator()(const glm::ivec3& k) const {
-		return k.x + 100000 * k.z;
+		return k.x + GRID_MAX * k.x + GRID_MAX * GRID_MAX * k.z;
 	}
 };
 
@@ -121,8 +122,8 @@ private:
 
 	//std::shared_ptr<std::unordered_map<glm::ivec3, std::unordered_map<int, std::unordered_map<int, int>>
 	//	, IVec3Hasher, IVec3Equals>> sampling_tracker_;
-	std::shared_ptr<std::map<glm::ivec3, std::map<int, std::map<int, int>>
-		, IVec3Comparator>> sampling_tracker_;
+	//std::unordered_map<glm::ivec3, std::map<int, std::map<int, int>>
+	//	, IVec3Hasher, IVec3Equals>* sampling_tracker_;
 
 	std::set<glm::ivec3, IVec3Comparator> explore_perimeter_list_;
 	std::set<glm::ivec3, IVec3Comparator> empty_space_list_;
@@ -134,6 +135,14 @@ private:
 	int pool_size_;
 	int current_pool_count_;
 	std::vector<std::vector<PerimeterPos>> heap_pool_;
+
+	struct Sampling {
+		glm::ivec3 grid_cell;
+		int robot_id;
+		long timestamp;
+	};
+
+	std::vector<Sampling>* sampling_tracker_;
 
 public:
 	bool going_through_interior_test(const glm::vec3& robot_position, const glm::vec3& point_to_test) const;
@@ -204,6 +213,7 @@ public:
 	void mark_explored_in_empty_space_list(const glm::ivec3& grid_position);
 	void mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position);
 	
+	virtual ~SwarmOccupancyTree();
 };
 
 class SwarmCollisionTree : public mm::Quadtree<std::set<int>*> {
@@ -214,6 +224,6 @@ public:
 	SwarmCollisionTree(unsigned resolution);
 	void insert(int robot_id, const glm::ivec3& position);
 	void update(int robot_id, const glm::ivec3& previous_position, const glm::ivec3& current_position);
-	~SwarmCollisionTree() override;
+	virtual ~SwarmCollisionTree() override;
 };
 
