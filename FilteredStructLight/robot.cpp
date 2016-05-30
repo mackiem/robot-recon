@@ -388,123 +388,127 @@ void Robot::calculate_cluster_force(const std::vector<int>& other_robots) {
 
 	cluster_force_ = glm::vec3(0.f, 0.f, 0.f);
 
-	if (other_robots.size() > 0) {
-		std::vector<PerimeterPos> other_robot_distance_vector;
-		std::vector<int> robot_ids;
-		std::vector<float> neighborhood_counts;
-		for (auto itr = other_robots.begin(); itr != other_robots.end(); ++itr) {
-			auto other_robot = *itr;
-			float grid_length = glm::length(glm::vec3(occupancy_grid_->map_to_grid(robots_[other_robot]->position_) -
-				occupancy_grid_->map_to_grid(position_)));
-			if (cluster_range_.within_range(grid_length) && id_ != other_robot) {
-				other_robot_distance_vector.push_back(PerimeterPos(grid_length, occupancy_grid_->map_to_grid(robots_[other_robot]->position_)));
-				robot_ids.push_back(other_robot);
-				neighborhood_counts.push_back(robots_[other_robot]->neighbor_count_);
+	try {
+		if (other_robots.size() > 0) {
+			std::vector<PerimeterPos> other_robot_distance_vector;
+			std::vector<int> robot_ids;
+			std::vector<float> neighborhood_counts;
+			for (auto itr = other_robots.begin(); itr != other_robots.end(); ++itr) {
+				auto other_robot = *itr;
+				float grid_length = glm::length(glm::vec3(occupancy_grid_->map_to_grid(robots_[other_robot]->position_) -
+					occupancy_grid_->map_to_grid(position_)));
+				if (cluster_range_.within_range(grid_length) && id_ != other_robot) {
+					other_robot_distance_vector.push_back(PerimeterPos(grid_length, occupancy_grid_->map_to_grid(robots_[other_robot]->position_)));
+					robot_ids.push_back(other_robot);
+					neighborhood_counts.push_back(robots_[other_robot]->neighbor_count_);
+				}
 			}
-		}
 
-		// calculate neighborhood count
-		//neighbor_count_ = 0;
-		//for (auto& other_robot_distance : other_robot_distance_vector) {
-		//	neighbor_count_ += (cluster_range_.max_ - other_robot_distance.distance_);
-		//}
-		//neighbor_count_ /= (cluster_range_.max_ - cluster_range_.min_);
+			// calculate neighborhood count
+			//neighbor_count_ = 0;
+			//for (auto& other_robot_distance : other_robot_distance_vector) {
+			//	neighbor_count_ += (cluster_range_.max_ - other_robot_distance.distance_);
+			//}
+			//neighbor_count_ /= (cluster_range_.max_ - cluster_range_.min_);
 
-		// simply, all the robots within range
-		neighbor_count_ = other_robot_distance_vector.size();
+			// simply, all the robots within range
+			neighbor_count_ = other_robot_distance_vector.size();
 
-		// if preferred count is lower, then move towards any neighbor
+			// if preferred count is lower, then move towards any neighbor
 
-		if (neighbor_count_ < (preferred_neighbor_count_)) {
-			glm::vec3 centroid;
-			int cluster_size = 0;
-			for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
+			if (neighbor_count_ < (preferred_neighbor_count_)) {
+				glm::vec3 centroid;
+				int cluster_size = 0;
+				for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
 					centroid += robots_[robot_ids[i]]->position_;
 					cluster_size++;
+				}
+
+				if (cluster_size > 0) {
+					centroid /= cluster_size;
+					glm::vec3 move_towards_position = centroid;
+					cluster_force_ = calculate_direction(move_towards_position, cluster_constant_);
+					cluster_force_.y = 0.f;
+				}
 			}
 
-			if (cluster_size > 0) {
-				centroid /= cluster_size;
-				glm::vec3 move_towards_position = centroid;
-				cluster_force_ = calculate_direction(move_towards_position, cluster_constant_);
-				cluster_force_.y = 0.f;
-			}
+
+			// pick a neighbor with lower than preferred count and move towards that(first), this doesn't work
+			//if (neighbor_count_ < (preferred_neighbor_count_)) {
+			//	glm::vec3 centroid;
+			//	int cluster_size = 0;
+			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
+			//		if (neighborhood_counts[i] >= preferred_neighbor_count_) {
+			//			// cluster found, move towards it
+			//			centroid += robots_[robot_ids[i]]->position_;
+			//			cluster_size++;
+			//		}
+			//	}
+
+			//	if (cluster_size > 0) {
+			//		centroid /= cluster_size;
+			//		glm::vec3 move_towards_position = centroid;
+			//		cluster_force_ = calculate_direction(move_towards_position, cluster_constant_);
+			//		cluster_force_.y = 0.f;
+			//	}
+			//}
+
+
+
+
+			//if (neighbor_count_ > (preferred_neighbor_count_ + 1)) {
+			//	glm::vec3 centroid;
+			//	int cluster_size = 0;
+			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
+			//		if (neighborhood_counts[i] < preferred_neighbor_count_) {
+			//			// small cluster found, move towards it
+			//			centroid += robots_[robot_ids[i]]->position_;
+			//			cluster_size++;
+			//		}
+			//	}
+			//	if (cluster_size > 0) {
+			//		centroid /= cluster_size;
+			//		glm::vec3 move_towards_position = centroid;
+			//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
+			//		cluster_force_.y = 0.f;
+			//	}
+			//} else if (neighbor_count_ < (preferred_neighbor_count_ - 1)) {
+			//	glm::vec3 centroid;
+			//	int cluster_size = 0;
+			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
+			//		if (neighborhood_counts[i] > preferred_neighbor_count_) {
+			//			// small cluster found, move towards it
+			//			centroid += robots_[robot_ids[i]]->position_;
+			//			cluster_size++;
+			//		}
+			//	}
+			//	if (cluster_size > 0) {
+			//		centroid /= cluster_size;
+			//		glm::vec3 move_towards_position = centroid;
+			//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
+			//		cluster_force_.y = 0.f;
+			//	}
+			//}
+
+
+
+
+			//glm::vec3 centroid;
+			//int cluster_size = 0;
+			//for (auto& other_robots_distance : other_robot_distance_vector) {
+			//		centroid += occupancy_grid_->map_to_position(other_robots_distance.grid_position_);
+			//		cluster_size++;
+			//}
+
+			//if (cluster_size > 0) {
+			//	centroid /= cluster_size;
+			//	cluster_force_ = calculate_direction(centroid, cluster_constant_);
+			//	cluster_force_.y = 0.f;
+			//}
 		}
-
-
-		// pick a neighbor with lower than preferred count and move towards that(first), this doesn't work
-		//if (neighbor_count_ < (preferred_neighbor_count_)) {
-		//	glm::vec3 centroid;
-		//	int cluster_size = 0;
-		//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-		//		if (neighborhood_counts[i] >= preferred_neighbor_count_) {
-		//			// cluster found, move towards it
-		//			centroid += robots_[robot_ids[i]]->position_;
-		//			cluster_size++;
-		//		}
-		//	}
-
-		//	if (cluster_size > 0) {
-		//		centroid /= cluster_size;
-		//		glm::vec3 move_towards_position = centroid;
-		//		cluster_force_ = calculate_direction(move_towards_position, cluster_constant_);
-		//		cluster_force_.y = 0.f;
-		//	}
-		//}
-
-
-
-
-		//if (neighbor_count_ > (preferred_neighbor_count_ + 1)) {
-		//	glm::vec3 centroid;
-		//	int cluster_size = 0;
-		//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-		//		if (neighborhood_counts[i] < preferred_neighbor_count_) {
-		//			// small cluster found, move towards it
-		//			centroid += robots_[robot_ids[i]]->position_;
-		//			cluster_size++;
-		//		}
-		//	}
-		//	if (cluster_size > 0) {
-		//		centroid /= cluster_size;
-		//		glm::vec3 move_towards_position = centroid;
-		//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
-		//		cluster_force_.y = 0.f;
-		//	}
-		//} else if (neighbor_count_ < (preferred_neighbor_count_ - 1)) {
-		//	glm::vec3 centroid;
-		//	int cluster_size = 0;
-		//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-		//		if (neighborhood_counts[i] > preferred_neighbor_count_) {
-		//			// small cluster found, move towards it
-		//			centroid += robots_[robot_ids[i]]->position_;
-		//			cluster_size++;
-		//		}
-		//	}
-		//	if (cluster_size > 0) {
-		//		centroid /= cluster_size;
-		//		glm::vec3 move_towards_position = centroid;
-		//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
-		//		cluster_force_.y = 0.f;
-		//	}
-		//}
-
-
-
-
-		//glm::vec3 centroid;
-		//int cluster_size = 0;
-		//for (auto& other_robots_distance : other_robot_distance_vector) {
-		//		centroid += occupancy_grid_->map_to_position(other_robots_distance.grid_position_);
-		//		cluster_size++;
-		//}
-
-		//if (cluster_size > 0) {
-		//	centroid /= cluster_size;
-		//	cluster_force_ = calculate_direction(centroid, cluster_constant_);
-		//	cluster_force_.y = 0.f;
-		//}
-	} 	
+	} catch (OutOfGridBoundsException& ex) {
+		
+	}
 }
 
 

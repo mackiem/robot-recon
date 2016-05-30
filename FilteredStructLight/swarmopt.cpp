@@ -3,6 +3,7 @@
 #include <malloc.h>
 #include <QtCore/qeventloop.h>
 #include <chrono>
+#include <fstream>
 
 
 extern "C" int mylmdif_(int (*fcn)(int *, int *, double *, double *, int *), int *m, int *n, double *x, double *fvec, double *ftol, double *xtol, double *gtol, int *maxfev, 
@@ -344,11 +345,58 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant, double clu
 	// maximize coverage
 
 	double score = 0.0;
-	score += (5000.0 - current_time_taken) / 5000.0;
+	//score += (2100.0 - current_time_taken) / 2100.0;
 	score += (current_multi_sampling) / static_cast<double>(swarm_viewer_->no_of_robots_);
 	//score += std::pow(current_coverage - max_coverage_, 2);
 
 	return score;
+}
+
+void SwarmMCMCOptimizer::optimize_brute_force() {
+
+	// initialize params
+	double current_separation_constant = swarm_viewer_->separation_constant_;
+	double current_cluster_constant = swarm_viewer_->cluster_constant_;
+	double scaling_constant = 1.f;
+	
+
+	std::ofstream file("optimize.csv");
+	//file << "Separation Constant,Cluster Constant,Score\n";
+
+	int iterations_per_constant = 20;
+	double next_separation_constant = 0.0;
+	double next_cluster_constant = 0.0;
+	double max_constant = 100.0;
+
+	file << ",";
+	for (int j = 0; j < iterations_per_constant; ++j) {
+		next_cluster_constant = max_constant * j / (double)iterations_per_constant;
+		file << next_cluster_constant << ",";
+	}
+	file << "\n";
+
+
+	for (int i = 0; i < iterations_per_constant; ++i) {
+		next_separation_constant = max_constant * i / (double)iterations_per_constant;
+
+		file << next_separation_constant << ",";
+
+		for (int j = 0; j < iterations_per_constant; ++j) {
+			next_cluster_constant = max_constant * j / (double)iterations_per_constant;
+			double next_score = run_simulation(next_separation_constant, next_cluster_constant);
+
+			std::cout << "iteration " << j + iterations_per_constant * i << " : " 
+				<< next_separation_constant << "," << next_cluster_constant << "," << next_score << "\n";
+
+			file << next_score;
+			if (j != (iterations_per_constant - 1)) {
+				file << ",";
+			}
+		}
+		file << "\n";
+		file.flush();
+	}
+	file.close();
 }
 	
 

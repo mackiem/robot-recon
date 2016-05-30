@@ -52,6 +52,19 @@ double RobotWorker::calculate_coverage() {
 	}
 	return coverage;
 }
+
+void RobotWorker::finish_work() {
+	if (!sampling_updated_) {
+		double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
+		double coverage = calculate_coverage();
+		std::cout << "End - time steps : " << time_step_count_ << "  " <<
+			occupancy_grid_->get_unexplored_perimeter_list().size() << "\n";
+		emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
+		sampling_updated_ = true;
+		abort();
+	}
+	
+}
 	
 
 void RobotWorker::do_work() {
@@ -61,28 +74,14 @@ void RobotWorker::do_work() {
 		}
 		if (!paused_) {
 			step_count_--;
-			if (time_step_count_ > 1000) {
-				if (!sampling_updated_) {
-					double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
-					double coverage = calculate_coverage();
-					std::cout << "End - time steps : " << time_step_count_ << "  " <<
-						occupancy_grid_->get_unexplored_perimeter_list().size() << "\n";
-					emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
-					sampling_updated_ = true;
-				}
+			if (time_step_count_ > 2000) {
+				finish_work();
 			}
 
 			if (occupancy_grid_->get_unexplored_perimeter_list().size() > 0) {
 				emit update_time_step_count(++time_step_count_);
 			} else {
-				if (!sampling_updated_) {
-					double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
-					double coverage = calculate_coverage();
-					std::cout << "End - time steps : " << time_step_count_ << "  " << 
-						occupancy_grid_->get_unexplored_perimeter_list().size() << "\n";
-					emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
-					sampling_updated_ = true;
-				}
+				finish_work();
 			}
 		}
 		if (!paused_) {
@@ -610,7 +609,9 @@ void SwarmViewer::reset_sim() {
 	// assumption - global position of other robots are known
 	for (auto& robot : robots_) {
 		robot->update_robots(robots_);
-		robot->set_show_forces(show_forces_);
+		if (render_) {
+			robot->set_show_forces(show_forces_);
+		}
 	}
 
 
@@ -718,7 +719,8 @@ void SwarmViewer::run_mcmc_optimization() {
 	SwarmMCMCOptimizer* optimizer_worker = new SwarmMCMCOptimizer();
 	QThread* optimizer_thread = new QThread();
 
-	connect(optimizer_thread, SIGNAL(started()), optimizer_worker, SLOT(optimize_swarm_params()));
+	//connect(optimizer_thread, SIGNAL(started()), optimizer_worker, SLOT(optimize_swarm_params()));
+	connect(optimizer_thread, SIGNAL(started()), optimizer_worker, SLOT(optimize_brute_force()));
 	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(quit()));
 	connect(optimizer_thread, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
 	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
@@ -767,7 +769,7 @@ SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer
 	connect(this, SIGNAL(optimizer_reset_sim()), this, SLOT(reset_sim()));
 	occupancy_grid_ = nullptr;
 	collision_grid_ = nullptr;
-	render_ = true;
+	render_ = false;
 
 	//grid_ = VisObject(uniform_locations_);
 	//grid_overlay_ = VisObject(uniform_locations_);

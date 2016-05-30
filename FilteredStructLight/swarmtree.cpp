@@ -6,6 +6,7 @@
 #include "swarmutils.h"
 #include <map>
 #include <functional>
+#include <chrono>
 
 using namespace mm;
 
@@ -501,8 +502,88 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 }
 
 double SwarmOccupancyTree::calculate_multi_sampling_factor() {
+
+
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+
+	//std::unordered_map<glm::ivec3, std::unordered_map<int, std::unordered_map<int, int>>
+	//	, IVec3Hasher, IVec3Equals>* sampling_tracker_map = new std::unordered_map<glm::ivec3, 
+	//	std::unordered_map<int, std::unordered_map<int, int>>
+	//	, IVec3Hasher, IVec3Equals>(interior_list_.size());
+
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+	//std::cout << "time taken - init (s) : " << 
+	//	std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "\n";
+	//
+
+	//for (auto& sampling_tracker_entry : *sampling_tracker_) {
+	//	if (interior_list_.find(sampling_tracker_entry.grid_cell) != interior_list_.end()) {
+	//		(*sampling_tracker_map)[sampling_tracker_entry.grid_cell][sampling_tracker_entry.timestamp][sampling_tracker_entry.robot_id] = 1;
+	//	}
+	//}
+
 	double sampling_factor = 0.0;
-	//for (auto& interior_cell_entry : *sampling_tracker_) {
+	long long pop_time = 0;
+
+	long long last_timestamp = -1;
+	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals> simultaneous_samples_per_timestamp;
+	int no_of_timesteps = 0;
+	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_samples_per_timestep_per_gridcell;
+	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_sampled_timesteps_per_gridcell;
+
+	begin = std::chrono::steady_clock::now();
+
+	for (auto& sampling_tracker_entry : *sampling_tracker_) {
+
+		// the tracker will be ordered by timestamp
+		if (sampling_tracker_entry.timestamp != last_timestamp) {
+			for (auto& simultaneous_samples : simultaneous_samples_per_timestamp) {
+				glm::ivec3 grid_cell = simultaneous_samples.first;
+				if (no_of_samples_per_timestep_per_gridcell.find(grid_cell) != no_of_samples_per_timestep_per_gridcell.end()) {
+					no_of_samples_per_timestep_per_gridcell[grid_cell] += simultaneous_samples.second;
+					no_of_sampled_timesteps_per_gridcell[grid_cell]++;
+				} else {
+					no_of_samples_per_timestep_per_gridcell[grid_cell] = simultaneous_samples.second;
+					no_of_sampled_timesteps_per_gridcell[grid_cell] = 1;
+				}
+			}
+			last_timestamp = sampling_tracker_entry.timestamp;
+			simultaneous_samples_per_timestamp.clear();
+		}
+		if (interior_list_.find(sampling_tracker_entry.grid_cell) != interior_list_.end()) {
+			if (simultaneous_samples_per_timestamp.find(sampling_tracker_entry.grid_cell) == simultaneous_samples_per_timestamp.end()) {
+				simultaneous_samples_per_timestamp[sampling_tracker_entry.grid_cell] = 1;
+			} else {
+				simultaneous_samples_per_timestamp[sampling_tracker_entry.grid_cell] += 1;
+			}
+		}
+	}
+
+	for (auto& sample_per_timestep : no_of_samples_per_timestep_per_gridcell) {
+		sampling_factor += (double)sample_per_timestep.second / no_of_sampled_timesteps_per_gridcell[sample_per_timestep.first];
+	}
+
+	if (no_of_sampled_timesteps_per_gridcell.size() > 0) {
+		sampling_factor /= no_of_sampled_timesteps_per_gridcell.size();
+	}
+	
+	//if (no_of_samples_per_timestep.size() > 0) {
+	//	sampling_factor = samples_per_timestamp / no_of_timesteps;
+	//}
+
+	end = std::chrono::steady_clock::now();
+	pop_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();;
+
+
+	std::cout << "new sampling factor : " << sampling_factor << "\n";
+
+	std::cout << "time taken - population (s) : " << pop_time << "\n";
+		
+
+	//begin = std::chrono::steady_clock::now();
+
+	//for (auto& interior_cell_entry : *sampling_tracker_map) {
 	//	double no_of_samples_per_timestep = 0.0;
 	//	for (auto& robots_per_timestep : interior_cell_entry.second) {
 	//		int no_of_robots_at_timestep = robots_per_timestep.second.size();
@@ -519,10 +600,18 @@ double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 	//	//std::cout << "Avg. Sampling : " << no_of_samples_per_timestep << "\n";
 	//}
 	//	
-	//if (sampling_tracker_->size() > 0) {
-	//	//std::cout << "Sampling Factor : " << sampling_factor / sampling_tracker_->size() << "\n";
-	//	sampling_factor /= sampling_tracker_->size();
+	//if (sampling_tracker_map->size() > 0) {
+	//	std::cout << "Sampling Factor : " << sampling_factor / sampling_tracker_map->size() << "\n";
+	//	sampling_factor /= sampling_tracker_map->size();
 	//}
+
+	//end = std::chrono::steady_clock::now();
+
+	//std::cout << "time taken - counting (s) : " << 
+	//	std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+
+	//delete sampling_tracker_map;
+
 	return sampling_factor;
 }
 

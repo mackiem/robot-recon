@@ -19,6 +19,7 @@ class RobotWorker : public QObject {
 public:
 	RobotWorker();
 	double calculate_coverage();
+	void finish_work();
 
 	void set_robots(std::vector<Robot*> robots) {
 		robots_ = robots;
