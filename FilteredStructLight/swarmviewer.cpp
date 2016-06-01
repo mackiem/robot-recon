@@ -8,6 +8,7 @@
 #include <chrono>
 #include "swarmutils.h"
 #include "swarmopt.h"
+#include <QtCore/qcoreapplication.h>
 
 //const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/house interior.obj";
 //const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/box-floor-plan.obj";
@@ -55,11 +56,12 @@ double RobotWorker::calculate_coverage() {
 
 void RobotWorker::finish_work() {
 	if (!sampling_updated_) {
-		double multi_sampling_factor = occupancy_grid_->calculate_multi_sampling_factor();
+		double simultaneous_sampling = occupancy_grid_->calculate_multi_sampling_factor();
 		double coverage = calculate_coverage();
 		std::cout << "End - time steps : " << time_step_count_ << "  " <<
 			occupancy_grid_->get_unexplored_perimeter_list().size() << "\n";
-		emit update_sim_results(time_step_count_, multi_sampling_factor, coverage);
+		emit update_sampling(simultaneous_sampling);
+		emit update_sim_results(time_step_count_, simultaneous_sampling, coverage);
 		sampling_updated_ = true;
 		abort();
 	}
@@ -73,6 +75,9 @@ void RobotWorker::do_work() {
 			paused_ = true;
 		}
 		if (!paused_) {
+			if (slow_down_) {
+				QThread::currentThread()->msleep(10);
+			}
 			step_count_--;
 			if (time_step_count_ > 2000) {
 				finish_work();
@@ -89,6 +94,7 @@ void RobotWorker::do_work() {
 				robot->update(time_step_count_);
 			}
 		}
+		QCoreApplication::processEvents();
 	}
 }
 
@@ -535,6 +541,7 @@ void SwarmViewer::shutdown_worker() {
 		disconnect(this, &SwarmViewer::physics_thread_resume, robot_worker_, &RobotWorker::resume);
 		disconnect(this, &SwarmViewer::physics_thread_step, robot_worker_, &RobotWorker::step);
 		disconnect(robot_worker_, &RobotWorker::update_time_step_count, this, &SwarmViewer::update_time_step_count);
+		disconnect(robot_worker_, &RobotWorker::update_sampling, this, &SwarmViewer::update_sampling);
 		disconnect(robot_worker_, &RobotWorker::update_sim_results, this, &SwarmViewer::update_sim_results);
 		robot_worker_->abort();
 		robot_update_thread_.quit();
@@ -594,6 +601,7 @@ void SwarmViewer::reset_sim() {
 	step_count_ = -1;
 	time_step_count_ = 0;
 
+	render_ = gui_render_;
 
 	occupancy_grid_ = new SwarmOccupancyTree(grid_length_, grid_resolution_);
 	grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
@@ -634,17 +642,19 @@ void SwarmViewer::reset_sim() {
 	}
 
 	robot_worker_ = new RobotWorker();
+	robot_worker_->moveToThread(&robot_update_thread_);
 	robot_worker_->init();
 	connect(this, &SwarmViewer::physics_thread_pause, robot_worker_, &RobotWorker::pause);
 	connect(this, &SwarmViewer::physics_thread_resume, robot_worker_, &RobotWorker::resume);
 	connect(this, &SwarmViewer::physics_thread_step, robot_worker_, &RobotWorker::step);
 	connect(robot_worker_, &RobotWorker::update_time_step_count, this, &SwarmViewer::update_time_step_count);
 	connect(robot_worker_, &RobotWorker::update_sim_results, this, &SwarmViewer::update_sim_results);
+	connect(robot_worker_, &RobotWorker::update_sampling, this, &SwarmViewer::update_sampling);
 	connect(&robot_update_thread_, &QThread::started, robot_worker_, &RobotWorker::do_work);
 
 	robot_worker_->set_robots(robots_);
 	robot_worker_->set_occupancy_tree(occupancy_grid_);
-	robot_worker_->moveToThread(&robot_update_thread_);
+	robot_worker_->set_slow_down(slow_down_);
 	robot_update_thread_.start();
 }
 
@@ -677,6 +687,15 @@ void SwarmViewer::set_perimeter_range(double min, double max) {
 
 void SwarmViewer::set_explore_range(double min, double max) {
 	explore_range_ = Range(min, max);
+}
+
+void SwarmViewer::set_obstacle_avoidance_near_range(double min, double max) {
+	obstacle_near_range_ = Range(min, max);
+
+}
+
+void SwarmViewer::set_obstacle_avoidance_far_range(double min, double max) {
+	obstacle_far_range_ = Range(min, max);
 }
 
 void SwarmViewer::pause() {
@@ -732,12 +751,33 @@ void SwarmViewer::run_mcmc_optimization() {
 	optimizer_thread->start();
 }
 
+void SwarmViewer::set_magic_k(double magic_k) {
+	magic_k_ = magic_k;
+}
+
+void SwarmViewer::set_should_render(int render) {
+	gui_render_ = render;
+}
+
+void SwarmViewer::set_slow_down(int slow_down) {
+	slow_down_ = slow_down;
+}
+
+void SwarmViewer::set_collide_with_robots(int collide) {
+	collide_with_robots_ = collide;
+}
+
+
 void SwarmViewer::set_sensor_range(double sensor_range) {
 	sensor_range_ = sensor_range;
 }
 
 void SwarmViewer::set_discovery_range(int discovery_range) {
 	discovery_range_ = discovery_range;
+}
+
+void SwarmViewer::set_neighborhood_count(int count) {
+	neighborhood_count_ = count;
 }
 
 void SwarmViewer::set_formation(int formation) {
@@ -754,7 +794,7 @@ void SwarmViewer::update_sim_results(double timesteps, double multi_sampling, do
 
 void SwarmViewer::get_sim_results(double& timesteps, double& multi_sampling, double& coverage) {
 	while (!sim_results_updated_) {
-		QThread::currentThread()->sleep(1);
+		QThread::currentThread()->msleep(100);
 	}
 	timesteps = time_steps_result_;
 	multi_sampling = multi_sampling_result_;
@@ -1044,8 +1084,9 @@ void SwarmViewer::create_robots() {
 		Robot* robot = new Robot(uniform_locations_, 
 			i, occupancy_grid_, collision_grid_, explore_constant_, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_,
 			goto_work_constant_,
-			explore_range_, separation_range_, alignment_range_, cluster_range_, perimeter_range_, sensor_range_, discovery_range_,
-			separation_distance_, robot_positions[i], &m_shader, render_);
+			explore_range_, separation_range_, alignment_range_, cluster_range_, perimeter_range_, obstacle_near_range_,
+			obstacle_far_range_, sensor_range_, discovery_range_, neighborhood_count_,
+			separation_distance_, robot_positions[i], &m_shader, render_, magic_k_, collide_with_robots_);
 
 		robot->mesh_.push_back(robot_mesh[0]);
 		robots_.push_back(robot);

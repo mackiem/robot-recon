@@ -21,6 +21,9 @@ const char* FilteredStructLight::GOTO_WORK_CONSTANT_LABEL = "goto_work_constant"
 //const char* FilteredStructLight::SEPARATION_DISTANCE_LABEL = "separation_distance";
 const char* FilteredStructLight::SHOW_FORCES_LABEL = "show_forces";
 
+const char* FilteredStructLight::COLLIDE_WITH_OTHER_ROBOTS_LABEL = "collide_with_other_robots";
+
+const char* FilteredStructLight::MAGICK_LABEL = "magick";
 const char* FilteredStructLight::FORMATION_LABEL = "formation";
 const char* FilteredStructLight::SENSOR_RANGE_LABEL = "sensor_range";
 const char* FilteredStructLight::DISCOVERY_RANGE_LABEL = "discovery_range";
@@ -30,13 +33,18 @@ const char* FilteredStructLight::SEPARATION_RANGE_MIN_LABEL = "separation_range_
 const char* FilteredStructLight::ALIGNMENT_RANGE_MIN_LABEL = "alignment_range_min";
 const char* FilteredStructLight::CLUSTER_RANGE_MIN_LABEL = "cluster_range_min";
 const char* FilteredStructLight::PERIMETER_RANGE_MIN_LABEL = "perimeter_range_min";
+const char* FilteredStructLight::OBSTACLE_AVOIDANCE_NEAR_RANGE_MIN_LABEL = "obstacle_avoidance_near_range_min";
+const char* FilteredStructLight::OBSTACLE_AVOIDANCE_NEAR_RANGE_MAX_LABEL = "obstacle_avoidance_near_range_max";
 
 const char* FilteredStructLight::EXPLORE_RANGE_MAX_LABEL = "explore_range_max";
 const char* FilteredStructLight::SEPARATION_RANGE_MAX_LABEL = "separation_range_max";
 const char* FilteredStructLight::ALIGNMENT_RANGE_MAX_LABEL = "alignment_range_max";
 const char* FilteredStructLight::CLUSTER_RANGE_MAX_LABEL = "cluster_range_max";
 const char* FilteredStructLight::PERIMETER_RANGE_MAX_LABEL = "perimeter_range_max";
+const char* FilteredStructLight::OBSTACLE_AVOIDANCE_FAR_RANGE_MIN_LABEL = "obstacle_avoidance_far_range_min";
+const char* FilteredStructLight::OBSTACLE_AVOIDANCE_FAR_RANGE_MAX_LABEL = "obstacle_avoidance_far_range_max";
 
+const char* FilteredStructLight::NEIGHBORHOOD_COUNT_LABEL = "neighborhood_count";
 const char* FilteredStructLight::GRID_RESOLUTION_LABEL = "grid_resolution";
 const char* FilteredStructLight::GRID_LENGTH_LABEL = "grid_length";
 const char* FilteredStructLight::BUILDING_INTERIOR_SCALE_LABEL = "interior_scale";
@@ -128,6 +136,12 @@ void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
 	settings.setValue(EXPLORE_RANGE_MIN_LABEL, explore_range_min_->value());
 	settings.setValue(EXPLORE_RANGE_MAX_LABEL, explore_range_max_->value());
 
+	settings.setValue(OBSTACLE_AVOIDANCE_NEAR_RANGE_MIN_LABEL, obstacle_avoidance_near_range_min_->value());
+	settings.setValue(OBSTACLE_AVOIDANCE_NEAR_RANGE_MAX_LABEL, obstacle_avoidance_near_range_max_->value());
+
+	settings.setValue(OBSTACLE_AVOIDANCE_FAR_RANGE_MIN_LABEL, obstacle_avoidance_far_range_min_->value());
+	settings.setValue(OBSTACLE_AVOIDANCE_FAR_RANGE_MAX_LABEL, obstacle_avoidance_far_range_max_->value());
+
 	settings.setValue(SENSOR_RANGE_LABEL, sensor_range_->value());
 
 	settings.setValue(DISCOVERY_RANGE_LABEL, discovery_range_->value());
@@ -140,6 +154,10 @@ void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
 		}
 	}
 	settings.setValue(FORMATION_LABEL, formation);
+	
+	settings.setValue(MAGICK_LABEL, magic_k_spin_box_->value());
+
+	settings.setValue(NEIGHBORHOOD_COUNT_LABEL, neighborhood_count_->value());
 	
 
 	//settings.setValue(SEPARATION_DISTANCE_LABEL, separation_distance_->value());
@@ -155,6 +173,8 @@ void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
 	settings.setValue(INTERIOR_MODEL_FILENAME, model_filename_->text());
 
 	settings.setValue(SHOW_FORCES_LABEL, (show_forces_->isChecked()));
+
+	settings.setValue(COLLIDE_WITH_OTHER_ROBOTS_LABEL, (collide_with_other_robots_->isChecked()));
 }
 
 
@@ -210,6 +230,18 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	explore_range_max_->setValue(settings.value(EXPLORE_RANGE_MAX_LABEL, "1").toDouble());
 	emit explore_range_max_->valueChanged(explore_range_max_->value());
 
+
+	obstacle_avoidance_far_range_min_->setValue(settings.value(OBSTACLE_AVOIDANCE_FAR_RANGE_MIN_LABEL, "1").toDouble());
+	emit obstacle_avoidance_far_range_min_->valueChanged(obstacle_avoidance_far_range_min_->value());
+	obstacle_avoidance_far_range_max_->setValue(settings.value(OBSTACLE_AVOIDANCE_FAR_RANGE_MAX_LABEL, "5").toDouble());
+	emit obstacle_avoidance_far_range_max_->valueChanged(obstacle_avoidance_far_range_max_->value());
+
+	obstacle_avoidance_near_range_min_->setValue(settings.value(OBSTACLE_AVOIDANCE_NEAR_RANGE_MIN_LABEL, "0").toDouble());
+	emit obstacle_avoidance_near_range_min_->valueChanged(obstacle_avoidance_near_range_min_->value());
+	obstacle_avoidance_near_range_max_->setValue(settings.value(OBSTACLE_AVOIDANCE_NEAR_RANGE_MAX_LABEL, "1").toDouble());
+	emit obstacle_avoidance_near_range_max_->valueChanged(obstacle_avoidance_near_range_max_->value());
+
+
 	//separation_distance_->setValue(settings.value(SEPARATION_DISTANCE_LABEL, "100").toDouble());
 	//emit separation_distance_->valueChanged(separation_distance_->value());
 
@@ -234,6 +266,22 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	show_forces_->setCheckState(show_forces);
 	emit show_forces_->stateChanged(show_forces);
 
+	Qt::CheckState collide_with_other_robots = settings.value(COLLIDE_WITH_OTHER_ROBOTS_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
+	collide_with_other_robots_->setCheckState(collide_with_other_robots);
+	emit collide_with_other_robots_->stateChanged(collide_with_other_robots);
+
+	// TODO: fill in save/load logic
+	should_render_check_box_->setChecked(true);
+	emit should_render_check_box_->stateChanged(true);
+
+	slow_down_check_box_->setChecked(false);
+	emit slow_down_check_box_->stateChanged(false);
+
+	neighborhood_count_->setValue(settings.value(NEIGHBORHOOD_COUNT_LABEL, "5").toInt());
+	emit neighborhood_count_->valueChanged(neighborhood_count_->value());
+
+	magic_k_spin_box_->setValue(settings.value(MAGICK_LABEL, "0.1").toDouble());
+	emit magic_k_spin_box_->valueChanged(magic_k_spin_box_->value());
 }
 
 void FilteredStructLight::load_swarm_config_settings() {
@@ -876,12 +924,22 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	discovery_range_ = new QSpinBox(range_group_box);
 	discovery_range_->setRange(0, 1000);
 
+
 	QHBoxLayout* discovery_layout = new QHBoxLayout();
 	discovery_layout->addWidget(discovery_range_label);
 	discovery_layout->addWidget(discovery_range_);
 
 	range_group_box_layout->addLayout(discovery_layout);
 
+	QLabel* neighborhood_count_label = new QLabel("Neighborhood Count");
+	neighborhood_count_ = new QSpinBox(range_group_box);
+	neighborhood_count_->setRange(0, 1000);
+
+	QHBoxLayout* neighborhood_layout = new QHBoxLayout();
+	neighborhood_layout->addWidget(neighborhood_count_label);
+	neighborhood_layout->addWidget(neighborhood_count_);
+
+	range_group_box_layout->addLayout(neighborhood_layout);
 
 	QGridLayout* range_grid_layout = new QGridLayout();
 
@@ -926,6 +984,20 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	range_grid_layout->addWidget(explore_range_min_, 5, 1);	
 	range_grid_layout->addWidget(explore_range_max_, 5, 2);	
 
+	QLabel* obstacle_near_range_label = new QLabel("Obstacle Near");
+	obstacle_avoidance_near_range_min_ = new QDoubleSpinBox(range_group_box);
+	obstacle_avoidance_near_range_max_ = new QDoubleSpinBox(range_group_box);
+	range_grid_layout->addWidget(obstacle_near_range_label, 6, 0);	
+	range_grid_layout->addWidget(obstacle_avoidance_near_range_min_, 6, 1);	
+	range_grid_layout->addWidget(obstacle_avoidance_near_range_max_, 6, 2);	
+
+	QLabel* obstacle_far_range_label = new QLabel("Obstacle Far");
+	obstacle_avoidance_far_range_min_ = new QDoubleSpinBox(range_group_box);
+	obstacle_avoidance_far_range_max_ = new QDoubleSpinBox(range_group_box);
+	range_grid_layout->addWidget(obstacle_far_range_label, 7, 0);	
+	range_grid_layout->addWidget(obstacle_avoidance_far_range_min_, 7, 1);	
+	range_grid_layout->addWidget(obstacle_avoidance_far_range_max_, 7, 2);	
+
 	range_group_box_layout->addLayout(range_grid_layout);
 
 	range_group_box->setLayout(range_group_box_layout);
@@ -947,13 +1019,15 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	connect(cluster_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_cluster_constant);
 	connect(perimeter_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_perimeter_constant);
 	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_goto_work_constant);
-	//connect(separation_distance_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_distance);
+
 
 	connect(show_forces_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_forces);
 
 	connect(sensor_range_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_sensor_range);
 
 	connect(discovery_range_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_discovery_range);
+
+	connect(neighborhood_count_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_neighborhood_count);
 
 	connect(separation_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
 		[&](double value)
@@ -1016,6 +1090,33 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	}
 	);
 
+	connect(obstacle_avoidance_near_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_obstacle_avoidance_near_range(obstacle_avoidance_near_range_min_->value(), obstacle_avoidance_near_range_max_->value());
+	}
+	);
+	connect(obstacle_avoidance_near_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_obstacle_avoidance_near_range(obstacle_avoidance_near_range_min_->value(), obstacle_avoidance_near_range_max_->value());
+	}
+	);
+
+	connect(obstacle_avoidance_far_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_obstacle_avoidance_far_range(obstacle_avoidance_far_range_min_->value(), obstacle_avoidance_far_range_max_->value());
+	}
+	);
+	connect(obstacle_avoidance_far_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+		[&](double value)
+	{
+		swarm_viewer_->set_obstacle_avoidance_far_range(obstacle_avoidance_far_range_min_->value(), obstacle_avoidance_far_range_max_->value());
+	}
+	);
+
+
 }
 
 void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
@@ -1047,8 +1148,11 @@ void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 
 }
 
-void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
+void FilteredStructLight::add_swarm_optimization_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
+
+	run_brute_force_optimization_button_ = new QPushButton("Run Brute Force Optimization", group_box);
+	group_box_layout->addWidget(run_brute_force_optimization_button_);
 
 	run_mcmc_optimization_button_ = new QPushButton("Run MCMC Optimization", group_box);
 	group_box_layout->addWidget(run_mcmc_optimization_button_);
@@ -1056,6 +1160,22 @@ void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
 	run_least_squared_optimization_button_ = new QPushButton("Run Least Squares Optimization", group_box);
 	group_box_layout->addWidget(run_least_squared_optimization_button_);
 
+
+	connect(run_least_squared_optimization_button_, &QPushButton::clicked, 
+		swarm_viewer_, &SwarmViewer::run_least_squared_optimization);
+
+	connect(run_mcmc_optimization_button_, &QPushButton::clicked, 
+		swarm_viewer_, &SwarmViewer::run_mcmc_optimization);
+
+	connect(run_brute_force_optimization_button_, &QPushButton::clicked, 
+		swarm_viewer_, &SwarmViewer::run_mcmc_optimization);
+
+	group_box->setLayout(group_box_layout);
+}
+
+void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
+
+	QVBoxLayout* group_box_layout = new QVBoxLayout();
 	swarm_config_filename_ = new QLineEdit(group_box);
 	swarm_config_filename_browse_ = new QPushButton("...", group_box);
 	swarm_config_filename_browse_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
@@ -1085,8 +1205,6 @@ void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
 	load_swarm_config_button_ = new QPushButton("Load Conf.", group_box);
 	save_swarm_config_button_ = new QPushButton("Save Conf.", group_box);
 
-	connect(run_least_squared_optimization_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::run_least_squared_optimization);
-	connect(run_mcmc_optimization_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::run_mcmc_optimization);
 
 	connect(load_swarm_config_button_, &QPushButton::clicked, this, 
 		[&] {
@@ -1122,6 +1240,14 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	group_box_layout->addLayout(timing_config_layout);
 
+	QHBoxLayout* sampling_config_layout = new QHBoxLayout();
+	QLabel* simultaneous_sampling_label = new QLabel("Simultaneous Sampling", group_box);
+	avg_simultaneous_sampling_label_ = new QLabel("0.0", group_box);
+	sampling_config_layout->addWidget(simultaneous_sampling_label);
+	sampling_config_layout->addWidget(avg_simultaneous_sampling_label_);
+
+	group_box_layout->addLayout(sampling_config_layout);
+
 	QHBoxLayout* sim_controls_layout = new QHBoxLayout();
 	swarm_pause_button_ = new QPushButton("Pause", group_box);
 	swarm_step_button_ = new QPushButton("Step", group_box);
@@ -1139,9 +1265,43 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	
 	swarm_reset_button_ = new QPushButton("Reset Sim.", group_box);
 	group_box_layout->addWidget(swarm_reset_button_);
+
+	QHBoxLayout* movement_constant_layout = new QHBoxLayout();
+	QLabel* magic_k_label = new QLabel("Magic K");
+	magic_k_spin_box_ = new QDoubleSpinBox(group_box);
+	magic_k_spin_box_->setMinimum(0.1);
+	magic_k_spin_box_->setMaximum(1.0);
+
+	movement_constant_layout->addWidget(magic_k_label);
+	movement_constant_layout->addWidget(magic_k_spin_box_);
+
+	group_box_layout->addLayout(movement_constant_layout);
+
+	connect(magic_k_spin_box_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+		swarm_viewer_, &SwarmViewer::set_magic_k);
+
+	// should render
+	should_render_check_box_ = new QCheckBox("Should Render?", group_box);
+	group_box_layout->addWidget(should_render_check_box_);
+	connect(should_render_check_box_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_should_render);
+
+	//slow down?
+	slow_down_check_box_ = new QCheckBox("Slow down?", group_box);
+	group_box_layout->addWidget(slow_down_check_box_);
+	connect(slow_down_check_box_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_slow_down);
+
+	//collide with robots
+	collide_with_other_robots_ = new QCheckBox("Collide with other robots?", group_box);
+	group_box_layout->addWidget(collide_with_other_robots_);
+	connect(collide_with_other_robots_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_collide_with_robots);
+
+	//collide with interior
+
 	group_box->setLayout(group_box_layout);
 	connect(swarm_reset_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::reset_sim );
 	connect(swarm_viewer_, &SwarmViewer::update_time_step_count, this, &FilteredStructLight::update_time_step_count);
+	connect(swarm_viewer_, &SwarmViewer::update_sampling, this, &FilteredStructLight::update_sampling);
+
 }
 
 void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
@@ -1166,6 +1326,9 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	robot_viewer_size_policy.setVerticalPolicy(QSizePolicy::Preferred);
 	swarm_viewer_->setSizePolicy(robot_viewer_size_policy);
 
+	QGroupBox* optimization_group_box = new QGroupBox("Optimization", swarm_tab);
+	add_swarm_optimization_options(optimization_group_box);
+
 	QGroupBox* save_group_box = new QGroupBox("Config", swarm_tab);
 	add_swarm_config_save_options(save_group_box);
 
@@ -1184,6 +1347,7 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	QGroupBox* grid_group_box = new QGroupBox("Grid", swarm_tab);
 	add_grid_options(grid_group_box);
 
+	swarm_left_panel_layout->addWidget(optimization_group_box);
 	swarm_left_panel_layout->addWidget(save_group_box);
 	swarm_left_panel_layout->addWidget(flow_control_group_box);
 	swarm_left_panel_layout->addWidget(interior_group_box);
@@ -1556,6 +1720,11 @@ void FilteredStructLight::handle_frame_filenames(std::vector<std::string> image_
 void FilteredStructLight::update_time_step_count(int count) {
 	QString count_string = QString::number(count);
 	time_step_count_label_->setText(count_string);
+}
+
+void FilteredStructLight::update_sampling(double sampling) {
+	QString samping_string = QString::number(sampling);
+	avg_simultaneous_sampling_label_->setText(samping_string);
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {

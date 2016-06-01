@@ -112,10 +112,11 @@ private:
 	Range cluster_range_;
 	Range perimeter_range_;
 	Range explore_range_;
-	Range obstacle_avoidance_range_;
+	Range obstacle_avoidance_near_range_;
+	Range obstacle_avoidance_far_range_;
 
-	float neighbor_count_;
-	float preferred_neighbor_count_;
+	float current_neighborhood_count_;
+	float neighborhood_count_;
 	float magic_k_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
@@ -145,7 +146,8 @@ private:
 	int pool_size_;
 	int current_pool_count_;
 	std::vector<std::vector<glm::ivec3>>* heap_pool_;
-	bool render_;
+	bool render_; 
+	bool collide_with_robots_;
 
 public:
 	static int MAX_DEPTH;
@@ -179,9 +181,10 @@ public:
 	//	 glm::vec3 position, QGLShaderProgram* shader);
 	Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree,
 		double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
-		Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, double sensor_range, int discovery_range,
-		double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render);
-
+		Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, Range obstacle_avoidance_near_range,
+		Range obstacle_avoidance_far_range,
+		double sensor_range, int discovery_range, int neighborhood_count,
+		double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render, double magic_k, bool collide_with_robots);
 
 
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);

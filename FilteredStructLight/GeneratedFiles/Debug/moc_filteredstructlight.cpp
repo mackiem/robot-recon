@@ -245,8 +245,8 @@ void QArrayRadioButton::clicked_with_id(int _t1)
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 struct qt_meta_stringdata_FilteredStructLight_t {
-    QByteArrayData data[16];
-    char stringdata[296];
+    QByteArrayData data[18];
+    char stringdata[321];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -270,7 +270,9 @@ QT_MOC_LITERAL(11, 208, 22),
 QT_MOC_LITERAL(12, 231, 24),
 QT_MOC_LITERAL(13, 256, 10),
 QT_MOC_LITERAL(14, 267, 22),
-QT_MOC_LITERAL(15, 290, 5)
+QT_MOC_LITERAL(15, 290, 5),
+QT_MOC_LITERAL(16, 296, 15),
+QT_MOC_LITERAL(17, 312, 8)
     },
     "FilteredStructLight\0update_images\0\0"
     "frame_no\0save_recon_settings\0"
@@ -280,7 +282,7 @@ QT_MOC_LITERAL(15, 290, 5)
     "start_reconstruction_sequence\0"
     "handle_frame_filenames\0std::vector<std::string>\0"
     "image_list\0update_time_step_count\0"
-    "count"
+    "count\0update_sampling\0sampling"
 };
 #undef QT_MOC_LITERAL
 
@@ -290,7 +292,7 @@ static const uint qt_meta_data_FilteredStructLight[] = {
        7,       // revision
        0,       // classname
        0,    0, // classinfo
-       9,   14, // methods
+      10,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -298,15 +300,16 @@ static const uint qt_meta_data_FilteredStructLight[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    1,   59,    2, 0x08 /* Private */,
-       4,    0,   62,    2, 0x08 /* Private */,
-       5,    1,   63,    2, 0x08 /* Private */,
-       7,    1,   66,    2, 0x08 /* Private */,
-       8,    0,   69,    2, 0x08 /* Private */,
-       9,    0,   70,    2, 0x08 /* Private */,
-      10,    0,   71,    2, 0x0a /* Public */,
-      11,    1,   72,    2, 0x0a /* Public */,
-      14,    1,   75,    2, 0x0a /* Public */,
+       1,    1,   64,    2, 0x08 /* Private */,
+       4,    0,   67,    2, 0x08 /* Private */,
+       5,    1,   68,    2, 0x08 /* Private */,
+       7,    1,   71,    2, 0x08 /* Private */,
+       8,    0,   74,    2, 0x08 /* Private */,
+       9,    0,   75,    2, 0x08 /* Private */,
+      10,    0,   76,    2, 0x0a /* Public */,
+      11,    1,   77,    2, 0x0a /* Public */,
+      14,    1,   80,    2, 0x0a /* Public */,
+      16,    1,   83,    2, 0x0a /* Public */,
 
  // slots: parameters
     QMetaType::Void, QMetaType::Int,    3,
@@ -318,6 +321,7 @@ static const uint qt_meta_data_FilteredStructLight[] = {
     QMetaType::Void,
     QMetaType::Void, 0x80000000 | 12,   13,
     QMetaType::Void, QMetaType::Int,   15,
+    QMetaType::Void, QMetaType::Double,   17,
 
        0        // eod
 };
@@ -336,6 +340,7 @@ void FilteredStructLight::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
         case 6: _t->start_reconstruction_sequence(); break;
         case 7: _t->handle_frame_filenames((*reinterpret_cast< std::vector<std::string>(*)>(_a[1]))); break;
         case 8: _t->update_time_step_count((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 9: _t->update_sampling((*reinterpret_cast< double(*)>(_a[1]))); break;
         default: ;
         }
     }
@@ -366,13 +371,13 @@ int FilteredStructLight::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 9)
+        if (_id < 10)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 9;
+        _id -= 10;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 9)
+        if (_id < 10)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 9;
+        _id -= 10;
     }
     return _id;
 }

@@ -345,8 +345,8 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant, double clu
 	// maximize coverage
 
 	double score = 0.0;
-	//score += (2100.0 - current_time_taken) / 2100.0;
-	score += (current_multi_sampling) / static_cast<double>(swarm_viewer_->no_of_robots_);
+	score += (2100.0 - current_time_taken) / 2100.0;
+	//score += (current_multi_sampling) / static_cast<double>(swarm_viewer_->no_of_robots_);
 	//score += std::pow(current_coverage - max_coverage_, 2);
 
 	return score;
@@ -375,28 +375,44 @@ void SwarmMCMCOptimizer::optimize_brute_force() {
 	}
 	file << "\n";
 
+	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-	for (int i = 0; i < iterations_per_constant; ++i) {
+	int no_of_iterations = 0;
+
+	for (int i = 1; i < iterations_per_constant + 1; ++i) {
 		next_separation_constant = max_constant * i / (double)iterations_per_constant;
 
 		file << next_separation_constant << ",";
 
-		for (int j = 0; j < iterations_per_constant; ++j) {
-			next_cluster_constant = max_constant * j / (double)iterations_per_constant;
+		for (int j = 1; j < iterations_per_constant + 1; ++j) {
+			//next_cluster_constant = max_constant * j / (double)iterations_per_constant;
+			next_cluster_constant = 0.0;
+			if (j < (iterations_per_constant / 2)) {
+				next_cluster_constant = next_separation_constant * j / (double)(iterations_per_constant / 2);
+			} else {
+				next_cluster_constant = next_separation_constant * (j - (double)(iterations_per_constant / 2));
+			}
+
 			double next_score = run_simulation(next_separation_constant, next_cluster_constant);
 
-			std::cout << "iteration " << j + iterations_per_constant * i << " : " 
-				<< next_separation_constant << "," << next_cluster_constant << "," << next_score << "\n";
+			std::cout << "iteration " << no_of_iterations << " : " 
+				<< next_separation_constant << "," << next_cluster_constant / next_separation_constant << "," << next_score << "\n";
 
 			file << next_score;
-			if (j != (iterations_per_constant - 1)) {
+			if (j != (iterations_per_constant)) {
 				file << ",";
 			}
+			no_of_iterations++;
 		}
 		file << "\n";
 		file.flush();
 	}
 	file.close();
+
+	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+	std::cout << "Time taken (s) : " << 
+		std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / (1000 * static_cast<double>(no_of_iterations)) << std::endl;
 }
 	
 

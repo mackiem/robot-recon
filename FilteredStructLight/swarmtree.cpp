@@ -504,35 +504,13 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 
 
-	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-
-	//std::unordered_map<glm::ivec3, std::unordered_map<int, std::unordered_map<int, int>>
-	//	, IVec3Hasher, IVec3Equals>* sampling_tracker_map = new std::unordered_map<glm::ivec3, 
-	//	std::unordered_map<int, std::unordered_map<int, int>>
-	//	, IVec3Hasher, IVec3Equals>(interior_list_.size());
-
-	std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-
-	//std::cout << "time taken - init (s) : " << 
-	//	std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << "\n";
-	//
-
-	//for (auto& sampling_tracker_entry : *sampling_tracker_) {
-	//	if (interior_list_.find(sampling_tracker_entry.grid_cell) != interior_list_.end()) {
-	//		(*sampling_tracker_map)[sampling_tracker_entry.grid_cell][sampling_tracker_entry.timestamp][sampling_tracker_entry.robot_id] = 1;
-	//	}
-	//}
-
 	double sampling_factor = 0.0;
-	long long pop_time = 0;
 
 	long long last_timestamp = -1;
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals> simultaneous_samples_per_timestamp;
-	int no_of_timesteps = 0;
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_samples_per_timestep_per_gridcell;
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_sampled_timesteps_per_gridcell;
 
-	begin = std::chrono::steady_clock::now();
 
 	for (auto& sampling_tracker_entry : *sampling_tracker_) {
 
@@ -568,49 +546,7 @@ double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 		sampling_factor /= no_of_sampled_timesteps_per_gridcell.size();
 	}
 	
-	//if (no_of_samples_per_timestep.size() > 0) {
-	//	sampling_factor = samples_per_timestamp / no_of_timesteps;
-	//}
-
-	end = std::chrono::steady_clock::now();
-	pop_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();;
-
-
-	std::cout << "new sampling factor : " << sampling_factor << "\n";
-
-	std::cout << "time taken - population (s) : " << pop_time << "\n";
-		
-
-	//begin = std::chrono::steady_clock::now();
-
-	//for (auto& interior_cell_entry : *sampling_tracker_map) {
-	//	double no_of_samples_per_timestep = 0.0;
-	//	for (auto& robots_per_timestep : interior_cell_entry.second) {
-	//		int no_of_robots_at_timestep = robots_per_timestep.second.size();
-	//		no_of_samples_per_timestep += no_of_robots_at_timestep;
-	//	}
-
-	//	int total_samples_of_interior_cell = interior_cell_entry.second.size();
-	//	if (total_samples_of_interior_cell > 0) {
-	//		no_of_samples_per_timestep /= total_samples_of_interior_cell;
-	//	}
-
-	//	sampling_factor += no_of_samples_per_timestep;
-	//	//SwarmUtils::print_vector("Interior Vector", interior_cell_entry.first);
-	//	//std::cout << "Avg. Sampling : " << no_of_samples_per_timestep << "\n";
-	//}
-	//	
-	//if (sampling_tracker_map->size() > 0) {
-	//	std::cout << "Sampling Factor : " << sampling_factor / sampling_tracker_map->size() << "\n";
-	//	sampling_factor /= sampling_tracker_map->size();
-	//}
-
-	//end = std::chrono::steady_clock::now();
-
-	//std::cout << "time taken - counting (s) : " << 
-	//	std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
-
-	//delete sampling_tracker_map;
+	std::cout << "sampling factor : " << sampling_factor << "\n";
 
 	return sampling_factor;
 }

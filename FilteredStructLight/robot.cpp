@@ -69,26 +69,26 @@ void Robot::calculate_work_force() {
 
 Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, 
 	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
-	Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, double sensor_range, int discovery_range,
-	double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render) : VisObject(locations), all_goals_explored_(false),
+	Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, Range obstacle_avoidance_near_range, 
+	Range obstacle_avoidance_far_range, 
+	double sensor_range, int discovery_range, int neighborhood_count,
+	double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render, double magic_k, bool collide_with_robots) :
+	
+	VisObject(locations), all_goals_explored_(false),
 	accumulator_(0.f), id_(id), position_(position), timeout_(5000), last_timeout_(0),
 	last_updated_time_(0), 
 	explore_range_(explore_range), separation_range_(separation_range), alignment_range_(alignment_range),
-	perimeter_range_(perimeter_range),
+	perimeter_range_(perimeter_range), 
+	obstacle_avoidance_near_range_(obstacle_avoidance_near_range),
+	obstacle_avoidance_far_range_(obstacle_avoidance_far_range),
 	cluster_range_(cluster_range), sensor_range_(sensor_range), discovery_range_(discovery_range), 
 	explore_constant_(explore_constant), separation_constant_(separation_constant), alignment_constant_(alignment_constant),
 	work_constant_(work_constant), perimeter_constant_(perimeter_constant),
-	cluster_constant_(cluster_constant), separation_distance_threshold_(separation_distance), occupancy_grid_(octree),  
-	collision_grid_(collision_tree), shader_(shader), render_(render) {
+	cluster_constant_(cluster_constant), neighborhood_count_(neighborhood_count),
+	separation_distance_threshold_(separation_distance), occupancy_grid_(octree),  
+	collision_grid_(collision_tree), shader_(shader), render_(render), collide_with_robots_(collide_with_robots) {
 
-	std::random_device rd;
-	rng_.seed(rd());
-	velocity_generator_ = std::uniform_real_distribution<float>(-0.2, 0.2);
-	position_generator_ = std::uniform_int_distribution<int>(octree->get_grid_cube_length(), 
-		octree->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - 1));
-	//position_ = glm::vec3(position_generator_(rng_), 10.f, position_generator_(rng_));
 	position_.y = 10.f;
-	//SwarmUtils::print_vector("Robot position vector : ", position_);
 
 	collision_grid_->insert(id_, occupancy_grid_->map_to_grid(position_));
 	previous_position_ = position_;
@@ -97,12 +97,9 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	mass_ = 10;
 	max_velocity_ = 50;
 
-	obstacle_avoidance_range_ = Range(0, 1.5);
-
-	neighbor_count_ = 0;
-	preferred_neighbor_count_ = 5;
+	current_neighborhood_count_ = 0;
 	
-	magic_k_ = occupancy_grid_->get_grid_cube_length() * 0.1f;
+	magic_k_ = occupancy_grid_->get_grid_cube_length() * magic_k;
 
 	//sensor_range_ = 5;
 
@@ -400,23 +397,23 @@ void Robot::calculate_cluster_force(const std::vector<int>& other_robots) {
 				if (cluster_range_.within_range(grid_length) && id_ != other_robot) {
 					other_robot_distance_vector.push_back(PerimeterPos(grid_length, occupancy_grid_->map_to_grid(robots_[other_robot]->position_)));
 					robot_ids.push_back(other_robot);
-					neighborhood_counts.push_back(robots_[other_robot]->neighbor_count_);
+					neighborhood_counts.push_back(robots_[other_robot]->current_neighborhood_count_);
 				}
 			}
 
 			// calculate neighborhood count
-			//neighbor_count_ = 0;
+			//current_neighborhood_count_ = 0;
 			//for (auto& other_robot_distance : other_robot_distance_vector) {
-			//	neighbor_count_ += (cluster_range_.max_ - other_robot_distance.distance_);
+			//	current_neighborhood_count_ += (cluster_range_.max_ - other_robot_distance.distance_);
 			//}
-			//neighbor_count_ /= (cluster_range_.max_ - cluster_range_.min_);
+			//current_neighborhood_count_ /= (cluster_range_.max_ - cluster_range_.min_);
 
 			// simply, all the robots within range
-			neighbor_count_ = other_robot_distance_vector.size();
+			current_neighborhood_count_ = other_robot_distance_vector.size();
 
 			// if preferred count is lower, then move towards any neighbor
 
-			if (neighbor_count_ < (preferred_neighbor_count_)) {
+			if (current_neighborhood_count_ < (neighborhood_count_)) {
 				glm::vec3 centroid;
 				int cluster_size = 0;
 				for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
@@ -434,11 +431,11 @@ void Robot::calculate_cluster_force(const std::vector<int>& other_robots) {
 
 
 			// pick a neighbor with lower than preferred count and move towards that(first), this doesn't work
-			//if (neighbor_count_ < (preferred_neighbor_count_)) {
+			//if (current_neighborhood_count_ < (neighborhood_count_)) {
 			//	glm::vec3 centroid;
 			//	int cluster_size = 0;
 			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-			//		if (neighborhood_counts[i] >= preferred_neighbor_count_) {
+			//		if (neighborhood_counts[i] >= neighborhood_count_) {
 			//			// cluster found, move towards it
 			//			centroid += robots_[robot_ids[i]]->position_;
 			//			cluster_size++;
@@ -456,11 +453,11 @@ void Robot::calculate_cluster_force(const std::vector<int>& other_robots) {
 
 
 
-			//if (neighbor_count_ > (preferred_neighbor_count_ + 1)) {
+			//if (current_neighborhood_count_ > (neighborhood_count_ + 1)) {
 			//	glm::vec3 centroid;
 			//	int cluster_size = 0;
 			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-			//		if (neighborhood_counts[i] < preferred_neighbor_count_) {
+			//		if (neighborhood_counts[i] < neighborhood_count_) {
 			//			// small cluster found, move towards it
 			//			centroid += robots_[robot_ids[i]]->position_;
 			//			cluster_size++;
@@ -472,11 +469,11 @@ void Robot::calculate_cluster_force(const std::vector<int>& other_robots) {
 			//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
 			//		cluster_force_.y = 0.f;
 			//	}
-			//} else if (neighbor_count_ < (preferred_neighbor_count_ - 1)) {
+			//} else if (current_neighborhood_count_ < (neighborhood_count_ - 1)) {
 			//	glm::vec3 centroid;
 			//	int cluster_size = 0;
 			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-			//		if (neighborhood_counts[i] > preferred_neighbor_count_) {
+			//		if (neighborhood_counts[i] > neighborhood_count_) {
 			//			// small cluster found, move towards it
 			//			centroid += robots_[robot_ids[i]]->position_;
 			//			cluster_size++;
@@ -632,7 +629,7 @@ glm::vec3 Robot::calculate_obstacle_avoidance_direction(glm::vec3 resultant_forc
 	//		if (count == 2) {
 	//			break;
 	//		}
-	//		if (obstacle_avoidance_range_.within_range((*itr).distance_)) {
+	//		if (obstacle_avoidance_near_range_.within_range((*itr).distance_)) {
 	//			closest_interior_positions.push_back(itr->grid_position_);
 	//			count++;
 	//		}
@@ -650,10 +647,12 @@ glm::vec3 Robot::calculate_obstacle_avoidance_direction(glm::vec3 resultant_forc
 		auto current_cell = occupancy_grid_->map_to_grid(position_);
 
 		bool close_interiors_found = occupancy_grid_->closest_2_interior_positions(current_cell, closest_interior_positions, 
-			obstacle_avoidance_range_.min_, obstacle_avoidance_range_.max_);
+			obstacle_avoidance_near_range_.min_, obstacle_avoidance_far_range_.max_);
 
 		if (close_interiors_found) {
-			if (closest_interior_positions.size() == 1) {
+			float close_interior_distance = glm::length(glm::vec3(closest_interior_positions[0] - current_cell));
+			if (close_interior_distance < obstacle_avoidance_near_range_.max_
+				|| closest_interior_positions.size() == 1) {
 				// just go there
 				glm::vec3 closest_perimeter_position = occupancy_grid_->map_to_position(closest_interior_positions[0]);
 				closest_perimeter_position.y = 10.f;
@@ -884,7 +883,13 @@ void Robot::update(int timestamp) {
 		//	position_ = old_position;
 		//} 
 
-		if (is_colliding_with_interior(interior_cells)) {
+		bool is_colliding = false;
+		if (collide_with_robots_) {
+			is_colliding = is_colliding_with_robots(robot_ids);
+		}
+		is_colliding |= is_colliding_with_interior(interior_cells);
+
+		if (is_colliding) {
 			position_ = old_position;
 		} 
 

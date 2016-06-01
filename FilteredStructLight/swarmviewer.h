@@ -16,6 +16,8 @@ class RobotWorker : public QObject {
 	int step_count_;
 	SwarmOccupancyTree* occupancy_grid_;
 	bool sampling_updated_;
+	bool slow_down_;
+
 public:
 	RobotWorker();
 	double calculate_coverage();
@@ -27,6 +29,9 @@ public:
 
 	void set_occupancy_tree(SwarmOccupancyTree* occupancy_grid) {
 		occupancy_grid_ = occupancy_grid;
+	}
+	void set_slow_down(int slow_down) {
+		slow_down_ = slow_down;
 	}
 	void abort() {
 		aborted_ = true;
@@ -43,6 +48,7 @@ public slots:
 
 signals:
 	void update_time_step_count(int count);
+	void update_sampling(double sampling);
 	void update_sim_results(double timesteps, double multi_sampling, double coverage);
 
 
@@ -86,18 +92,26 @@ private:
 	GLint mvp_loc_;
 	GLint view_position_loc_;
 	bool show_forces_;
+
 	Range separation_range_;
 	Range alignment_range_;
 	Range cluster_range_;
 	Range perimeter_range_;
 	Range explore_range_;
+	Range obstacle_near_range_;
+	Range obstacle_far_range_;
+
 	double sensor_range_;
 	int discovery_range_;
 	bool sim_results_updated_;
 	double time_steps_result_;
 	double multi_sampling_result_;
 	double coverage_result_;
-
+	double magic_k_;
+	bool gui_render_;
+	bool slow_down_;
+	int neighborhood_count_;
+	bool collide_with_robots_;
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
@@ -195,6 +209,7 @@ public:
 
 signals:
 	void update_time_step_count(int count);
+	void update_sampling(double sampling);
 	void physics_thread_pause();
 	void physics_thread_step();
 	void physics_thread_resume();
@@ -222,8 +237,8 @@ void set_perimeter_constant(double constant);
 void set_goto_work_constant(double constant);
 
 void set_show_interior(int show);
-	void set_model_rotation(double x_rotation, double y_rotation, double z_rotation);
-	void reset_sim();
+void set_model_rotation(double x_rotation, double y_rotation, double z_rotation);
+void reset_sim();
 
 void set_show_forces(int show);
 
@@ -237,8 +252,12 @@ void set_cluster_range(double min, double max);
 void set_perimeter_range(double min, double max);
 void set_explore_range(double min, double max);
 
+void set_obstacle_avoidance_near_range(double min, double max);
+void set_obstacle_avoidance_far_range(double min, double max);
+
 void set_sensor_range(double sensor_range);
 void set_discovery_range(int discovery_range);
+void set_neighborhood_count(int count);
 
 void pause();
 void step();
@@ -246,5 +265,11 @@ void resume();
 
 void run_least_squared_optimization();
 void run_mcmc_optimization();
+
+void set_magic_k(double magic_k);
+void set_should_render(int render);
+void set_slow_down(int slow_down);
+
+void set_collide_with_robots(int collide);
 
 };

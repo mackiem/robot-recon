@@ -81,19 +81,24 @@ private:
 	static const char* ALIGNMENT_RANGE_MIN_LABEL;
 	static const char* CLUSTER_RANGE_MIN_LABEL;
 	static const char* PERIMETER_RANGE_MIN_LABEL;
-
+	static const char* OBSTACLE_AVOIDANCE_NEAR_RANGE_MIN_LABEL;
+	static const char* OBSTACLE_AVOIDANCE_NEAR_RANGE_MAX_LABEL;
 	static const char* EXPLORE_RANGE_MAX_LABEL;
 	static const char* SEPARATION_RANGE_MAX_LABEL;
 	static const char* ALIGNMENT_RANGE_MAX_LABEL;
 	static const char* CLUSTER_RANGE_MAX_LABEL;
 	static const char* PERIMETER_RANGE_MAX_LABEL;
-
+	static const char* OBSTACLE_AVOIDANCE_FAR_RANGE_MIN_LABEL;
+	static const char* OBSTACLE_AVOIDANCE_FAR_RANGE_MAX_LABEL;
 	static const char* GOTO_WORK_CONSTANT_LABEL;
 	static const char* SEPARATION_DISTANCE_LABEL;
 	static const char* FORMATION_LABEL;
 	static const char* SENSOR_RANGE_LABEL;
 	static const char* DISCOVERY_RANGE_LABEL;
 	static const char* SHOW_FORCES_LABEL;
+	static const char* COLLIDE_WITH_OTHER_ROBOTS_LABEL;
+	static const char* MAGICK_LABEL;
+	static const char* NEIGHBORHOOD_COUNT_LABEL;
 	static const char* GRID_RESOLUTION_LABEL;
 	static const char* GRID_LENGTH_LABEL;
 	static const char* BUILDING_INTERIOR_SCALE_LABEL;
@@ -229,6 +234,17 @@ private:
 	QSpinBox* discovery_range_;
 	QPushButton* run_least_squared_optimization_button_;
 	QPushButton* run_mcmc_optimization_button_;
+	QDoubleSpinBox* magic_k_spin_box_;
+	QCheckBox* should_render_check_box_;
+	QCheckBox* slow_down_check_box_;
+	QLabel* avg_simultaneous_sampling_label_;
+	QPushButton* run_brute_force_optimization_button_;
+	QSpinBox* neighborhood_count_;
+	QDoubleSpinBox* obstacle_avoidance_near_range_min_;
+	QDoubleSpinBox* obstacle_avoidance_near_range_max_;
+	QDoubleSpinBox* obstacle_avoidance_far_range_min_;
+	QDoubleSpinBox* obstacle_avoidance_far_range_max_;
+	QCheckBox* collide_with_other_robots_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();
@@ -245,6 +261,7 @@ private:
 	void add_interior_options(QGroupBox* group_box);
 	void add_robot_options(QGroupBox* group_box);
 	void add_grid_options(QGroupBox* group_box);
+	void add_swarm_optimization_options(QGroupBox* group_box);
 	void add_swarm_config_save_options(QGroupBox* group_box);
 	void add_swarm_sim_flow_control_options(QGroupBox* group_box);
 	void add_swarm_sim_tab(QTabWidget* tab_widget);
@@ -269,7 +286,7 @@ public slots:
 	void start_reconstruction_sequence();
 	void handle_frame_filenames(std::vector<std::string> image_list);
 	void update_time_step_count(int count);
-
+	void update_sampling(double sampling);
 };
 
 #endif // FILTEREDSTRUCTLIGHT_H
