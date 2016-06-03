@@ -67,6 +67,7 @@ private:
 	std::uniform_real_distribution<float> velocity_generator_;
 	std::uniform_int_distribution<int> position_generator_;
 
+	std::list<glm::vec3> last_resultant_directions_;
 	// goal position
 	glm::vec3 goal_position_;
 
@@ -118,6 +119,7 @@ private:
 	float current_neighborhood_count_;
 	float neighborhood_count_;
 	float magic_k_;
+	int tick_tock_age_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;

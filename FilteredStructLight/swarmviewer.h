@@ -17,25 +17,17 @@ class RobotWorker : public QObject {
 	SwarmOccupancyTree* occupancy_grid_;
 	bool sampling_updated_;
 	bool slow_down_;
-
+	double max_time_taken_;
 public:
 	RobotWorker();
+	void set_robots(std::vector<Robot*> robots);
+	void set_occupancy_tree(SwarmOccupancyTree* occupancy_grid);
+	void set_slow_down(int slow_down);
+	void abort();
+	void set_max_time_taken(int max_time_taken);
 	double calculate_coverage();
 	void finish_work();
 
-	void set_robots(std::vector<Robot*> robots) {
-		robots_ = robots;
-	}
-
-	void set_occupancy_tree(SwarmOccupancyTree* occupancy_grid) {
-		occupancy_grid_ = occupancy_grid;
-	}
-	void set_slow_down(int slow_down) {
-		slow_down_ = slow_down;
-	}
-	void abort() {
-		aborted_ = true;
-	}
 
 	void init();
 
@@ -103,7 +95,6 @@ private:
 
 	double sensor_range_;
 	int discovery_range_;
-	bool sim_results_updated_;
 	double time_steps_result_;
 	double multi_sampling_result_;
 	double coverage_result_;
@@ -112,6 +103,7 @@ private:
 	bool slow_down_;
 	int neighborhood_count_;
 	bool collide_with_robots_;
+	double max_time_taken_;
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
@@ -184,6 +176,7 @@ protected:
 	void quad_tree_test();
 
 public:
+	bool sim_results_updated_;
 	static const int OCCUPANCY_GRID_HEIGHT;
 	SwarmViewer(const QGLFormat& format, QWidget* parent = 0);
 	virtual ~SwarmViewer();

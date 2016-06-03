@@ -4,6 +4,7 @@
 #include <QtCore/qeventloop.h>
 #include <chrono>
 #include <fstream>
+#include <QtCore/qcoreapplication.h>
 
 
 extern "C" int mylmdif_(int (*fcn)(int *, int *, double *, double *, int *), int *m, int *n, double *x, double *fvec, double *ftol, double *xtol, double *gtol, int *maxfev, 
@@ -331,7 +332,9 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant, double clu
 	double current_coverage;
 
 
-	emit swarm_viewer_->optimizer_reset_sim();
+	swarm_viewer_->sim_results_updated_ = false;
+	swarm_viewer_->optimizer_reset_sim();
+	QCoreApplication::processEvents();
 
 	swarm_viewer_->get_sim_results(current_time_taken, current_multi_sampling, current_coverage);
 	//std::cout << "Time taken for step : " << current_time_taken << std::endl;
@@ -345,11 +348,15 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant, double clu
 	// maximize coverage
 
 	double score = 0.0;
-	score += (2100.0 - current_time_taken) / 2100.0;
-	//score += (current_multi_sampling) / static_cast<double>(swarm_viewer_->no_of_robots_);
+	score += ((max_time_taken_ + 100) - current_time_taken) / (max_time_taken_ + 100);
+	score += (current_multi_sampling) / static_cast<double>(swarm_viewer_->no_of_robots_);
 	//score += std::pow(current_coverage - max_coverage_, 2);
 
 	return score;
+}
+
+void SwarmMCMCOptimizer::set_max_time_taken(double max_time) {
+	max_time_taken_ = max_time;
 }
 
 void SwarmMCMCOptimizer::optimize_brute_force() {
@@ -366,7 +373,7 @@ void SwarmMCMCOptimizer::optimize_brute_force() {
 	int iterations_per_constant = 20;
 	double next_separation_constant = 0.0;
 	double next_cluster_constant = 0.0;
-	double max_constant = 100.0;
+	double max_constant = 10.0;
 
 	file << ",";
 	for (int j = 0; j < iterations_per_constant; ++j) {
@@ -378,6 +385,10 @@ void SwarmMCMCOptimizer::optimize_brute_force() {
 	std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
 	int no_of_iterations = 0;
+	
+	double max_score = 0.0;
+	double max_separation_constant = 0;
+	double max_cluster_constant = 0;
 
 	for (int i = 1; i < iterations_per_constant + 1; ++i) {
 		next_separation_constant = max_constant * i / (double)iterations_per_constant;
@@ -387,16 +398,27 @@ void SwarmMCMCOptimizer::optimize_brute_force() {
 		for (int j = 1; j < iterations_per_constant + 1; ++j) {
 			//next_cluster_constant = max_constant * j / (double)iterations_per_constant;
 			next_cluster_constant = 0.0;
-			if (j < (iterations_per_constant / 2)) {
-				next_cluster_constant = next_separation_constant * j / (double)(iterations_per_constant / 2);
-			} else {
-				next_cluster_constant = next_separation_constant * (j - (double)(iterations_per_constant / 2));
-			}
+			//if (j < (iterations_per_constant / 2)) {
+			//	next_cluster_constant = next_separation_constant * j / (double)(iterations_per_constant / 2);
+			//} else {
+			//	next_cluster_constant = next_separation_constant * (j - (double)(iterations_per_constant / 2));
+			//}
+
+
+			next_cluster_constant = next_separation_constant * j / (double)(iterations_per_constant);
 
 			double next_score = run_simulation(next_separation_constant, next_cluster_constant);
 
+			if (next_score > max_score) {
+				max_score = next_score;
+				max_cluster_constant = next_cluster_constant;
+				max_separation_constant = next_separation_constant;
+				
+			}
+
 			std::cout << "iteration " << no_of_iterations << " : " 
-				<< next_separation_constant << "," << next_cluster_constant / next_separation_constant << "," << next_score << "\n";
+				<< next_separation_constant << "," << next_cluster_constant << ","
+				<< next_cluster_constant / next_separation_constant << "," << next_score << "\n";
 
 			file << next_score;
 			if (j != (iterations_per_constant)) {
@@ -413,6 +435,10 @@ void SwarmMCMCOptimizer::optimize_brute_force() {
 
 	std::cout << "Time taken (s) : " << 
 		std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() / (1000 * static_cast<double>(no_of_iterations)) << std::endl;
+
+	std::cout 
+		<< max_separation_constant << "," << max_cluster_constant << ","
+		"," << max_score << "\n";
 }
 	
 

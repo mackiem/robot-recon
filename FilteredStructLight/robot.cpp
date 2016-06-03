@@ -101,6 +101,8 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	
 	magic_k_ = occupancy_grid_->get_grid_cube_length() * magic_k;
 
+	tick_tock_age_ = 0;
+
 	//sensor_range_ = 5;
 
 	//separation_range_ = Range(0, 1);
@@ -866,8 +868,60 @@ void Robot::update(int timestamp) {
 		get_adjacent_cells(position_, adjacent_cells);
 		auto robot_ids = get_other_robots(adjacent_cells);
 		auto interior_cells = get_interior_cell_positions(adjacent_cells);
-		resultant_direction_ = calculate_resultant_direction(robot_ids, interior_cells);
-		resultant_direction_ = calculate_obstacle_avoidance_direction(resultant_direction_);
+
+		// add hysteresis
+		// monitor last 5 directions
+		glm::vec3 last_direction = resultant_direction_;
+
+		if (tick_tock_age_ > 0) {
+			resultant_direction_ = last_direction;
+			tick_tock_age_--;
+		}
+		else {
+			glm::vec3 new_resultant_direction = calculate_resultant_direction(robot_ids, interior_cells);
+			new_resultant_direction = calculate_obstacle_avoidance_direction(new_resultant_direction);
+			resultant_direction_ = new_resultant_direction;
+
+			const int window_size = 3;
+			if (last_resultant_directions_.size() == window_size) {
+				int counter = 0;
+				bool tick_tock_detected = false;
+				int previous_result = 0;
+
+				glm::vec3 test_previous_direction = new_resultant_direction;
+
+				for (auto& previous_direction : last_resultant_directions_) {
+					float result = glm::dot(previous_direction, test_previous_direction);
+					tick_tock_detected = (result) < 0;
+					if (!tick_tock_detected) break;
+					//previous_result = result;
+					test_previous_direction = previous_direction;
+					counter++;
+				}
+				if (tick_tock_detected) {
+					resultant_direction_ = last_direction;
+					tick_tock_age_ = 10;
+				}
+
+				last_resultant_directions_.pop_front();
+				last_resultant_directions_.push_back(new_resultant_direction);
+			}
+			else {
+				last_resultant_directions_.push_back(new_resultant_direction);
+			}
+		}
+		//std::stringstream ss;
+		//ss << "Robot " << id_ << ": ";
+
+		//SwarmUtils::print_vector(ss.str(), resultant_direction_);
+
+
+		//// if in opposite directions
+		//if ((glm::length(resultant_direction_) < 1e-5) || glm::dot(last_direction, new_resultant_direction) > 0) {
+		//	resultant_direction_ = new_resultant_direction;
+		//} else {
+		//	resultant_direction_ = last_direction;
+		//}
 
 		// calculate new position
 		float small_dist = magic_k_;
@@ -878,10 +932,6 @@ void Robot::update(int timestamp) {
 		position_ += position_delta;
 
 		// check for collision
-		//if (is_colliding_with_interior(interior_cells) ||
-		//	is_colliding_with_robots(robot_ids)) {
-		//	position_ = old_position;
-		//} 
 
 		bool is_colliding = false;
 		if (collide_with_robots_) {
@@ -893,7 +943,6 @@ void Robot::update(int timestamp) {
 			position_ = old_position;
 		} 
 
-		// mark interiors as samples
 		for (auto& interior_cell : interior_cells) {
 			occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior_cell), timestamp, id_);
 		}
@@ -923,8 +972,9 @@ void Robot::update(int timestamp) {
 					coverage_map_[adjacent_sensor_cell] = 1;
 				} else {
 					// is interior
-					
+					// mark interiors as samples
 				}
+
 			}
 
 		} catch (OutOfGridBoundsException& exception) {

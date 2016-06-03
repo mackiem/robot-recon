@@ -32,16 +32,18 @@ class SwarmMCMCOptimizer : public QObject {
 	
 	SwarmViewer* swarm_viewer_;
 	double separation_constant_;
-
+	double max_time_taken_;
 public:
 	void set_viewer(SwarmViewer* swarm_viewer);
 	double run_simulation(double separation_constant, double cluster_constant);
-	signals:
+	void set_max_time_taken(double max_time);
+
+signals:
 	void finished();
 
 public slots:
 void optimize_swarm_params();
-	void optimize_brute_force();
+void optimize_brute_force();
 		
 };
 

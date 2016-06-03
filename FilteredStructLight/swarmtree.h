@@ -160,7 +160,7 @@ public:
 
 	bool find_closest_2_positions_from_list(const std::set<glm::ivec3, IVec3Comparator>& perimeter_list,
 		const glm::ivec3& robot_grid_position,
-		std::vector<glm::ivec3>& explore_positions, float range_min, float range_max);
+		std::vector<glm::ivec3>& explore_positions, float range_min, float range_max, bool enable_interior_test = true);
 
 	bool closest_2_interior_positions(const glm::ivec3& robot_grid_position,
 		std::vector<glm::ivec3>& perimeter_position, float range_min, float range_max);

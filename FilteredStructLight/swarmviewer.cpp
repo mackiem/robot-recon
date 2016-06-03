@@ -43,6 +43,24 @@ RobotWorker::RobotWorker() : aborted_(false), paused_(false), sampling_updated_(
 	
 };
 
+void RobotWorker::set_robots(std::vector<Robot*> robots) {
+	robots_ = robots;
+}
+
+void RobotWorker::set_occupancy_tree(SwarmOccupancyTree* occupancy_grid) {
+	occupancy_grid_ = occupancy_grid;
+}
+void RobotWorker::set_slow_down(int slow_down) {
+	slow_down_ = slow_down;
+}
+void RobotWorker::abort() {
+	aborted_ = true;
+}
+
+void RobotWorker::set_max_time_taken(int max_time_taken) {
+	max_time_taken_ = max_time_taken;
+}
+
 double RobotWorker::calculate_coverage() {
 	double coverage = 0.0;
 	for (auto& robot : robots_) {
@@ -58,8 +76,8 @@ void RobotWorker::finish_work() {
 	if (!sampling_updated_) {
 		double simultaneous_sampling = occupancy_grid_->calculate_multi_sampling_factor();
 		double coverage = calculate_coverage();
-		std::cout << "End - time steps : " << time_step_count_ << "  " <<
-			occupancy_grid_->get_unexplored_perimeter_list().size() << "\n";
+		//std::cout << "End - time steps : " << time_step_count_ << "  " <<
+		//	occupancy_grid_->get_unexplored_perimeter_list().size() << "\n";
 		emit update_sampling(simultaneous_sampling);
 		emit update_sim_results(time_step_count_, simultaneous_sampling, coverage);
 		sampling_updated_ = true;
@@ -79,7 +97,7 @@ void RobotWorker::do_work() {
 				QThread::currentThread()->msleep(10);
 			}
 			step_count_--;
-			if (time_step_count_ > 2000) {
+			if (time_step_count_ > max_time_taken_) {
 				finish_work();
 			}
 
@@ -655,6 +673,7 @@ void SwarmViewer::reset_sim() {
 	robot_worker_->set_robots(robots_);
 	robot_worker_->set_occupancy_tree(occupancy_grid_);
 	robot_worker_->set_slow_down(slow_down_);
+	robot_worker_->set_max_time_taken(max_time_taken_);
 	robot_update_thread_.start();
 }
 
@@ -746,6 +765,7 @@ void SwarmViewer::run_mcmc_optimization() {
 
 
 	optimizer_worker->set_viewer(this);
+	optimizer_worker->set_max_time_taken(max_time_taken_);
 
 	optimizer_worker->moveToThread(optimizer_thread);
 	optimizer_thread->start();
@@ -810,6 +830,8 @@ SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer
 	occupancy_grid_ = nullptr;
 	collision_grid_ = nullptr;
 	render_ = false;
+	max_time_taken_ = 1010.0;
+	sim_results_updated_ = false;
 
 	//grid_ = VisObject(uniform_locations_);
 	//grid_overlay_ = VisObject(uniform_locations_);

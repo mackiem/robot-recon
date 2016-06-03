@@ -543,10 +543,10 @@ double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 	}
 
 	if (no_of_sampled_timesteps_per_gridcell.size() > 0) {
-		sampling_factor /= no_of_sampled_timesteps_per_gridcell.size();
+		sampling_factor /= interior_list_.size();
 	}
 	
-	std::cout << "sampling factor : " << sampling_factor << "\n";
+	//std::cout << "sampling factor : " << sampling_factor << "\n";
 
 	return sampling_factor;
 }
@@ -772,7 +772,7 @@ bool SwarmOccupancyTree::find_closest_position_from_list(const std::set<glm::ive
 
 bool SwarmOccupancyTree::find_closest_2_positions_from_list(const std::set<glm::ivec3, IVec3Comparator>& perimeter_list,
 	const glm::ivec3& robot_grid_position,
-	std::vector<glm::ivec3>& explore_positions, float range_min, float range_max) {
+	std::vector<glm::ivec3>& explore_positions, float range_min, float range_max, bool enable_interior_test) {
 
 	// create a pool, to stop micro memory allocations all the time
 	if (current_pool_count_ == pool_size_) {
@@ -803,7 +803,11 @@ bool SwarmOccupancyTree::find_closest_2_positions_from_list(const std::set<glm::
 
 	for (auto j = 0; j < perimeter_vector.size(); ++j) {
 		glm::vec3 b = perimeter_vector[j].grid_position_;
-		bool interior_found = going_through_interior_test(a, b);
+		bool interior_found = false;
+
+		if (enable_interior_test) {
+			interior_found = going_through_interior_test(a, b);
+		}
 
 		if (!interior_found) {
 			explore_positions.push_back(glm::ivec3(b));
@@ -839,5 +843,5 @@ bool SwarmOccupancyTree::closest_perimeter(const glm::ivec3& robot_grid_position
 
 bool SwarmOccupancyTree::closest_2_interior_positions(const glm::ivec3& robot_grid_position,
 	std::vector<glm::ivec3>& perimeter_position, float range_min, float range_max) {
-	return find_closest_2_positions_from_list(interior_list_, robot_grid_position, perimeter_position, range_min, range_max);
+	return find_closest_2_positions_from_list(interior_list_, robot_grid_position, perimeter_position, range_min, range_max, false);
 }
