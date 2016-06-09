@@ -274,8 +274,8 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	should_render_check_box_->setChecked(true);
 	emit should_render_check_box_->stateChanged(true);
 
-	slow_down_check_box_->setChecked(false);
-	emit slow_down_check_box_->stateChanged(false);
+	slow_down_check_box_->setChecked(true);
+	emit slow_down_check_box_->stateChanged(true);
 
 	neighborhood_count_->setValue(settings.value(NEIGHBORHOOD_COUNT_LABEL, "5").toInt());
 	emit neighborhood_count_->valueChanged(neighborhood_count_->value());

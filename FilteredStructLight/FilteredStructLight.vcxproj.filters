@@ -203,6 +203,9 @@
     <ClCompile Include="GeneratedFiles\Release\moc_simulatorthread.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="experimentalrobot.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="filteredstructlight.h">
@@ -298,6 +301,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="swarmtree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="experimentalrobot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

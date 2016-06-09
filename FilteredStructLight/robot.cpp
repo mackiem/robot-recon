@@ -10,6 +10,18 @@ int Robot::MAX_DEPTH = 10;
 #define PI 3.14159
 
 
+unsigned Robot::get_id() {
+	return id_;
+}
+
+glm::vec3 Robot::get_position() {
+	return position_;
+}
+
+glm::vec3 Robot::get_velocity() {
+	return velocity_;
+}
+
 void Robot::set_explore_constant(float constant) {
 	explore_constant_ = constant;
 }
@@ -130,7 +142,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	if (render_) {
 		init_force_visualization(0, explore_force_, blue);
 		init_force_visualization(1, separation_force_, green);
-		init_force_visualization(2, resultant_direction_, black);
+		init_force_visualization(2, resultant_force_, black);
 		init_force_visualization(3, perimeter_force_, yellow);
 		init_force_visualization(4, cluster_force_, cyan);
 		init_force_visualization(5, alignment_force_, orange);
@@ -337,7 +349,7 @@ void Robot::calculate_alignment_force(const std::vector<int>& other_robots) {
 	alignment_force_ = glm::vec3(0.f, 0.f, 0.f);
 
 	if (other_robots.size() > 0) {
-		float delta_time = 1.f;
+		float delta_time = 1;
 		//std::vector<glm::vec3> velocities;
 
 		int alignment_count = 0;
@@ -350,9 +362,9 @@ void Robot::calculate_alignment_force(const std::vector<int>& other_robots) {
 					glm::length(glm::vec3(occupancy_grid_->map_to_grid(position_) - occupancy_grid_->map_to_grid(robots_[other_robot_id]->position_)));
 				if (alignment_range_.within_range(robot_distance)) {
 					//break;
-					//velocities.push_back(robots_[other_robot_id]->resultant_direction_);
+					//velocities.push_back(robots_[other_robot_id]->resultant_force_);
 					alignment_count++;
-					avg_velocities += robots_[other_robot_id]->resultant_direction_;
+					avg_velocities += robots_[other_robot_id]->resultant_force_;
 				}
 			}
 		}
@@ -389,59 +401,33 @@ void Robot::calculate_cluster_force(const std::vector<int>& other_robots) {
 
 	try {
 		if (other_robots.size() > 0) {
-			std::vector<PerimeterPos> other_robot_distance_vector;
-			std::vector<int> robot_ids;
-			std::vector<float> neighborhood_counts;
-			for (auto itr = other_robots.begin(); itr != other_robots.end(); ++itr) {
-				auto other_robot = *itr;
-				float grid_length = glm::length(glm::vec3(occupancy_grid_->map_to_grid(robots_[other_robot]->position_) -
-					occupancy_grid_->map_to_grid(position_)));
-				if (cluster_range_.within_range(grid_length) && id_ != other_robot) {
-					other_robot_distance_vector.push_back(PerimeterPos(grid_length, occupancy_grid_->map_to_grid(robots_[other_robot]->position_)));
-					robot_ids.push_back(other_robot);
-					neighborhood_counts.push_back(robots_[other_robot]->current_neighborhood_count_);
-				}
-			}
-
-			// calculate neighborhood count
-			//current_neighborhood_count_ = 0;
-			//for (auto& other_robot_distance : other_robot_distance_vector) {
-			//	current_neighborhood_count_ += (cluster_range_.max_ - other_robot_distance.distance_);
+			//// move to centroid within cluster range
+			//std::vector<PerimeterPos> other_robot_distance_vector;
+			//std::vector<int> robot_ids;
+			//std::vector<float> neighborhood_counts;
+			//for (auto itr = other_robots.begin(); itr != other_robots.end(); ++itr) {
+			//	auto other_robot = *itr;
+			//	float grid_length = glm::length(glm::vec3(occupancy_grid_->map_to_grid(robots_[other_robot]->position_) -
+			//		occupancy_grid_->map_to_grid(position_)));
+			//	if (cluster_range_.within_range(grid_length) && id_ != other_robot) {
+			//		other_robot_distance_vector.push_back(PerimeterPos(grid_length, occupancy_grid_->map_to_grid(robots_[other_robot]->position_)));
+			//		robot_ids.push_back(other_robot);
+			//		neighborhood_counts.push_back(robots_[other_robot]->current_neighborhood_count_);
+			//	}
 			//}
-			//current_neighborhood_count_ /= (cluster_range_.max_ - cluster_range_.min_);
-
-			// simply, all the robots within range
-			current_neighborhood_count_ = other_robot_distance_vector.size();
-
-			// if preferred count is lower, then move towards any neighbor
-
-			if (current_neighborhood_count_ < (neighborhood_count_)) {
-				glm::vec3 centroid;
-				int cluster_size = 0;
-				for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-					centroid += robots_[robot_ids[i]]->position_;
-					cluster_size++;
-				}
-
-				if (cluster_size > 0) {
-					centroid /= cluster_size;
-					glm::vec3 move_towards_position = centroid;
-					cluster_force_ = calculate_direction(move_towards_position, cluster_constant_);
-					cluster_force_.y = 0.f;
-				}
-			}
 
 
-			// pick a neighbor with lower than preferred count and move towards that(first), this doesn't work
+			//// simply, all the robots within range
+			//current_neighborhood_count_ = other_robot_distance_vector.size();
+
+			//// if preferred count is lower, then move towards any neighbor
+
 			//if (current_neighborhood_count_ < (neighborhood_count_)) {
 			//	glm::vec3 centroid;
 			//	int cluster_size = 0;
 			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-			//		if (neighborhood_counts[i] >= neighborhood_count_) {
-			//			// cluster found, move towards it
-			//			centroid += robots_[robot_ids[i]]->position_;
-			//			cluster_size++;
-			//		}
+			//		centroid += robots_[robot_ids[i]]->position_;
+			//		cluster_size++;
 			//	}
 
 			//	if (cluster_size > 0) {
@@ -452,58 +438,30 @@ void Robot::calculate_cluster_force(const std::vector<int>& other_robots) {
 			//	}
 			//}
 
+			// move to centroid only if within cluster range
+			if (other_robots.size() > 0) {
+				// simply, all the robots within range
+				current_neighborhood_count_ = other_robots.size();
 
+				// if preferred count is lower, then move towards any neighbor
 
+				//if (current_neighborhood_count_ < (neighborhood_count_)) {
+					glm::vec3 centroid = position_;
+					for (auto& other_robot_id : other_robots) {
+						centroid += robots_[other_robot_id]->position_;
+					}
+					centroid /= (other_robots.size() + 1);
 
-			//if (current_neighborhood_count_ > (neighborhood_count_ + 1)) {
-			//	glm::vec3 centroid;
-			//	int cluster_size = 0;
-			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-			//		if (neighborhood_counts[i] < neighborhood_count_) {
-			//			// small cluster found, move towards it
-			//			centroid += robots_[robot_ids[i]]->position_;
-			//			cluster_size++;
-			//		}
-			//	}
-			//	if (cluster_size > 0) {
-			//		centroid /= cluster_size;
-			//		glm::vec3 move_towards_position = centroid;
-			//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
-			//		cluster_force_.y = 0.f;
-			//	}
-			//} else if (current_neighborhood_count_ < (neighborhood_count_ - 1)) {
-			//	glm::vec3 centroid;
-			//	int cluster_size = 0;
-			//	for (int i = 0; i < other_robot_distance_vector.size(); ++i) {
-			//		if (neighborhood_counts[i] > neighborhood_count_) {
-			//			// small cluster found, move towards it
-			//			centroid += robots_[robot_ids[i]]->position_;
-			//			cluster_size++;
-			//		}
-			//	}
-			//	if (cluster_size > 0) {
-			//		centroid /= cluster_size;
-			//		glm::vec3 move_towards_position = centroid;
-			//		cluster_force_ = calculate_direction(position_ + move_towards_position, cluster_constant_);
-			//		cluster_force_.y = 0.f;
-			//	}
-			//}
+					float grid_distance = glm::length(glm::vec3(occupancy_grid_->map_to_grid(centroid) -
+						occupancy_grid_->map_to_grid(position_)));
+					if (cluster_range_.within_range(grid_distance)) {
+						glm::vec3 move_towards_position = centroid;
+						cluster_force_ = calculate_direction(move_towards_position, cluster_constant_);
+						cluster_force_.y = 0.f;
+					}
+				//}
+			}
 
-
-
-
-			//glm::vec3 centroid;
-			//int cluster_size = 0;
-			//for (auto& other_robots_distance : other_robot_distance_vector) {
-			//		centroid += occupancy_grid_->map_to_position(other_robots_distance.grid_position_);
-			//		cluster_size++;
-			//}
-
-			//if (cluster_size > 0) {
-			//	centroid /= cluster_size;
-			//	cluster_force_ = calculate_direction(centroid, cluster_constant_);
-			//	cluster_force_.y = 0.f;
-			//}
 		}
 	} catch (OutOfGridBoundsException& ex) {
 		
@@ -692,7 +650,7 @@ glm::vec3 Robot::calculate_obstacle_avoidance_direction(glm::vec3 resultant_forc
 				final_direction.y = 0.f;
 			}
 			if (glm::length(final_direction) > 1e-6) {
-				final_direction = glm::normalize(final_direction);
+				//final_direction = glm::normalize(final_direction);
 			}
 			return final_direction;
 			
@@ -737,7 +695,7 @@ glm::vec3 Robot::calculate_resultant_direction(const std::vector<int>& other_rob
 	glm::vec3 actual_force = separation_force_ + alignment_force_ + cluster_force_ + explore_force_ + perimeter_force_;
 
 #ifdef DEBUG
-	if (actual_force.y > 0.f) {
+	//if (actual_force.y > 0.f) {
 		std::cout << "Robot : " << id_ << std::endl;
 		SwarmUtils::print_vector("explore", explore_force_);
 		SwarmUtils::print_vector("separation", separation_force_);
@@ -745,12 +703,13 @@ glm::vec3 Robot::calculate_resultant_direction(const std::vector<int>& other_rob
 		SwarmUtils::print_vector("alignment", alignment_force_);
 		SwarmUtils::print_vector("cluster", cluster_force_);
 		std::cout << std::endl;
-	}
+	//}
 #endif
 	glm::vec3 force_direction;
-	if (glm::length(actual_force) > 1e-6) {
-		 force_direction = glm::normalize(actual_force);
-	}
+	//if (glm::length(actual_force) > 1e-6) {
+	//	 force_direction = glm::normalize(actual_force);
+	//}
+	force_direction = actual_force;
 	return force_direction;
 
 }
@@ -795,7 +754,7 @@ void Robot::update_visualization_structs() {
 			update_force_visualization(3, perimeter_force_);
 			update_force_visualization(4, cluster_force_);
 			update_force_visualization(5, alignment_force_);
-			update_force_visualization(2, 100.f * resultant_direction_);
+			update_force_visualization(2, 100.f * resultant_force_);
 		}
 		// update rendered mesh
 		for (auto& render_entity : mesh_) {
@@ -855,7 +814,7 @@ void Robot::update(int timestamp) {
 		last_updated_time_ = current_timestamp.count();
 	} else {
 
-		//auto delta_time = (current_timestamp.count() - last_updated_time_) / 1000.f;
+		auto delta_time = (current_timestamp.count() - last_updated_time_) / 1000.f;
 
 		//float time_step_duration = 1.f / 30.f; // 60 hz 
 
@@ -871,16 +830,16 @@ void Robot::update(int timestamp) {
 
 		// add hysteresis
 		// monitor last 5 directions
-		glm::vec3 last_direction = resultant_direction_;
+		glm::vec3 last_direction = resultant_force_;
 
 		if (tick_tock_age_ > 0) {
-			resultant_direction_ = last_direction;
+			resultant_force_ = last_direction;
 			tick_tock_age_--;
 		}
 		else {
-			glm::vec3 new_resultant_direction = calculate_resultant_direction(robot_ids, interior_cells);
-			new_resultant_direction = calculate_obstacle_avoidance_direction(new_resultant_direction);
-			resultant_direction_ = new_resultant_direction;
+			glm::vec3 new_resultant_force = calculate_resultant_direction(robot_ids, interior_cells);
+			new_resultant_force = calculate_obstacle_avoidance_direction(new_resultant_force);
+			resultant_force_ = new_resultant_force;
 
 			const int window_size = 3;
 			if (last_resultant_directions_.size() == window_size) {
@@ -888,7 +847,7 @@ void Robot::update(int timestamp) {
 				bool tick_tock_detected = false;
 				int previous_result = 0;
 
-				glm::vec3 test_previous_direction = new_resultant_direction;
+				glm::vec3 test_previous_direction = new_resultant_force;
 
 				for (auto& previous_direction : last_resultant_directions_) {
 					float result = glm::dot(previous_direction, test_previous_direction);
@@ -899,37 +858,50 @@ void Robot::update(int timestamp) {
 					counter++;
 				}
 				if (tick_tock_detected) {
-					resultant_direction_ = last_direction;
+					resultant_force_ = last_direction;
 					tick_tock_age_ = 10;
 				}
 
 				last_resultant_directions_.pop_front();
-				last_resultant_directions_.push_back(new_resultant_direction);
+				last_resultant_directions_.push_back(new_resultant_force);
 			}
 			else {
-				last_resultant_directions_.push_back(new_resultant_direction);
+				last_resultant_directions_.push_back(new_resultant_force);
 			}
 		}
 		//std::stringstream ss;
 		//ss << "Robot " << id_ << ": ";
 
-		//SwarmUtils::print_vector(ss.str(), resultant_direction_);
+		//SwarmUtils::print_vector(ss.str(), resultant_force_);
 
 
 		//// if in opposite directions
-		//if ((glm::length(resultant_direction_) < 1e-5) || glm::dot(last_direction, new_resultant_direction) > 0) {
-		//	resultant_direction_ = new_resultant_direction;
+		//if ((glm::length(resultant_force_) < 1e-5) || glm::dot(last_direction, new_resultant_direction) > 0) {
+		//	resultant_force_ = new_resultant_direction;
 		//} else {
-		//	resultant_direction_ = last_direction;
+		//	resultant_force_ = last_direction;
 		//}
 
 		// calculate new position
-		float small_dist = magic_k_;
-		glm::vec3 position_delta = resultant_direction_ * small_dist;
+		//float small_dist = magic_k_;
+		//glm::vec3 position_delta = resultant_force_ * small_dist;
+
+
 
 		// save old position for rollback if colliding
+		//glm::vec3 old_position = position_;
+		//position_ += position_delta;
+
+
+		// euler
 		glm::vec3 old_position = position_;
-		position_ += position_delta;
+		velocity_ += resultant_force_ * delta_time;
+		if (glm::length(velocity_) > max_velocity_) {
+			auto normalized_velocity = glm::normalize(velocity_);
+			velocity_ = max_velocity_ * normalized_velocity;
+		}
+		position_ += velocity_ * delta_time;
+
 
 		// check for collision
 

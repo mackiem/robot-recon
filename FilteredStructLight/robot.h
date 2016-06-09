@@ -35,7 +35,7 @@ struct Range {
 
 class Robot : public VisObject {
 
-private:
+protected:
 	enum RobotState {
 		MOVING = 0,
 		STOPPING = 1,
@@ -99,7 +99,7 @@ private:
 	float mass_;
 	float max_velocity_;
 	bool travelling_in_bound_;
-	glm::vec3 resultant_direction_;
+	glm::vec3 resultant_force_;
 	float distance_to_goal_threshold_;
 	glm::vec3 stopping_force_;
 	glm::vec3 previous_position_;
@@ -120,6 +120,7 @@ private:
 	float neighborhood_count_;
 	float magic_k_;
 	int tick_tock_age_;
+	int cluster_id_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;
@@ -152,6 +153,9 @@ private:
 	bool collide_with_robots_;
 
 public:
+	unsigned int get_id();
+	glm::vec3 get_position();
+	glm::vec3 get_velocity();
 	static int MAX_DEPTH;
 	void set_explore_constant(float constant);
 	void set_separation_constant(float constant);
@@ -196,7 +200,7 @@ public:
 	void update_robots(const std::vector<Robot*>& robots);
 	//void handle_input();
 	virtual void update(glm::mat4 global_model);
-	void update(int timestamp);
+	virtual void update(int timestamp);
 
 	Robot& operator=(const Robot& other);
 	virtual ~Robot();

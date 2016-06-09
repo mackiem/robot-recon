@@ -9,6 +9,7 @@
 #include "swarmutils.h"
 #include "swarmopt.h"
 #include <QtCore/qcoreapplication.h>
+#include "experimentalrobot.h"
 
 //const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/house interior.obj";
 //const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/box-floor-plan.obj";
@@ -94,7 +95,7 @@ void RobotWorker::do_work() {
 		}
 		if (!paused_) {
 			if (slow_down_) {
-				QThread::currentThread()->msleep(10);
+				QThread::currentThread()->msleep(30);
 			}
 			step_count_--;
 			if (time_step_count_ > max_time_taken_) {
@@ -830,7 +831,7 @@ SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer
 	occupancy_grid_ = nullptr;
 	collision_grid_ = nullptr;
 	render_ = false;
-	max_time_taken_ = 1010.0;
+	max_time_taken_ = 100010.0;
 	sim_results_updated_ = false;
 
 	//grid_ = VisObject(uniform_locations_);
@@ -1039,7 +1040,7 @@ std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 		std::uniform_int_distribution<int> position_generator(0, grid_resolution_per_side_ - 1);
 		int robot_count = 0;
 		int iterations = 0;
-		while (no_of_robots_ != robot_count || (no_of_robots_ < iterations)) {
+		while ((no_of_robots_ != robot_count) && ((no_of_robots_ + 100) > iterations)) {
 			glm::ivec3 robot_grid_position(position_generator(rng), 0, position_generator(rng));
 			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
 				&& !occupancy_grid_->is_interior(robot_grid_position)) {
@@ -1081,20 +1082,20 @@ std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
 void SwarmViewer::create_robots() {
 	m_shader.bind();
 
-	RenderMesh robot_mesh;
-	cv::Vec4f color(0.f, 1.f, 1.f, 1.f);
-	create_robot_model(robot_mesh, color);
 
 
 	std::vector<glm::vec3> robot_positions = create_starting_formation(static_cast<Formation>(formation_));
 	assert(no_of_robots_ == robot_positions.size());
 
 	for (int i = 0; i < no_of_robots_; ++i) {
-		//std::random_device rd;
-		//std::mt19937 rng;
-		//rng.seed(rd());
-		//std::uniform_real_distribution<float> color_generator(0.f, 1.f);
-		//cv::Vec4f color(color_generator(rng), color_generator(rng), color_generator(rng), 1.f);
+		std::random_device rd;
+		std::mt19937 rng;
+		rng.seed(rd());
+		std::uniform_real_distribution<float> color_generator(0.f, 1.f);
+		cv::Vec4f color(color_generator(rng), color_generator(rng), color_generator(rng), 1.f);
+		RenderMesh robot_mesh;
+		//cv::Vec4f color(0.f, 1.f, 1.f, 1.f);
+		create_robot_model(robot_mesh, color);
 
 		robot_color_map_[i] = color;
 
@@ -1103,7 +1104,7 @@ void SwarmViewer::create_robots() {
 		//robot.mesh_.push_back(robot_mesh[0]);
 		//robots_.push_back(robot);
 
-		Robot* robot = new Robot(uniform_locations_, 
+		Robot* robot = new ExperimentalRobot(uniform_locations_, 
 			i, occupancy_grid_, collision_grid_, explore_constant_, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_,
 			goto_work_constant_,
 			explore_range_, separation_range_, alignment_range_, cluster_range_, perimeter_range_, obstacle_near_range_,

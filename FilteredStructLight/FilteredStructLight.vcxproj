@@ -76,9 +76,9 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <AdditionalOptions>
       </AdditionalOptions>
-      <OmitFramePointers>true</OmitFramePointers>
-      <EnableFiberSafeOptimizations>true</EnableFiberSafeOptimizations>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <OmitFramePointers>false</OmitFramePointers>
+      <EnableFiberSafeOptimizations>false</EnableFiberSafeOptimizations>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -94,6 +94,7 @@
     <ClCompile Include="camthread.cpp" />
     <ClCompile Include="dpmpar.c" />
     <ClCompile Include="enorm.c" />
+    <ClCompile Include="experimentalrobot.cpp" />
     <ClCompile Include="fdjac2.c" />
     <ClCompile Include="filteredstructlight.cpp" />
     <ClCompile Include="gaussfit.cpp" />
@@ -221,6 +222,7 @@
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="experimentalrobot.h" />
     <ClInclude Include="octree.h" />
     <ClInclude Include="quadtree.h" />
     <ClInclude Include="renderentity.h" />
