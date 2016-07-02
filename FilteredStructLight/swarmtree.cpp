@@ -8,6 +8,8 @@
 #include <functional>
 #include <chrono>
 
+//#include <vld.h>
+
 using namespace mm;
 
 // hoping there won't be 10k robots ever!
@@ -78,7 +80,8 @@ Quadtree<int>(grid_resolution, -1), grid_cube_length_(grid_cube_length), grid_re
 	//	std::unordered_map<int, std::unordered_map<int, int>>, IVec3Hasher, IVec3Equals>>();
 
 	sampling_tracker_ = new std::vector<Sampling>();
-	sampling_tracker_->reserve(pool_size_);
+	update_multisampling_ = false;
+	//sampling_tracker_->reserve(pool_size_);
 	//sampling_tracker_ = new std::unordered_map<glm::ivec3, std::map<int, std::map<int, int>>
 	//	, IVec3Hasher, IVec3Equals>();
 	//sampling_tracker_ = std::make_shared < std::map < glm::ivec3, std::map < int, std::map<int, int> >
@@ -86,6 +89,7 @@ Quadtree<int>(grid_resolution, -1), grid_cube_length_(grid_cube_length), grid_re
 
 	//heap_pool_.resize(pool_size_);
 	//std::fill(heap_pool_.begin(), heap_pool_.end(), )
+	//leak_ = new float();
 }
 
 SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_resolution, int empty_value) : 
@@ -105,6 +109,10 @@ SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_resolution
 
  std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_unexplored_perimeter_list() {
 	 return explore_perimeter_list_;
+}
+
+ int SwarmOccupancyTree::no_of_unexplored_cells() {
+	 return explore_perimeter_list_.size();
 }
 
 std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_static_perimeter_list() {
@@ -499,18 +507,59 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 	sample.timestamp = timestep;
 	sample.robot_id = robot_id;
 	sampling_tracker_->push_back(sample);
+
+	if (sampling_tracker_->size() % 1000000 == 0) {
+		//std::cout << "tracker memory : " << sampling_tracker_->size() * sizeof(Sampling) / (1024 * 1024) << "\n";
+		last_multisample_timestep_ = timestep;
+		update_multisampling_ = true;
+	}
+
+	if (update_multisampling_) {
+		if (timestep != last_multisample_timestep_) {
+			calculate_multi_sampling();
+			sampling_tracker_->clear();
+			update_multisampling_ = false;
+		}
+	}
 }
 
 double SwarmOccupancyTree::calculate_multi_sampling_factor() {
+		//sampling_avg_storage_.push_back(calculate_multi_sampling());
+
+		//int no_of_timesteps = 0;
+
+		//for (auto& sampling : sampling_avg_storage_) {
+		//	sampling_factor += sampling.first;
+		//	no_of_timesteps += sampling.second;
+		//}
+		//sampling_factor = (sampling_factor / sampling_avg_storage_.size());
+		//if (interior_list_.size() > 0) {
+		//	sampling_factor /= interior_list_.size();
+		//}
+	calculate_multi_sampling();
+
+	double sampling_factor = 0.0;
+
+	for (auto& sample_per_timestep : no_of_simul_samples_per_timestep_per_gridcell) {
+		sampling_factor += (double)sample_per_timestep.second / no_of_sampled_timesteps_per_gridcell[sample_per_timestep.first];
+	}
+
+	if (no_of_sampled_timesteps_per_gridcell.size() > 0) {
+		sampling_factor /= interior_list_.size();
+	}
+
+	return sampling_factor;
+}
+
+void SwarmOccupancyTree::calculate_multi_sampling() {
 
 
 	double sampling_factor = 0.0;
 
 	long long last_timestamp = -1;
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals> simultaneous_samples_per_timestamp;
-	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_samples_per_timestep_per_gridcell;
-	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_sampled_timesteps_per_gridcell;
 
+	int no_of_timesteps = 0;
 
 	for (auto& sampling_tracker_entry : *sampling_tracker_) {
 
@@ -518,16 +567,17 @@ double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 		if (sampling_tracker_entry.timestamp != last_timestamp) {
 			for (auto& simultaneous_samples : simultaneous_samples_per_timestamp) {
 				glm::ivec3 grid_cell = simultaneous_samples.first;
-				if (no_of_samples_per_timestep_per_gridcell.find(grid_cell) != no_of_samples_per_timestep_per_gridcell.end()) {
-					no_of_samples_per_timestep_per_gridcell[grid_cell] += simultaneous_samples.second;
+				if (no_of_simul_samples_per_timestep_per_gridcell.find(grid_cell) != no_of_simul_samples_per_timestep_per_gridcell.end()) {
+					no_of_simul_samples_per_timestep_per_gridcell[grid_cell] += simultaneous_samples.second;
 					no_of_sampled_timesteps_per_gridcell[grid_cell]++;
 				} else {
-					no_of_samples_per_timestep_per_gridcell[grid_cell] = simultaneous_samples.second;
+					no_of_simul_samples_per_timestep_per_gridcell[grid_cell] = simultaneous_samples.second;
 					no_of_sampled_timesteps_per_gridcell[grid_cell] = 1;
 				}
 			}
 			last_timestamp = sampling_tracker_entry.timestamp;
 			simultaneous_samples_per_timestamp.clear();
+			no_of_timesteps++;
 		}
 		if (interior_list_.find(sampling_tracker_entry.grid_cell) != interior_list_.end()) {
 			if (simultaneous_samples_per_timestamp.find(sampling_tracker_entry.grid_cell) == simultaneous_samples_per_timestamp.end()) {
@@ -538,17 +588,17 @@ double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 		}
 	}
 
-	for (auto& sample_per_timestep : no_of_samples_per_timestep_per_gridcell) {
-		sampling_factor += (double)sample_per_timestep.second / no_of_sampled_timesteps_per_gridcell[sample_per_timestep.first];
-	}
+	//for (auto& sample_per_timestep : no_of_simul_samples_per_timestep_per_gridcell) {
+	//	sampling_factor += (double)sample_per_timestep.second / no_of_sampled_timesteps_per_gridcell[sample_per_timestep.first];
+	//}
 
-	if (no_of_sampled_timesteps_per_gridcell.size() > 0) {
-		sampling_factor /= interior_list_.size();
-	}
+	//if (no_of_sampled_timesteps_per_gridcell.size() > 0) {
+	//	sampling_factor /= interior_list_.size();
+	//}
 	
 	//std::cout << "sampling factor : " << sampling_factor << "\n";
 
-	return sampling_factor;
+	//return std::pair<double, int>(sampling_factor, no_of_timesteps);
 }
 
 void SwarmOccupancyTree::create_perimeter_list() {
@@ -639,6 +689,7 @@ void SwarmOccupancyTree::mark_explored_in_list(std::set<glm::ivec3, IVec3Compara
 }
 
 SwarmOccupancyTree::~SwarmOccupancyTree() {
+	//sampling_tracker_->clear();
 	delete sampling_tracker_;
 }
 
@@ -737,6 +788,8 @@ bool SwarmOccupancyTree::find_closest_position_from_list(const std::set<glm::ive
 		current_pool_count_ = 0;
 		std::vector<PerimeterPos> sample_vector;
 		sample_vector.reserve(perimeter_list.size());
+		//heap_pool_.clear();
+		//heap_pool_.resize(pool_size_);
 		std::fill(heap_pool_.begin(), heap_pool_.end(), sample_vector);
 	}
 
@@ -779,6 +832,8 @@ bool SwarmOccupancyTree::find_closest_2_positions_from_list(const std::set<glm::
 		current_pool_count_ = 0;
 		std::vector<PerimeterPos> sample_vector;
 		sample_vector.reserve(perimeter_list.size());
+		//heap_pool_.clear();
+		//heap_pool_.resize(pool_size_);
 		std::fill(heap_pool_.begin(), heap_pool_.end(), sample_vector);
 	}
 

@@ -168,6 +168,7 @@ VisObject::~VisObject() {
 VisObject::VisObject(UniformLocations& locations) : locations_(locations) {
 }
 
+
 void VisObject::update(glm::mat4 global_model) {
 }
 

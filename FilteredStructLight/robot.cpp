@@ -75,6 +75,17 @@ void Robot::get_adjacent_cells(const glm::vec3& position, std::vector<glm::ivec3
 	}
 }
 
+void Robot::update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position) {
+	if (current_position == previous_position) {
+		return;
+	}
+
+	adjacent_cells_.clear();
+	adjacent_cells_.reserve(std::pow(sensor_range_ * 2, 2));
+	get_adjacent_cells(occupancy_grid_->map_to_position(current_position), adjacent_cells_);
+	interior_cells_ = get_interior_cell_positions(adjacent_cells_);
+}
+
 void Robot::calculate_work_force() {
 	work_force_ = glm::vec3(0.f, 0.f, 0.f);
 }
@@ -88,7 +99,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	
 	VisObject(locations), all_goals_explored_(false),
 	accumulator_(0.f), id_(id), position_(position), timeout_(5000), last_timeout_(0),
-	last_updated_time_(0), 
+	last_updated_time_(-1), 
 	explore_range_(explore_range), separation_range_(separation_range), alignment_range_(alignment_range),
 	perimeter_range_(perimeter_range), 
 	obstacle_avoidance_near_range_(obstacle_avoidance_near_range),
@@ -97,7 +108,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	explore_constant_(explore_constant), separation_constant_(separation_constant), alignment_constant_(alignment_constant),
 	work_constant_(work_constant), perimeter_constant_(perimeter_constant),
 	cluster_constant_(cluster_constant), neighborhood_count_(neighborhood_count),
-	separation_distance_threshold_(separation_distance), occupancy_grid_(octree),  
+	separation_distance_(separation_distance), occupancy_grid_(octree),  
 	collision_grid_(collision_tree), shader_(shader), render_(render), collide_with_robots_(collide_with_robots) {
 
 	position_.y = 10.f;
@@ -105,7 +116,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	collision_grid_->insert(id_, occupancy_grid_->map_to_grid(position_));
 	previous_position_ = position_;
 
-	robot_radius_ = 10.f;
+	robot_radius_ = 11.f;
 	mass_ = 10;
 	max_velocity_ = 50;
 
@@ -124,7 +135,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	//perimeter_range_ = Range(1, 4);
 	//explore_range_ = Range(4, 10); // extends to infininty
 
-	attraction_distance_threshold_ = separation_distance_threshold_ + 10;
+	attraction_distance_threshold_ = separation_distance_ + 10;
 
 	distance_to_goal_threshold_ = 5.f;
 
@@ -164,7 +175,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	//std::cout << "separation constnat " << k_separation_constant << std::endl;
 
 	// naive theoretical baseline
-	auto no_of_perimeter_cells = occupancy_grid_->get_unexplored_perimeter_list().size();
+	auto no_of_perimeter_cells = occupancy_grid_->no_of_unexplored_cells();
 	auto total_distance_of_perimeter_cells = no_of_perimeter_cells * occupancy_grid_->get_grid_cube_length();
 	auto half_diagonal_length = 0.5 * 1.414 * occupancy_grid_->get_grid_resolution_per_side() * occupancy_grid_->get_grid_cube_length();
 	
@@ -180,6 +191,18 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 		//no_of_time_steps += half_diagonal_length / magic_k_;
 		//std::cout << "theoretical baseline - no of robots " << no_of_robots << " no of steps : " << no_of_time_steps << std::endl;
 	}
+}
+
+Robot::Robot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
+	SwarmCollisionTree* collision_tree, double separation_constant, double alignment_constant,
+	double cluster_constant, double explore_constant, double sensor_range,
+	int discovery_range, double separation_distance, glm::vec3 position): VisObject(locations),  id_(id), position_(position),  
+	sensor_range_(sensor_range), discovery_range_(discovery_range), 
+	explore_constant_(explore_constant), separation_constant_(separation_constant), alignment_constant_(alignment_constant),
+	cluster_constant_(cluster_constant), separation_distance_(separation_distance), occupancy_grid_(octree),  
+	collision_grid_(collision_tree), collide_with_robots_(false) {
+
+	heap_pool_ = new std::vector<std::vector<glm::ivec3>>();
 }
 
 Robot& Robot::operator=(const Robot& other) {
@@ -208,7 +231,7 @@ Robot& Robot::operator=(const Robot& other) {
 		//glm::vec3 center_of_mass_;
 		//std::vector<Robot> robots_ = other.robots_;
 		minimum_separation_distance_ = other.minimum_separation_distance_;
-		separation_distance_threshold_ = other.separation_distance_threshold_;
+		separation_distance_ = other.separation_distance_;
 
 		// exploration force requirements
 		// location in grid for frontier calculation
@@ -219,6 +242,7 @@ Robot& Robot::operator=(const Robot& other) {
 }
 
 Robot::~Robot() {
+	//heap_pool_->clear();
 	delete heap_pool_;
 }
 
@@ -793,6 +817,8 @@ void Robot::reallocate_pools() {
 		current_pool_count_ = 0;
 		std::vector<glm::ivec3> sample_vector;
 		sample_vector.reserve(std::pow(2 * (sensor_range_ + 1), 2));
+		heap_pool_->clear();
+		heap_pool_->resize(pool_size_);
 		std::fill(heap_pool_->begin(), heap_pool_->end(), sample_vector);
 	}
 	

@@ -55,7 +55,7 @@ class FilteredStructLight : public QMainWindow
 
 public:
 	FilteredStructLight(QWidget *parent = 0);
-	~FilteredStructLight();
+	virtual ~FilteredStructLight();
 	void setupUi();
 
 protected:
@@ -108,6 +108,9 @@ private:
 	static const char* SHOW_BUILDING_LABEL;
 	static const char* INTERIOR_MODEL_FILENAME;
 	static const char* SWARM_CONFIG_FILENAME_LABEL;
+	static const char* SQUARE_RADIUS;
+	static const char* BOUNCE_FUNCTION_POWER;
+	static const char* BOUNCE_FUNCTION_MULTIPLIER;
 	static const int MAX_FORMATION_NO;
 	static const int MAX_VIDEO_NO;
 
@@ -245,6 +248,9 @@ private:
 	QDoubleSpinBox* obstacle_avoidance_far_range_min_;
 	QDoubleSpinBox* obstacle_avoidance_far_range_max_;
 	QCheckBox* collide_with_other_robots_;
+	QDoubleSpinBox* square_radius_;
+	QDoubleSpinBox* bounce_function_power_;
+	QDoubleSpinBox* bounce_function_multiplier_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();
@@ -260,6 +266,7 @@ private:
 	void add_camera_info_tab(QTabWidget* tab_widget, std::vector<unsigned>& camera_uuids);
 	void add_interior_options(QGroupBox* group_box);
 	void add_robot_options(QGroupBox* group_box);
+	void add_misc_options(QGroupBox* group_box);
 	void add_grid_options(QGroupBox* group_box);
 	void add_swarm_optimization_options(QGroupBox* group_box);
 	void add_swarm_config_save_options(QGroupBox* group_box);

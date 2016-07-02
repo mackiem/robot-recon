@@ -56,6 +56,9 @@ const char* FilteredStructLight::INTERIOR_MODEL_FILENAME = "interior_model_filen
 
 const char* FilteredStructLight::SWARM_CONFIG_FILENAME_LABEL = "swarm_config_filename";
 
+const char* FilteredStructLight::SQUARE_RADIUS = "square_radius";
+const char* FilteredStructLight::BOUNCE_FUNCTION_POWER = "bounce_function_power";
+const char* FilteredStructLight::BOUNCE_FUNCTION_MULTIPLIER = "bounce_function_multiplier";
 
 FilteredStructLight::FilteredStructLight(QWidget *parent)
 	: QMainWindow(parent)
@@ -69,6 +72,7 @@ FilteredStructLight::FilteredStructLight(QWidget *parent)
 
 FilteredStructLight::~FilteredStructLight()
 {
+	delete[] formation_buttons_;
 }
 
 void FilteredStructLight::load_recon_settings() {
@@ -159,7 +163,6 @@ void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
 
 	settings.setValue(NEIGHBORHOOD_COUNT_LABEL, neighborhood_count_->value());
 	
-
 	//settings.setValue(SEPARATION_DISTANCE_LABEL, separation_distance_->value());
 
 	settings.setValue(GRID_RESOLUTION_LABEL, grid_resolution_spin_box_->value());
@@ -175,6 +178,10 @@ void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
 	settings.setValue(SHOW_FORCES_LABEL, (show_forces_->isChecked()));
 
 	settings.setValue(COLLIDE_WITH_OTHER_ROBOTS_LABEL, (collide_with_other_robots_->isChecked()));
+
+	settings.setValue(SQUARE_RADIUS, square_radius_->value());
+	settings.setValue(BOUNCE_FUNCTION_POWER, bounce_function_power_->value());
+	settings.setValue(BOUNCE_FUNCTION_MULTIPLIER, bounce_function_multiplier_->value());
 }
 
 
@@ -198,6 +205,10 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 
 	int formation_index = (settings.value(FORMATION_LABEL, "0").toInt());
 	formation_buttons_[formation_index]->toggle();
+
+	grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
+	grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
+	emit grid_length_spin_box_->valueChanged(grid_length_spin_box_->value());
 
 	sensor_range_->setValue(settings.value(SENSOR_RANGE_LABEL, "5").toDouble());
 	emit sensor_range_->valueChanged(sensor_range_->value());
@@ -245,9 +256,6 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	//separation_distance_->setValue(settings.value(SEPARATION_DISTANCE_LABEL, "100").toDouble());
 	//emit separation_distance_->valueChanged(separation_distance_->value());
 
-	grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
-	grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
-	emit grid_length_spin_box_->valueChanged(grid_length_spin_box_->value());
 
 	model_filename_->setText(settings.value(INTERIOR_MODEL_FILENAME, "interior/house interior.obj").toString());
 	emit model_filename_->textChanged(model_filename_->text());
@@ -274,14 +282,23 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	should_render_check_box_->setChecked(true);
 	emit should_render_check_box_->stateChanged(true);
 
-	slow_down_check_box_->setChecked(true);
-	emit slow_down_check_box_->stateChanged(true);
+	slow_down_check_box_->setChecked(false);
+	emit slow_down_check_box_->stateChanged(false);
 
 	neighborhood_count_->setValue(settings.value(NEIGHBORHOOD_COUNT_LABEL, "5").toInt());
 	emit neighborhood_count_->valueChanged(neighborhood_count_->value());
 
 	magic_k_spin_box_->setValue(settings.value(MAGICK_LABEL, "0.1").toDouble());
 	emit magic_k_spin_box_->valueChanged(magic_k_spin_box_->value());
+
+	square_radius_->setValue(settings.value(SQUARE_RADIUS, "4.0").toDouble());
+	emit square_radius_->valueChanged(square_radius_->value());
+
+	bounce_function_power_->setValue(settings.value(BOUNCE_FUNCTION_POWER, "3.0").toDouble());
+	emit bounce_function_power_->valueChanged(bounce_function_power_->value());
+
+	bounce_function_multiplier_->setValue(settings.value(BOUNCE_FUNCTION_MULTIPLIER, "1.0").toDouble());
+	emit bounce_function_multiplier_->valueChanged(bounce_function_multiplier_->value());
 }
 
 void FilteredStructLight::load_swarm_config_settings() {
@@ -831,7 +848,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	QGridLayout* constants_layout = new QGridLayout();
 
 
-	double max_constant_value = 1000.0;
+	double max_constant_value = 100000.0;
 
 
 
@@ -1119,6 +1136,47 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 }
 
+void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
+	QGroupBox* misc_group_box = new QGroupBox("Misc", group_box);
+	QVBoxLayout* misc_group_box_layout = new QVBoxLayout();
+
+	QLabel* square_radius_label = new QLabel("Square Radius");
+	square_radius_ = new QDoubleSpinBox(misc_group_box);
+
+	QLabel* bounce_function_power_label = new QLabel("Bounce Func. Power");
+	bounce_function_power_ = new QDoubleSpinBox(misc_group_box);
+
+	QLabel* bounce_function_multiplier_label = new QLabel("Bounce Func. Multiplier");
+	bounce_function_multiplier_ = new QDoubleSpinBox(misc_group_box);
+
+	QHBoxLayout* square_radius_layout = new QHBoxLayout();
+	square_radius_layout->addWidget(square_radius_label);
+	square_radius_layout->addWidget(square_radius_);
+
+	QHBoxLayout* bounce_function_power_layout = new QHBoxLayout();
+	bounce_function_power_layout->addWidget(bounce_function_power_label);
+	bounce_function_power_layout->addWidget(bounce_function_power_);
+
+	QHBoxLayout* bounce_function_multiplier_layout = new QHBoxLayout();
+	bounce_function_multiplier_layout->addWidget(bounce_function_multiplier_label);
+	bounce_function_multiplier_layout->addWidget(bounce_function_multiplier_);
+
+	misc_group_box_layout->addLayout(square_radius_layout);
+	misc_group_box_layout->addLayout(bounce_function_power_layout);
+	misc_group_box_layout->addLayout(bounce_function_multiplier_layout);
+
+	misc_group_box->setLayout(misc_group_box_layout);
+
+	connect(square_radius_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_square_formation_radius);
+	connect(bounce_function_power_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_bounce_function_power);
+	connect(bounce_function_multiplier_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_bounce_function_multiplier);
+	
+	QVBoxLayout* group_box_layout = new QVBoxLayout();
+	group_box_layout->addWidget(misc_group_box);
+
+	group_box->setLayout(group_box_layout);
+}
+
 void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
 	QGridLayout* grid_box_layout = new QGridLayout();
@@ -1306,7 +1364,7 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 
-	QWidget* swarm_tab = new QWidget(tab_widget);
+	QWidget* swarm_tab = new QWidget(this);
 
 	QHBoxLayout* swarm_viewer_layout = new QHBoxLayout();
 
@@ -1347,9 +1405,14 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	QGroupBox* grid_group_box = new QGroupBox("Grid", swarm_tab);
 	add_grid_options(grid_group_box);
 
+	// misc box
+	QGroupBox* misc_group_box = new QGroupBox("Misc.", swarm_tab);
+	add_misc_options(misc_group_box);
+
 	swarm_left_panel_layout->addWidget(optimization_group_box);
 	swarm_left_panel_layout->addWidget(save_group_box);
 	swarm_left_panel_layout->addWidget(flow_control_group_box);
+	swarm_left_panel_layout->addWidget(misc_group_box);
 	swarm_left_panel_layout->addWidget(interior_group_box);
 	swarm_left_panel_layout->addWidget(robots_group_box);
 	swarm_left_panel_layout->addWidget(grid_group_box);
@@ -1943,53 +2006,54 @@ void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {
 
 void FilteredStructLight::setupUi() {
 	central_widget_ = new QWidget(this);
+
 	setCentralWidget(central_widget_);
 
 	QHBoxLayout *main_layout = new QHBoxLayout();
 	central_widget_->setLayout(main_layout);
 
 
-	QTabWidget* tab_widget = new QTabWidget();
+	QTabWidget* tab_widget = new QTabWidget(central_widget_);
 	tab_widget->setTabPosition(QTabWidget::West);
 	
 	main_layout->addWidget(tab_widget);
 
 
-	QHBoxLayout* robot_viewer_layout = new QHBoxLayout();
+	//QHBoxLayout* robot_viewer_layout = new QHBoxLayout();
 
 	//main_layout->addWidget(robot_viewer_);
 
 	add_swarm_sim_tab(tab_widget);
-	add_robot_viewer_tab(tab_widget);
-	add_robot_calibration_tab(tab_widget);
+	//add_robot_viewer_tab(tab_widget);
+	//add_robot_calibration_tab(tab_widget);
 
-	connect(robot_reconstruction_, &RobotReconstruction::create_plane_with_points_and_lines,
-		robot_viewer_, &RobotViewer::create_plane_with_points_and_lines);
-	
-	connect(robot_reconstruction_, &RobotReconstruction::create_points, robot_viewer_, &RobotViewer::create_points);
-	connect(robot_reconstruction_, &RobotReconstruction::create_plane, robot_viewer_, &RobotViewer::create_plane);
+	//connect(robot_reconstruction_, &RobotReconstruction::create_plane_with_points_and_lines,
+	//	robot_viewer_, &RobotViewer::create_plane_with_points_and_lines);
+	//
+	//connect(robot_reconstruction_, &RobotReconstruction::create_points, robot_viewer_, &RobotViewer::create_points);
+	//connect(robot_reconstruction_, &RobotReconstruction::create_plane, robot_viewer_, &RobotViewer::create_plane);
 
-	connect(robot_reconstruction_, &RobotReconstruction::start_reconstruction_sequence, robot_viewer_, 
-		&RobotViewer::start_reconstruction_sequence);
-	connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_frame, robot_viewer_, 
-		&RobotViewer::create_reconstruction_frame);
+	//connect(robot_reconstruction_, &RobotReconstruction::start_reconstruction_sequence, robot_viewer_, 
+	//	&RobotViewer::start_reconstruction_sequence);
+	//connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_frame, robot_viewer_, 
+	//	&RobotViewer::create_reconstruction_frame);
 
-	connect(robot_reconstruction_, &RobotReconstruction::end_reconstruction_sequence, robot_viewer_, 
-		&RobotViewer::end_reconstruction_sequence);
+	//connect(robot_reconstruction_, &RobotReconstruction::end_reconstruction_sequence, robot_viewer_, 
+	//	&RobotViewer::end_reconstruction_sequence);
 
-	connect(robot_reconstruction_, &RobotReconstruction::create_calibration_frame, robot_viewer_, 
-		&RobotViewer::create_calibration_frame);
-	connect(robot_reconstruction_, &RobotReconstruction::create_final_calibration_frame, robot_viewer_, 
-		&RobotViewer::create_final_calibration_frame);
+	//connect(robot_reconstruction_, &RobotReconstruction::create_calibration_frame, robot_viewer_, 
+	//	&RobotViewer::create_calibration_frame);
+	//connect(robot_reconstruction_, &RobotReconstruction::create_final_calibration_frame, robot_viewer_, 
+	//	&RobotViewer::create_final_calibration_frame);
 
-	connect(robot_reconstruction_, &RobotReconstruction::start_reconstruction_sequence, this, 
-		&FilteredStructLight::start_reconstruction_sequence);
-	connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_image_list, this, 
-		&FilteredStructLight::handle_frame_filenames);
+	//connect(robot_reconstruction_, &RobotReconstruction::start_reconstruction_sequence, this, 
+	//	&FilteredStructLight::start_reconstruction_sequence);
+	//connect(robot_reconstruction_, &RobotReconstruction::create_reconstruction_image_list, this, 
+	//	&FilteredStructLight::handle_frame_filenames);
 
 
-	load_recon_settings();
-	connect_recon_line_edits_to_save_settings();
+	//load_recon_settings();
+	//connect_recon_line_edits_to_save_settings();
 
 	load_swarm_config_settings();
 	load_swarm_settings(swarm_config_filename_->text());

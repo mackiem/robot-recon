@@ -3,10 +3,31 @@
 #include "projectorwindow.h"
 #include <QtWidgets/QApplication>
 #include <QQuickView>
+#define _CRTDBG_MAP_ALLOC
+#include <stdlib.h>
+#include <crtdbg.h>
+//#include <vld.h>
 
+//#ifdef _DEBUG
+//#ifndef DBG_NEW
+//#define DBG_NEW new ( _NORMAL_BLOCK , __FILE__ , __LINE__ )
+//#define new DBG_NEW
+//#endif
+//#endif  // _DEBUG
 
-int main(int argc, char *argv[])
-{
+// Call _CrtDumpMemoryLeaks after main has returned and before program terminates.
+//struct AtExit
+//{
+//	~AtExit() {
+//		_CrtDumpMemoryLeaks();
+//	}
+//} doAtExit;
+//
+//void dump() {
+//		_CrtDumpMemoryLeaks();
+//}
+
+void run_program(int argc, char *argv[]) {
 	QApplication a(argc, argv);
 	qRegisterMetaType<FlyCapture2::Image>("FlyCapture2::Image");
 	qRegisterMetaType<FlyCapture2::Error>("FlyCapture2::Error");
@@ -17,20 +38,21 @@ int main(int argc, char *argv[])
 
 	FilteredStructLight w;
 	w.show();
+	a.exec();
+}
 
-	//ProjectorWndow projector_window;
-	//projector_window.show();
+int main(int argc, char *argv[])
+{
+	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 
-	//QQuickView view; 
-	//view.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
-	//view.showFullScreen();
-	//view.setPosition(QPoint(2960, 0));
+	//_CrtSetBreakAlloc(1144150);
+	
+	//_CrtSetBreakAlloc(1554835);
+	run_program(argc, argv);
 
-	//QQuickView view_2;
-	//view_2.setSource(QUrl("qrc:/FilteredStructLight/projector.qml"));
-	//view_2.showFullScreen();
-	//view_2.setPosition(QPoint(4250, 0));
+	//atexit(dump);
+	//float *leak = new float();
+	//printf("%f", *leak);
 
-
-	return a.exec();
+	//_CrtDumpMemoryLeaks();
 }

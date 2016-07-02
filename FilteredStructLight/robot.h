@@ -14,6 +14,7 @@ struct GridOverlay : public VisObject {
 	float grid_length_;
 	QGLShaderProgram* shader_;
 	std::map<int, cv::Vec4f> robot_color_map_;
+	std::vector<cv::Vec4f> fill_color_;
 	GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree, unsigned int grid_resolution, 
 		float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
 
@@ -56,13 +57,13 @@ protected:
 
 	bool all_goals_explored_;
 
-	float accumulator_;
+	long long last_updated_time_;
+	double accumulator_;
 	unsigned int id_;
 	glm::vec3 velocity_;
 	glm::vec3 position_;
 	long long timeout_;
 	long long last_timeout_;
-	long long last_updated_time_;
 	std::mt19937 rng_;
 	std::uniform_real_distribution<float> velocity_generator_;
 	std::uniform_int_distribution<int> position_generator_;
@@ -92,7 +93,7 @@ protected:
 	//glm::vec3 center_of_mass_;
 	std::vector<Robot*> robots_;
 	float minimum_separation_distance_;
-	float separation_distance_threshold_;
+	float separation_distance_;
 
 	// exploration force requirements
 	// location in grid for frontier calculation
@@ -121,6 +122,8 @@ protected:
 	float magic_k_;
 	int tick_tock_age_;
 	int cluster_id_;
+	std::vector<glm::ivec3> adjacent_cells_;
+	std::vector<glm::vec3> interior_cells_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;
@@ -192,8 +195,14 @@ public:
 		double sensor_range, int discovery_range, int neighborhood_count,
 		double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render, double magic_k, bool collide_with_robots);
 
+	Robot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
+	SwarmCollisionTree* collision_tree, double separation_constant, double alignment_constant,
+	double cluster_constant, double explore_constant, double sensor_range,
+	int discovery_range, double separation_distance, glm::vec3 position);
 
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
+
+	void update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position);
 
 	glm::vec3 calculate_obstacle_avoidance_direction(glm::vec3 resultant_force);
 	void set_show_forces(bool show);

@@ -135,6 +135,9 @@ private:
 	int pool_size_;
 	int current_pool_count_;
 	std::vector<std::vector<PerimeterPos>> heap_pool_;
+	float* leak_;
+	bool update_multisampling_;
+	long last_multisample_timestep_;
 
 	struct Sampling {
 		glm::ivec3 grid_cell;
@@ -144,6 +147,10 @@ private:
 
 	std::vector<Sampling>* sampling_tracker_;
 
+	std::vector<std::pair<double, int>> sampling_avg_storage_;
+
+	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_simul_samples_per_timestep_per_gridcell;
+	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_sampled_timesteps_per_gridcell;
 public:
 	bool going_through_interior_test(const glm::vec3& robot_position, const glm::vec3& point_to_test) const;
 	bool find_closest_perimeter(const glm::ivec3& robot_grid_position,
@@ -166,6 +173,7 @@ public:
 		std::vector<glm::ivec3>& perimeter_position, float range_min, float range_max);
  
 	std::set<glm::ivec3, IVec3Comparator> get_unexplored_perimeter_list();
+	int no_of_unexplored_cells();
 	std::set<glm::ivec3, IVec3Comparator> get_static_perimeter_list();
 	std::set<glm::ivec3, IVec3Comparator> get_interior_list();
 
@@ -188,6 +196,7 @@ public:
 	void mark_interior_line(glm::vec3 a, glm::vec3 b);
 	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id);
 	double calculate_multi_sampling_factor();
+	void calculate_multi_sampling();
 	static int INTERIOR_MARK;
 	static int SEARCH_VISITED;
 	static int SEARCH_NOT_VISITED;

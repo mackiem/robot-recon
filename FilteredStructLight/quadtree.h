@@ -100,6 +100,7 @@ mm::Quadtree<T>::Quadtree(unsigned resolution, T empty_value) : resolution_(reso
 template <class T>
 mm::Quadtree<T>::~Quadtree() {
 	destroy_nodes(root_);
+	delete root_;
 }
 
 template <class T>

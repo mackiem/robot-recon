@@ -6,7 +6,9 @@
 #include <memory>
 #include "swarmtree.h"
 #include <QtCore/QThread>
+#include "swarmutils.h"
 
+class ParallelMCMCOptimizer;
 class RobotWorker : public QObject {
 	Q_OBJECT
 	std::vector<Robot*> robots_;
@@ -17,6 +19,8 @@ class RobotWorker : public QObject {
 	SwarmOccupancyTree* occupancy_grid_;
 	bool sampling_updated_;
 	bool slow_down_;
+	long long last_updated_time_;
+	double accumulator_;
 	double max_time_taken_;
 public:
 	RobotWorker();
@@ -66,19 +70,11 @@ public:
 
 
 private:
-	enum Formation {
-		GRID = 0,
-		RANDOM = 1,
-		SQUARE = 2,
-		SQUARE_CLOSE_TO_EDGE = 3,
-		CIRCLE = 4
-	};
 
 	SwarmOccupancyTree* occupancy_grid_;
 	SwarmCollisionTree* collision_grid_;
 
 	bool render_;
-	std::string interior_model_filename_;
 	GLint model_loc_;
 	GLint inverse_transpose_loc_;
 	GLint mvp_loc_;
@@ -93,8 +89,6 @@ private:
 	Range obstacle_near_range_;
 	Range obstacle_far_range_;
 
-	double sensor_range_;
-	int discovery_range_;
 	double time_steps_result_;
 	double multi_sampling_result_;
 	double coverage_result_;
@@ -103,7 +97,7 @@ private:
 	bool slow_down_;
 	int neighborhood_count_;
 	bool collide_with_robots_;
-	double max_time_taken_;
+
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
@@ -123,40 +117,17 @@ private:
 	RobotWorker* robot_worker_;
 
 
-	float separation_distance_;
-	int formation_;
-	
-	//robots_spinbox_->setValue(settings.value(ROBOTS_NO_LABEL, "10").toInt());
-	//exploration_constant_->setValue(settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
-	//separation_constant_->setValue(settings.value(SEPARATION_CONSTANT_LABEL, "1").toDouble());
-	//goto_work_constant_->setValue(settings.value(GOTO_WORK_CONSTANT_LABEL, "1").toDouble());
+	ParallelMCMCOptimizer* parallel_mcmc_optimizer_;
 
-	unsigned int grid_resolution_;
-	float grid_length_;
-	//grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
-	//grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
 
-	double interior_scale_;
-	glm::vec3 interior_offset_;
 	bool show_interior_;
-	//scale_spinbox_->setValue(settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toInt());
-	//x_spin_box_->setValue(settings.value(BUILDING_OFFSET_X_LABEL, "0").toInt());
-	//y_spin_box_->setValue(settings.value(BUILDING_OFFSET_Y_LABEL, "0").toInt());
-	//z_spin_box_->setValue(settings.value(BUILDING_OFFSET_Z_LABEL, "0").toInt());
 
-	//show_interior_->setCheckState(show_interior);
-	//std::shared_ptr<SwarmOctTree> octree_test_;
 	QGLShaderProgram line_shader_;
-
-	//std::vector<VisObject> default_objects_;
-	//VisObject grid_;
-	//VisObject grid_overlay_;
 
 	bool paused_;
 	int step_count_;
 	int time_step_count_; 
 	GridOverlay* overlay_;
-	glm::mat4 model_rotation_;
 
 protected:
 
@@ -188,9 +159,17 @@ public:
 	void create_robots();
 	//void create_occupancy_grid_overlay(int grid_resolution, int grid_size, bool initialize = false);
 	void create_occupancy_grid(int grid_resolution, int grid_size);
+	void get_sim_results(double& timesteps, double& multi_sampling, double& coverage);
+
+	unsigned int grid_resolution_;
+	float grid_length_;
 	int grid_resolution_per_side_;
 	int no_of_robots_;
-	void get_sim_results(double& timesteps, double& multi_sampling, double& coverage);
+
+	std::string interior_model_filename_;
+	double interior_scale_;
+	glm::vec3 interior_offset_;
+	glm::mat4 model_rotation_;
 
 
 	double explore_constant_;
@@ -200,6 +179,16 @@ public:
 	double perimeter_constant_;
 	double alignment_constant_;
 
+	double max_time_taken_;
+	double square_radius_;
+	double bounce_function_power_;
+	double bounce_function_multiplier_;
+
+	double separation_distance_;
+	int formation_;
+
+	double sensor_range_;
+	int discovery_range_;
 signals:
 	void update_time_step_count(int count);
 	void update_sampling(double sampling);
@@ -231,6 +220,9 @@ void set_goto_work_constant(double constant);
 
 void set_show_interior(int show);
 void set_model_rotation(double x_rotation, double y_rotation, double z_rotation);
+void set_square_formation_radius(double radius);
+void set_bounce_function_power(double bounce_function_power);
+void set_bounce_function_multiplier(double bounce_function_multiplier);
 void reset_sim();
 
 void set_show_forces(int show);
