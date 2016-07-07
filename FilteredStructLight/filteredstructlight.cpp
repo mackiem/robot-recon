@@ -850,13 +850,14 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	double max_constant_value = 100000.0;
 
-
+	int precision = 6;
 
 	QLabel* separation_label = new QLabel("Separation", group_box);
 	separation_constant_ = new QDoubleSpinBox(group_box);
 	separation_constant_->setMinimum(0.0);
 	separation_constant_->setMaximum(max_constant_value);
 	separation_constant_->setSingleStep(0.1);
+	separation_constant_->setDecimals(precision);
 
 	constants_layout->addWidget(separation_label, 1, 0);
 	constants_layout->addWidget(separation_constant_, 1, 1);
@@ -866,6 +867,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	alignment_constant_->setMinimum(0.0);
 	alignment_constant_->setMaximum(max_constant_value);
 	alignment_constant_->setSingleStep(0.1);
+	alignment_constant_->setDecimals(precision);
 
 	constants_layout->addWidget(alignment_label, 2, 0);
 	constants_layout->addWidget(alignment_constant_, 2, 1);
@@ -875,6 +877,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	cluster_constant_->setMinimum(0.0);
 	cluster_constant_->setMaximum(max_constant_value);
 	cluster_constant_->setSingleStep(0.1);
+	cluster_constant_->setDecimals(precision);
 
 	constants_layout->addWidget(cluster_label, 3, 0);
 	constants_layout->addWidget(cluster_constant_, 3, 1);
@@ -893,6 +896,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	exploration_constant_->setMinimum(0.0);
 	exploration_constant_->setMaximum(max_constant_value);
 	exploration_constant_->setSingleStep(0.1);
+	exploration_constant_->setDecimals(precision);
 
 	constants_layout->addWidget(exploration_label, 0, 0);
 	constants_layout->addWidget(exploration_constant_, 0, 1);
@@ -903,7 +907,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	goto_work_constant_->setMinimum(0.0);
 	goto_work_constant_->setMaximum(max_constant_value);
 	goto_work_constant_->setSingleStep(0.001);
-	goto_work_constant_->setDecimals(5);
+	goto_work_constant_->setDecimals(precision);
 
 
 	goto_work_label->hide();

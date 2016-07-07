@@ -547,9 +547,9 @@ double ParallelMCMCOptimizer::perturb_value(double current_value, double tempera
 
 	std::random_device rd;
 	std::mt19937 mt(rd());
-	std::normal_distribution<> normal_distribution(current_value, temperatures_[temperature]);
+	std::normal_distribution<> normal_distribution(current_value, temperature);
 
-	double perterbed_val = 0.0;
+	double perterbed_val;
 	perterbed_val = normal_distribution(mt);
 
 	perterbed_val = std::max(min, std::min(max, perterbed_val));
@@ -592,9 +592,11 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 	double best_score = best_results_map_[temperature][thread_id].score;
 	double current_score = current_results_map_[temperature][thread_id].score;
 
+
 	if (next_score > best_score) {
 		best_results_map_[temperature][thread_id] = next_results_map_[temperature][thread_id];
 	}
+	result_progression_map_[temperature][thread_id].push_back(next_results_map_[temperature][thread_id]);
 
 	double uniform_random_value = init_value(0.0, 1.0);
 
@@ -607,16 +609,50 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 
 	Params current_params = current_results_map_[temperature][thread_id];
 
-	seperation_constant = perturb_value(current_params.separation_constant, temperature, 0.0, 10.0);
-	alignment_constant = perturb_value(current_params.alignment_constant, temperature, 0.0, 10.0);
-	cluster_constant = perturb_value(current_params.cluster_constant, temperature, 0.0, 10.0);
-	explore_constant = perturb_value(current_params.explore_constant, temperature, 0.0, 10.0);
+
+	// randomly pick a parameter
+	int no_of_params_to_perturb;
+	std::random_device rd;
+	std::mt19937 mt(rd());
+	std::uniform_int_distribution<> uniform_int_distribution(1, 2);
+	
+	int param_index = uniform_int_distribution(mt);
+
+	seperation_constant = current_params.separation_constant;
+	alignment_constant = current_params.alignment_constant;
+	cluster_constant = current_params.cluster_constant;
+	explore_constant = current_params.explore_constant;
+
+	//print_result(current_params, std::cout);
+
+	switch (param_index) {
+	case 0: {
+		seperation_constant = perturb_value(current_params.separation_constant, temperatures_[temperature], 0.0, 10.0);
+		break;
+	}
+	case 1: {
+		alignment_constant = perturb_value(current_params.alignment_constant, temperatures_[temperature], 0.0, 3.0);
+		break;
+	}
+	case 2: {
+		cluster_constant = perturb_value(current_params.cluster_constant, temperatures_[temperature], 0.0, 5.0);
+		break;
+	}
+	case 3: {
+		explore_constant = perturb_value(current_params.explore_constant, temperatures_[temperature], 0.0, 10.0);
+		break;
+	}
+	}
+
 
 	Params next_params = current_params;
 	next_params.separation_constant = seperation_constant;
 	next_params.alignment_constant = alignment_constant;
 	next_params.cluster_constant = cluster_constant;
 	next_params.explore_constant = explore_constant;
+
+	//print_result(next_params, std::cout);
+	//std::cout << " current and next\n";
 
 	next_results_map_[temperature][thread_id] = next_params;
 
@@ -634,32 +670,51 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 
 }
 
-void ParallelMCMCOptimizer::refill_queue_with_next_mcmc(int iteration) {
+void ParallelMCMCOptimizer::refill_queue_with_single_next_mcmc_thread(int temperature, int thread_id, int iteration) {
 
 	int next_iteration = ++iteration;
-	for (int temperature = 0; temperature < temperatures_.size(); ++temperature) {
-		// start no_of_threads
-		for (int thread_id = 0; thread_id < no_of_threads_per_temperature; ++thread_id) {
+	//for (int temperature = 0; temperature < temperatures_.size(); ++temperature) {
+	//	// start no_of_threads
+	//	for (int thread_id = 0; thread_id < no_of_threads_per_temperature; ++thread_id) {
 			auto simulator_thread = get_next_mcmc(temperature, thread_id, next_iteration);
 			simulator_threads_work_queue_.push_back(simulator_thread);
-		}
-	}
+	//	}
+	//}
 
 }
 
-void ParallelMCMCOptimizer::print_result(const Params& params) {
-			std::cout << "separation : " << params.separation_constant << "\n"
-				<< "alignment : " << params.alignment_constant << "\n"
-				<< "cluster : " << params.cluster_constant << "\n"
-				<< "explore : " << params.explore_constant << "\n"
-				<< "separation distance : " << params.seperation_distance << "\n"
-				<< "time taken: " << params.time_taken << "\n"
-				<< "simult sampling : " << params.simultaneous_sampling << "\n";
+void ParallelMCMCOptimizer::print_result_header(std::ostream& stream) {
+	stream << "temperature,thread_id,separation,alignment,cluster,explore,separation_distance,time_taken,simult_sampling,score\n";
+}
 
-	
+void ParallelMCMCOptimizer::print_result(const Params& params, std::ostream& stream) {
+	//stream << "separation : " << params.separation_constant << "\n"
+	//	<< "alignment : " << params.alignment_constant << "\n"
+	//	<< "cluster : " << params.cluster_constant << "\n"
+	//	<< "explore : " << params.explore_constant << "\n"
+	//	<< "separation distance : " << params.seperation_distance << "\n"
+	//	<< "time taken: " << params.time_taken << "\n"
+	//	<< "simult sampling : " << params.simultaneous_sampling << "\n";
+
+	stream << params.group_id << ","
+		<< params.thread_id << ","
+		<< params.separation_constant << ","
+		<< params.alignment_constant << ","
+		<< params.cluster_constant << ","
+		<< params.explore_constant << ","
+		<< params.seperation_distance << ","
+		<< params.time_taken << ","
+		<< params.simultaneous_sampling << ","
+		<< params.score << "\n";
 }
 
 void ParallelMCMCOptimizer::print_results() {
+
+	auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+	std::ofstream file("mcmc_results_" + std::to_string(timestamp) + ".csv");
+
+	print_result_header(file);
+	print_result_header(std::cout);
 
 	double best_score = 0.0;
 	Params best_params;
@@ -670,22 +725,50 @@ void ParallelMCMCOptimizer::print_results() {
 				best_score = params.score;
 				best_params = params;
 			}
-			print_result(params);
+			print_result(params, std::cout);
+			print_result(params, file);
+			std::cout << "\n";
+			file.flush();
 		}
 	}
+
 	std::cout << "Best params : \n";
-	print_result(best_params);
+	file << "Best params : \n";
+	print_result(best_params, std::cout);
+	print_result(best_params, file);
 	
 }
 
-void ParallelMCMCOptimizer::refill_queue(int iteration) {
-	if (iteration > total_iterations_) {
+void ParallelMCMCOptimizer::print_progression_results() {
+
+	auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+	std::ofstream file("mcmc_progression_results_" + std::to_string(timestamp) + ".csv");
+
+	print_result_header(file);
+	//print_result_header(std::cout);
+
+	for (auto& group_entry : result_progression_map_) {
+		for (auto& thread_entry : group_entry.second) {
+			auto params_vector = thread_entry.second;
+			for (auto& params : params_vector) {
+				//print_result(params, std::cout);
+				print_result(params, file);
+			}
+			std::cout << "\n";
+			file.flush();
+		}
+	}
+	
+}
+
+void ParallelMCMCOptimizer::refill_queue(int temperature, int thread_id, int iteration) {
+	if (iteration >= total_iterations_) {
 		// print best results
 		std::cout << "Print best results\n";
-	} else if (iteration % culling_iterations_ == 0 && iteration > 1) {
+	} else if (iteration % culling_iterations_ == 0 && current_working_threads_ == 0) {
 		cull_and_refill_queue(iteration);
-	} else {
-		refill_queue_with_next_mcmc(iteration);
+	} else if (iteration % culling_iterations_ != 0){
+		refill_queue_with_single_next_mcmc_thread(temperature, thread_id, iteration);
 	}
 }
 
@@ -693,7 +776,7 @@ double ParallelMCMCOptimizer::calculate_score(Params params, int case_no) {
 	double score = 0.0;
 	switch (case_no) {
 	case TIME_ONLY: {
-		score += ((swarm_viewer_->max_time_taken_ + 100) - params.time_taken) / (swarm_viewer_->max_time_taken_ + 100);
+		score += (double)((swarm_viewer_->max_time_taken_ + 100) - params.time_taken) / (double)(swarm_viewer_->max_time_taken_ + 100);
 		break;
 	}
 	case SIMUL_SAMPLING_ONLY: {
@@ -720,6 +803,20 @@ ParallelMCMCOptimizer::~ParallelMCMCOptimizer() {
 	delete bridge_;
 }
 
+void ParallelMCMCOptimizer::start_thread() {
+		auto sim_thread = simulator_threads_work_queue_.front();
+		connect(sim_thread,
+			SIGNAL(send_sim_results(int, int, int, double, double, double, double, double, double, double, double, double)),
+			this,
+			SLOT(restart_work(int, int, int, double, double, double, double, double, double, double, double, double)));
+
+		current_working_threads_++;
+		sim_thread->reset_sim();
+		thread_pool_.start(sim_thread);
+
+		simulator_threads_work_queue_.pop_front();
+}
+
 void ParallelMCMCOptimizer::run_optimizer() {
 	// decide on temperatures
 	// decide on initialization points
@@ -727,29 +824,34 @@ void ParallelMCMCOptimizer::run_optimizer() {
 	// as thread finishes work, start new thread with perturb, store points in a priority queue
 	// if thread performance is bad, start with new init point
 
-	temperatures_.push_back(0.01f);
-	temperatures_.push_back(0.02f);
-	temperatures_.push_back(0.05f);
+	temperatures_.push_back(0.25f);
+	temperatures_.push_back(0.5f);
+	temperatures_.push_back(1.f);
+	temperatures_.push_back(2.f);
+	temperatures_.push_back(3.f);
 
 
 	no_of_threads_per_temperature = 10;
 
-	total_iterations_ = 100;
-	culling_iterations_ = 2;
+	total_iterations_ = 30;
+	culling_iterations_ = 5;
 	cull_threshold_ = 0.2;
 
 
 	// init threads, data structs
 	for (int temperature = 0; temperature < temperatures_.size(); ++temperature) {
 		for (int thread_id = 0; thread_id < no_of_threads_per_temperature; ++thread_id) {
-			auto simulator_thread = init_mcmc_thread(temperature, thread_id, 0);
+			auto simulator_thread = init_mcmc_thread(temperature, thread_id, 1);
 			simulator_threads_work_queue_.push_back(simulator_thread);
 
 			Params params;
 			params.score = 0.0;
+			params.group_id = temperature;
+			params.thread_id = thread_id;
+
 			current_results_map_[temperature][thread_id] = params;
 			best_results_map_[temperature][thread_id] = params;
-
+			result_progression_map_[temperature][thread_id].push_back(best_results_map_[temperature][thread_id]);
 		}
 	}
 
@@ -766,22 +868,11 @@ void ParallelMCMCOptimizer::run_optimizer() {
 	std::cout << "ideal thread count : " << QThread::idealThreadCount() << "\n";
 
 	auto sim_itr = simulator_threads_work_queue_.begin();
-	for (int i = 0; i < QThread::idealThreadCount(); ++i) {
-		auto sim_thread = simulator_threads_work_queue_.front();
-		connect(sim_thread,
-			SIGNAL(send_sim_results(int, int, int, double, double, double, double, double, double, double, double, double)),
-			this,
-			SLOT(restart_work(int, int, int, double, double, double, double, double, double, double, double, double)));
-	//connect(sim_thread,
-	//	&SimulatorThread::send_sim_results,
-	//	this,
-	//	&ParallelMCMCOptimizer::restart_work);
 
-		//bridge_->start_thread(sim_thread);
-		sim_thread->reset_sim();
-		thread_pool_.start(sim_thread);
+	current_working_threads_ = 0;
 
-		simulator_threads_work_queue_.pop_front();
+	for (int i = 0; i < 2 * QThread::idealThreadCount() && simulator_threads_work_queue_.size() > 0; ++i) {
+		start_thread();
 	}
 
 	//QEventLoop loop;
@@ -892,7 +983,7 @@ Params ParallelMCMCOptimizer::create_params(int group_id, int thread_id, int ite
 //}
 
 //void ParallelMCMCOptimizer::restart_work(int group_id, int thread_id, int iteration) {
-void ParallelMCMCOptimizer::restart_work(int group_id, int thread_id, int iteration, 
+void ParallelMCMCOptimizer::restart_work(int temperature, int thread_id, int iteration, 
 	double seperation_constant, double alignment_constant, double cluster_constant, double explore_constant, 
 	double seperation_distance, double simultaneous_sampling, double time_taken, double occlusion, double coverage) {
 
@@ -900,40 +991,80 @@ void ParallelMCMCOptimizer::restart_work(int group_id, int thread_id, int iterat
 
 	work_queue_lock_.lock();
 
+	current_working_threads_--;
 	//Params next_params = create_params(group_id, thread_id, iteration, 0, 0, 0, 0, 0, 0, 0, 0, 0);
-	Params next_params = create_params(group_id, thread_id, iteration,
+	Params next_params = create_params(temperature, thread_id, iteration,
 		 seperation_constant,  alignment_constant,  cluster_constant,  explore_constant,
 		 seperation_distance,  simultaneous_sampling,  time_taken,  occlusion,  coverage);
 
-	next_params.score = calculate_score(next_params, TIME_ONLY);
+	//next_params.score = calculate_score(next_params, TIME_ONLY);
+	next_params.score = calculate_score(next_params, SIMUL_SAMPLING_ONLY);
+
 	//std::cout << "score : " << next_params.score << "\n";
-	next_results_map_[group_id][thread_id] = next_params;
+	next_results_map_[temperature][thread_id] = next_params;
 
-	if (simulator_threads_work_queue_.size() == 0) {
-		refill_queue(iteration);
+	//result_progression_map_[temperature][thread_id].push_back(next_results_map_[temperature][thread_id]);
+
+
+	if (iteration >= total_iterations_) {
+		if (simulator_threads_work_queue_.size() > 0) {
+			start_thread();
+		}
+	} else if (iteration % culling_iterations_ == 0) {
+		if (current_working_threads_ == 0) {
+			cull_and_refill_queue(iteration);
+			for (int i = 0; i < 2 * QThread::idealThreadCount() && simulator_threads_work_queue_.size() > 0; ++i) {
+				start_thread();
+			}
+		}
+		else {
+			if (simulator_threads_work_queue_.size() > 0) {
+				start_thread();
+			}
+		}
+	} else if (iteration % culling_iterations_ != 0){
+		refill_queue_with_single_next_mcmc_thread(temperature, thread_id, iteration);
+		start_thread();
 	}
 
-	if (simulator_threads_work_queue_.size() > 0) {
-		auto sim_thread = simulator_threads_work_queue_.front();
-		connect(sim_thread,
-			SIGNAL(send_sim_results(int, int, int, double, double, double, double, double, double, double, double, double)),
-			this,
-			SLOT(restart_work(int, int, int, double, double, double, double, double, double, double, double, double)));
-		//connect(sim_thread,
-		//	&SimulatorThread::send_sim_results,
-		//	this,
-		//	&ParallelMCMCOptimizer::restart_work);
 
-		sim_thread->reset_sim();
-		thread_pool_.start(sim_thread);
-		simulator_threads_work_queue_.pop_front();
-	} else {
+
+	//if (simulator_threads_work_queue_.size() == 0) {
+	//	refill_queue(temperature, thread_id, iteration);
+	//}
+
+	//if (simulator_threads_work_queue_.size() > 0) {
+	//	if (current_working_threads_ == 0) {
+	//		for (int i = 0; i < 2 * QThread::idealThreadCount() && simulator_threads_work_queue_.size() > 0; ++i) {
+	//			start_thread();
+	//		}
+	//	} else {
+	//		start_thread();
+	//	//std::cout << "No. of active threads : " << thread_pool_.activeThreadCount() << "\n";
+	//	}
+	//} 	
+	//if (current_working_threads_ == 0 && simulator_threads_work_queue_.size() == 0) {
+	//	print_results();
+	//	print_progression_results();
+	//	std::cout << "Work done!\n No. of active threads : " << thread_pool_.activeThreadCount() << "\n";
+	//}
+
+	if (current_working_threads_ == 0 && simulator_threads_work_queue_.size() == 0) {
 		print_results();
-		std::cout << "Work done!\n";
+		print_progression_results();
+		std::cout << "Work done!\n No. of active threads : " << thread_pool_.activeThreadCount() << "\n";
+		thread_pool_.waitForDone();
 		emit finished();
-	}
-	
+	}	
+
+	std::cout << "No. of active threads : " << thread_pool_.activeThreadCount() << "\n";
+	std::cout << "Current working threads : " << current_working_threads_ << "\n";
+	std::cout << "Queue size : " << simulator_threads_work_queue_.size() << "\n";
 	work_queue_lock_.unlock();
+
+
+
+
 
 }
 

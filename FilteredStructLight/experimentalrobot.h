@@ -25,7 +25,7 @@ public:
 		SwarmCollisionTree* collision_tree, double separation_constant, double alignment_constant,
 		double cluster_constant, double explore_constant, double sensor_range,
 		int discovery_range, double separation_distance, glm::vec3 position,
-		double square_radius, double bounce_function_power, double bounce_function_multiplier, bool collide_with_robots);
+		double square_radius, double bounce_function_power, double bounce_function_multiplier, bool collide_with_robots, bool render, QGLShaderProgram* shader);
 
 
 

@@ -1215,12 +1215,16 @@ void SwarmViewer::create_robots() {
 		//robot.mesh_.push_back(robot_mesh[0]);
 		//robots_.push_back(robot);
 
+		//Robot* robot = new ExperimentalRobot(uniform_locations_, 
+		//	i, occupancy_grid_, collision_grid_, explore_constant_, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_,
+		//	goto_work_constant_,
+		//	explore_range_, separation_range_, alignment_range_, cluster_range_, perimeter_range_, obstacle_near_range_,
+		//	obstacle_far_range_, sensor_range_, discovery_range_, neighborhood_count_,
+		//	separation_distance_, robot_positions[i], &m_shader, render_, magic_k_, collide_with_robots_, square_radius_, bounce_function_power_, bounce_function_multiplier_);
 		Robot* robot = new ExperimentalRobot(uniform_locations_, 
-			i, occupancy_grid_, collision_grid_, explore_constant_, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_,
-			goto_work_constant_,
-			explore_range_, separation_range_, alignment_range_, cluster_range_, perimeter_range_, obstacle_near_range_,
-			obstacle_far_range_, sensor_range_, discovery_range_, neighborhood_count_,
-			separation_distance_, robot_positions[i], &m_shader, render_, magic_k_, collide_with_robots_, square_radius_, bounce_function_power_, bounce_function_multiplier_);
+			i, occupancy_grid_, collision_grid_,  separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
+			sensor_range_, discovery_range_, 
+			separation_distance_, robot_positions[i], square_radius_, bounce_function_power_, bounce_function_multiplier_, false, render_, &m_shader);
 
 		robot->mesh_.push_back(robot_mesh[0]);
 		robots_.push_back(robot);

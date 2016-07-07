@@ -169,6 +169,7 @@ public:
 	void calculate_separation_force(const std::vector<int>& other_robots, const std::vector<glm::vec3>& interior_cells);
 	void calculate_perimeter_force(const std::vector<glm::vec3>& interior_cells);
 	void calculate_work_force();
+	void init();
 	void calculate_cluster_force(const std::vector<int>& other_robots);
 	void calculate_alignment_force(const std::vector<int>& other_robots);
 	void init_force_visualization(const int& mesh_id, const glm::vec3& force, const cv::Vec4f& color);
@@ -198,7 +199,7 @@ public:
 	Robot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
 	SwarmCollisionTree* collision_tree, double separation_constant, double alignment_constant,
 	double cluster_constant, double explore_constant, double sensor_range,
-	int discovery_range, double separation_distance, glm::vec3 position);
+	int discovery_range, double separation_distance, glm::vec3 position, bool render, QGLShaderProgram* shader);
 
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
 

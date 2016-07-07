@@ -30,10 +30,10 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	SwarmCollisionTree* collision_tree, double separation_constant, double alignment_constant,
 	double cluster_constant, double explore_constant, double sensor_range,
 	int discovery_range, double separation_distance, glm::vec3 position,
-	double square_radius, double bounce_function_power, double bounce_function_multiplier, bool collide_with_robots)
+	double square_radius, double bounce_function_power, double bounce_function_multiplier, bool collide_with_robots, bool render, QGLShaderProgram* shader)
 
 	: Robot(locations, id, octree, collision_tree,  separation_constant,
-	alignment_constant, cluster_constant, explore_constant,sensor_range, discovery_range, separation_distance, position),  
+	alignment_constant, cluster_constant, explore_constant,sensor_range, discovery_range, separation_distance, position, render, shader),  
 	square_radius_(square_radius), bounce_function_power_(bounce_function_power), 
 	bounce_function_multiplier_(bounce_function_multiplier)
 {
@@ -41,6 +41,7 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	max_velocity_ = 4.f;
 	robot_radius_ = 11.85f;
 	previous_no_of_explored_cells_ = -1;
+	explore_range_ = Range(0, occupancy_grid_->get_grid_resolution_per_side() * 1.414);
 }
 
 
@@ -175,7 +176,7 @@ glm::vec3 ExperimentalRobot::calculate_clustering_velocity() {
 		pc = position_;
 	}
 
-	float normalizing_constant = std::pow(glm::length(pc - position_) / 200.f, 2);
+	float normalizing_constant = std::pow(glm::length(pc - position_) / (sensor_range_ * 1.414 * occupancy_grid_->get_grid_cube_length()), 2);
 	//glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) / 10.f;
 	glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) * cluster_constant_;
 	return cluster_velocity;

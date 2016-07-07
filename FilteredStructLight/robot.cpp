@@ -90,6 +90,43 @@ void Robot::calculate_work_force() {
 	work_force_ = glm::vec3(0.f, 0.f, 0.f);
 }
 
+void Robot::init() {
+	position_.y = 10.f;
+
+	collision_grid_->insert(id_, occupancy_grid_->map_to_grid(position_));
+	previous_position_ = position_;
+
+	robot_radius_ = 11.f;
+	mass_ = 10;
+	max_velocity_ = 50;
+
+	current_neighborhood_count_ = 0;
+	
+
+	tick_tock_age_ = 0;
+	init_coverage_map();
+
+	cv::Vec4f green(0.f, 1.f, 0.f, 1.f);
+	cv::Vec4f red(1.f, 0.f, 0.f, 1.f);
+	cv::Vec4f yellow(1.f, 1.f, 0.f, 1.f);
+	cv::Vec4f blue(0.f, 0.f, 1.f, 1.f);
+	cv::Vec4f black(0.f, 0.f, 0.f, 1.f);
+	cv::Vec4f orange = (cv::Vec4f(255.f, 131.f, 0.f, 255.f)) / 255.f;
+	cv::Vec4f cyan = cv::Vec4f(0.f, 255.f, 204.f, 255.f) / 255.f;
+
+
+	if (render_) {
+		init_force_visualization(0, explore_force_, blue);
+		init_force_visualization(1, separation_force_, green);
+		init_force_visualization(2, resultant_force_, black);
+		init_force_visualization(3, perimeter_force_, yellow);
+		init_force_visualization(4, cluster_force_, cyan);
+		init_force_visualization(5, alignment_force_, orange);
+	}
+
+	
+}
+
 Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, 
 	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
 	Range explore_range, Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range, Range obstacle_avoidance_near_range, 
@@ -111,21 +148,8 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	separation_distance_(separation_distance), occupancy_grid_(octree),  
 	collision_grid_(collision_tree), shader_(shader), render_(render), collide_with_robots_(collide_with_robots) {
 
-	position_.y = 10.f;
 
-	collision_grid_->insert(id_, occupancy_grid_->map_to_grid(position_));
-	previous_position_ = position_;
-
-	robot_radius_ = 11.f;
-	mass_ = 10;
-	max_velocity_ = 50;
-
-	current_neighborhood_count_ = 0;
-	
-	magic_k_ = occupancy_grid_->get_grid_cube_length() * magic_k;
-
-	tick_tock_age_ = 0;
-
+	init();
 	//sensor_range_ = 5;
 
 	//separation_range_ = Range(0, 1);
@@ -135,31 +159,14 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	//perimeter_range_ = Range(1, 4);
 	//explore_range_ = Range(4, 10); // extends to infininty
 
+	magic_k_ = occupancy_grid_->get_grid_cube_length() * magic_k;
+
 	attraction_distance_threshold_ = separation_distance_ + 10;
 
 	distance_to_goal_threshold_ = 5.f;
 
 	travelling_in_bound_ = false;
 
-	cv::Vec4f green(0.f, 1.f, 0.f, 1.f);
-	cv::Vec4f red(1.f, 0.f, 0.f, 1.f);
-	cv::Vec4f yellow(1.f, 1.f, 0.f, 1.f);
-	cv::Vec4f blue(0.f, 0.f, 1.f, 1.f);
-	cv::Vec4f black(0.f, 0.f, 0.f, 1.f);
-	cv::Vec4f orange = (cv::Vec4f(255.f, 131.f, 0.f, 255.f)) / 255.f;
-	cv::Vec4f cyan = cv::Vec4f(0.f, 255.f, 204.f, 255.f) / 255.f;
-
-
-	if (render_) {
-		init_force_visualization(0, explore_force_, blue);
-		init_force_visualization(1, separation_force_, green);
-		init_force_visualization(2, resultant_force_, black);
-		init_force_visualization(3, perimeter_force_, yellow);
-		init_force_visualization(4, cluster_force_, cyan);
-		init_force_visualization(5, alignment_force_, orange);
-	}
-
-	init_coverage_map();
 
 
 	// create pool
@@ -196,12 +203,16 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 Robot::Robot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
 	SwarmCollisionTree* collision_tree, double separation_constant, double alignment_constant,
 	double cluster_constant, double explore_constant, double sensor_range,
-	int discovery_range, double separation_distance, glm::vec3 position): VisObject(locations),  id_(id), position_(position),  
+	int discovery_range, double separation_distance, glm::vec3 position, bool render, QGLShaderProgram* shader): VisObject(locations),  id_(id), position_(position),  
 	sensor_range_(sensor_range), discovery_range_(discovery_range), 
 	explore_constant_(explore_constant), separation_constant_(separation_constant), alignment_constant_(alignment_constant),
 	cluster_constant_(cluster_constant), separation_distance_(separation_distance), occupancy_grid_(octree),  
-	collision_grid_(collision_tree), collide_with_robots_(false) {
+	collision_grid_(collision_tree), collide_with_robots_(false), render_(render), shader_(shader), 
+	all_goals_explored_(false),
+	accumulator_(0.f), timeout_(5000), last_timeout_(0),
+	last_updated_time_(-1) {
 
+	init();
 	heap_pool_ = new std::vector<std::vector<glm::ivec3>>();
 }
 

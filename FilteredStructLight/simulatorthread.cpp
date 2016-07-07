@@ -42,7 +42,7 @@ void SimulatorThread::create_robots() {
 		Robot* robot = new ExperimentalRobot(uniform_locations_, 
 			i, occupancy_grid_, collision_grid_,  separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
 			sensor_range_, discovery_range_, 
-			separation_distance_, robot_positions[i], square_radius_, bounce_function_power_, bounce_function_multiplier_, false);
+			separation_distance_, robot_positions[i], square_radius_, bounce_function_power_, bounce_function_multiplier_, false, false, nullptr);
 
 		//robot->mesh_.push_back(robot_mesh[0]);
 		robots_.push_back(robot);
@@ -575,8 +575,7 @@ void SimulatorThread::reset_sim() {
 	//shutdown_worker();
 	cleanup();
 
-	//set_model_rotation(-90.f, 0.f, -90.f);
-	//sim_results_updated_ = false;
+	aborted_ = false;
 	time_step_count_ = 0;
 
 	//render_ = gui_render_;
@@ -638,18 +637,17 @@ void SimulatorThread::reset_sim() {
 }
 
 void SimulatorThread::finish_work() {
+	std::random_device rd;
+	std::mt19937 mt(rd());
+	//std::normal_distribution<> normal_distribution(0.0, 1.0);
+	std::uniform_real_distribution<> uniform_real_distribution(0, 1);
+	//double simultaneous_sampling = uniform_real_distribution(mt);
 	double simultaneous_sampling = occupancy_grid_->calculate_multi_sampling_factor();
 	double occlusion = 0.0;
 	//double coverage = calculate_coverage();
 	double coverage = 0.0;
 	//bridge_->update_sim_results(group_id_, thread_id_, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
 	//	separation_distance_, simultaneous_sampling, time_step_count_, occlusion, coverage, iteration_);
-
-	std::random_device rd;
-	std::mt19937 mt(rd());
-	std::uniform_real_distribution<> uniform_real_distribution(0, 10);
-
-	time_step_count_ = uniform_real_distribution(mt);
 
 	//emit send_sim_results(group_id_, thread_id_, iteration_);
 	emit send_sim_results(group_id_, thread_id_, iteration_, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
@@ -672,12 +670,16 @@ void SimulatorThread::run() {
 		}
 		for (auto& robot : robots_) {
 			robot->update(time_step_count_);
+			if (time_step_count_ % 200 == 0 && robot->get_id() == 0) {
+				//std::cout << "Thread id : "  << thread_id_ << " Robot id: "<< robot->get_id() << " " << time_step_count_ << " " << occupancy_grid_->no_of_unexplored_cells() << "\n";
+				//SwarmUtils::print_vector("position", robot->get_position());
+			}
 		}
 		time_step_count_++;
 		//QCoreApplication::processEvents();
 	}
+	//finish_work();
 	std::cout << "Ending : " << group_id_ << " " << thread_id_ << " " << iteration_ << "\n";
-	finish_work();
 }
 
 void SimulatorThread::abort() {

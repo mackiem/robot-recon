@@ -91,23 +91,28 @@ class ParallelMCMCOptimizer : public QObject {
 	std::unordered_map<int, std::unordered_map<int, Params>> best_results_map_;
 	std::unordered_map<int, std::unordered_map<int, Params>> current_results_map_;
 	std::unordered_map<int, std::unordered_map<int, Params>> next_results_map_;
+	std::unordered_map<int, std::unordered_map<int, std::vector<Params>>> result_progression_map_;
 
 	float cull_threshold_;
 	std::vector<float> temperatures_;
 	BridgeObject* bridge_;
+	int current_working_threads_;
 public:
 	double init_value(double min, double max);
 	double perturb_value(double current_value, double temperature, double min, double max);
 	SimulatorThread* init_mcmc_thread(int temperature, int thread_id, int iteration);
 	SimulatorThread* get_next_mcmc(int temperature, int thread_id, int iteration);
-	void refill_queue_with_next_mcmc(int iteration);
-	void print_result(const Params& params);
+	void refill_queue_with_single_next_mcmc_thread(int temperature, int thread_id, int iteration);
+	void print_result_header(std::ostream& stream);
+	void print_result(const Params& params, std::ostream& stream);
 	void print_results();
-	void refill_queue(int iteration);
+	void print_progression_results();
+	void refill_queue(int temperature, int thread_id, int iteration);
 	double calculate_score(Params params, int case_no);
 
 	void set_viewer(SwarmViewer* swarm_viewer);
 	virtual ~ParallelMCMCOptimizer();
+	void start_thread();
 public slots:
 	void run_optimizer();
 	void cull_and_refill_queue(int iteration);
