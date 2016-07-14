@@ -251,54 +251,112 @@ glm::vec3 ExperimentalRobot::calculate_explore_velocity() {
 	previous_no_of_explored_cells_ = explored_cells;
 
 
+	for (auto& interior_center : interior_cells_) {
 
-	float x_max, y_max, z_max;
-	float x_min, y_min, z_min;
-	float outer_boundary = 2.5f;
-	x_min = y_min = z_min = occupancy_grid_->get_grid_cube_length() * outer_boundary;
-	x_max = y_max = z_max = occupancy_grid_->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - outer_boundary);
+		float x_max, y_max, z_max;
+		float x_min, y_min, z_min;
 
-	float x_wall_max, y_wall_max, z_wall_max;
-	float x_wall_min, y_wall_min, z_wall_min;
+		float outer_boundary = 2.0f;
 
-	float inner_boundary = 1.5f;
-	x_wall_min = y_wall_min = z_wall_min = occupancy_grid_->get_grid_cube_length() * inner_boundary;
-	x_wall_max = y_wall_max = z_wall_max = occupancy_grid_->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - inner_boundary);
-	
+		x_min = interior_center.x - (occupancy_grid_->get_grid_cube_length() * outer_boundary);
+		z_min = interior_center.z - (occupancy_grid_->get_grid_cube_length() * outer_boundary);
 
-	glm::vec3 v;
-	//float power = 3.0f;
+		x_max = interior_center.x + (occupancy_grid_->get_grid_cube_length() * outer_boundary);
+		z_max = interior_center.z + (occupancy_grid_->get_grid_cube_length() * outer_boundary);
+			
+		float x_wall_max, y_wall_max, z_wall_max;
+		float x_wall_min, y_wall_min, z_wall_min;
 
-	float normalizingConstant = (outer_boundary - inner_boundary) * occupancy_grid_->get_grid_cube_length();
-	if (position_.x <= x_min) {
-		float dist = 1.0 - std::abs(position_.x - x_wall_min) / normalizingConstant;  // ranges 0 to 1
-		dist = pow(dist, bounce_function_power_);
-		float bounce_velocity = max_velocity_ * dist;
-		v.x = bounce_velocity;
+		float inner_boundary = 1.0f;
+		x_wall_min = interior_center.x - (occupancy_grid_->get_grid_cube_length() * inner_boundary);
+		z_wall_min = interior_center.z - (occupancy_grid_->get_grid_cube_length() * inner_boundary);
+
+		x_wall_max = interior_center.x + (occupancy_grid_->get_grid_cube_length() * inner_boundary);
+		z_wall_max = interior_center.z + (occupancy_grid_->get_grid_cube_length() * inner_boundary);
+
+		glm::vec3 v;
+		//float power = 3.0f;
+
+		float normalizingConstant = (outer_boundary - inner_boundary) * occupancy_grid_->get_grid_cube_length();
+		if (position_.x >= x_min && position_.x <= interior_center.x) {
+			float dist = 1.0 - std::abs(position_.x - x_wall_min) / normalizingConstant;  // ranges 0 to 1
+			dist = pow(dist, bounce_function_power_);
+			float bounce_velocity = -max_velocity_ * dist;
+			v.x = bounce_velocity;
+		}
+		else if (position_.x <= x_max && position_.x >= interior_center.x) {
+			float dist = 1.0 - std::abs(position_.x - x_wall_max) / normalizingConstant;  // ranges 0 to 1
+			dist = pow(dist, bounce_function_power_);
+			float bounce_velocity = max_velocity_ * dist;
+			v.x = bounce_velocity;
+		}
+
+		if (position_.z >= z_min && position_.z <= interior_center.z) {
+			float dist = 1.0 - std::abs(position_.z - z_wall_min) / normalizingConstant;  // ranges 0 to 1
+			dist = pow(dist, bounce_function_power_);
+			float bounce_velocity = -max_velocity_ * dist;
+			v.z = bounce_velocity;
+		}
+		else if (position_.z <= z_max && position_.z >= interior_center.z) {
+			float dist = 1.0 - std::abs(position_.z - z_wall_max) / normalizingConstant;  // ranges 0 to 1
+			dist = pow(dist, bounce_function_power_);
+			float bounce_velocity = max_velocity_ * dist;
+			v.z = bounce_velocity;
+		}
+
+		explore_velocity += v * static_cast<float>(bounce_function_multiplier_);
+
 	}
-	else if (position_.x >= x_max) {
-		float dist = 1.0 - std::abs(position_.x - x_wall_max) / normalizingConstant;  // ranges 0 to 1
-		dist = pow(dist, bounce_function_power_);
-		float bounce_velocity = -max_velocity_ * dist;
-		v.x = bounce_velocity;
-	}
-
-	if (position_.z <= z_min) {
-		float dist = 1.0 - std::abs(position_.z - z_wall_min) / normalizingConstant;  // ranges 0 to 1
-		dist = pow(dist, bounce_function_power_);
-		float bounce_velocity = max_velocity_ * dist;
-		v.z = bounce_velocity;
-	}
-	else if (position_.z >= z_max) {
-		float dist = 1.0 - std::abs(position_.z - z_wall_max) / normalizingConstant;  // ranges 0 to 1
-		dist = pow(dist, bounce_function_power_);
-		float bounce_velocity = -max_velocity_ * dist;
-		v.z = bounce_velocity;
-	}
-
-	explore_velocity += v;
 
 	return explore_velocity;
+
+	//float x_max, y_max, z_max;
+	//float x_min, y_min, z_min;
+	//float outer_boundary = 2.5f;
+	//x_min = y_min = z_min = occupancy_grid_->get_grid_cube_length() * outer_boundary;
+	//x_max = y_max = z_max = occupancy_grid_->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - outer_boundary);
+
+	//float x_wall_max, y_wall_max, z_wall_max;
+	//float x_wall_min, y_wall_min, z_wall_min;
+
+	//float inner_boundary = 1.5f;
+	//x_wall_min = y_wall_min = z_wall_min = occupancy_grid_->get_grid_cube_length() * inner_boundary;
+	//x_wall_max = y_wall_max = z_wall_max = occupancy_grid_->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - inner_boundary);
+	//
+
+	//glm::vec3 v;
+	////float power = 3.0f;
+
+	//float normalizingConstant = (outer_boundary - inner_boundary) * occupancy_grid_->get_grid_cube_length();
+	//if (position_.x <= x_min) {
+	//	float dist = 1.0 - std::abs(position_.x - x_wall_min) / normalizingConstant;  // ranges 0 to 1
+	//	dist = pow(dist, bounce_function_power_);
+	//	float bounce_velocity = max_velocity_ * dist;
+	//	v.x = bounce_velocity;
+	//}
+	//else if (position_.x >= x_max) {
+	//	float dist = 1.0 - std::abs(position_.x - x_wall_max) / normalizingConstant;  // ranges 0 to 1
+	//	dist = pow(dist, bounce_function_power_);
+	//	float bounce_velocity = -max_velocity_ * dist;
+	//	v.x = bounce_velocity;
+	//}
+
+	//if (position_.z <= z_min) {
+	//	float dist = 1.0 - std::abs(position_.z - z_wall_min) / normalizingConstant;  // ranges 0 to 1
+	//	dist = pow(dist, bounce_function_power_);
+	//	float bounce_velocity = max_velocity_ * dist;
+	//	v.z = bounce_velocity;
+	//}
+	//else if (position_.z >= z_max) {
+	//	float dist = 1.0 - std::abs(position_.z - z_wall_max) / normalizingConstant;  // ranges 0 to 1
+	//	dist = pow(dist, bounce_function_power_);
+	//	float bounce_velocity = -max_velocity_ * dist;
+	//	v.z = bounce_velocity;
+	//}
+
+	//explore_velocity += v;
+
+	//return explore_velocity;
 	
 }
 
@@ -405,26 +463,18 @@ void ExperimentalRobot::update(int timestamp) {
 
 	//accumulator_ += current_timestamp.count() - last_updated_time_;
 
-	//while (accumulator_ >= delta_time) {
-		//reallocate_pools();
-		//std::vector<glm::ivec3> adjacent_cells = (*heap_pool_)[current_pool_count_++];
-		////adjacent_cells_.reserve(9);
-		//get_adjacent_cells(position_, adjacent_cells);
-		robot_ids_ = get_other_robots(adjacent_cells_);
-		//auto interior_cells = get_interior_cell_positions(adjacent_cells);
+	try {
 
+		robot_ids_ = get_other_robots(adjacent_cells_);
 
 		glm::vec3 separation_velocity = calculate_separation_velocity();
 		glm::vec3 alignment_velocity = calculate_alignment_velocity();
 		glm::vec3 clustering_velocity = calculate_clustering_velocity();
 		glm::vec3 explore_velocity = calculate_explore_velocity();
-		glm::vec3 bounce_velocity = bounce_off_corners_velocity();
 
-		//velocity_ += random_direction_;
 		velocity_ += separation_velocity;
 		velocity_ += alignment_velocity;
 		velocity_ += clustering_velocity;
-		//velocity_ += bounce_velocity;
 		velocity_ += explore_velocity;
 
 		velocity_.y = 0.f;
@@ -492,7 +542,10 @@ void ExperimentalRobot::update(int timestamp) {
 
 		previous_nminus2_position_ = previous_position_;
 		previous_position_ = position_;
-	//	accumulator_ -= delta_time;
-	//}
+		//	accumulator_ -= delta_time;
+		//}
+	} catch (OutOfGridBoundsException& ex) {
+		std::cout << "Out of bounds - id : " << id_ << "\n";
+	}
 }
 

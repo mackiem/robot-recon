@@ -8,6 +8,7 @@
 #include <qthreadpool.h>
 #include "simulatorthread.h"
 #include "swarmutils.h"
+#include <iomanip>
 
 
 extern "C" int mylmdif_(int (*fcn)(int *, int *, double *, double *, int *), int *m, int *n, double *x, double *fvec, double *ftol, double *xtol, double *gtol, int *maxfev, 
@@ -557,19 +558,18 @@ double ParallelMCMCOptimizer::perturb_value(double current_value, double tempera
 	return perterbed_val;
 }
 
-
-SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int thread_id, int iteration) {
+SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int thread_id, int iteration, const Params& next_params) {
 
 	//seperation_constant = perturb_value(current_params.separation_constant, temperature, 0.0, 10.0);
 	//alignment_constant = perturb_value(current_params.alignment_constant, temperature, 0.0, 10.0);
 	//cluster_constant = perturb_value(current_params.cluster_constant, temperature, 0.0, 10.0);
 	//explore_constant = perturb_value(current_params.explore_constant, temperature, 0.0, 10.0);
 
-	Params next_params;
-	next_params.separation_constant = swarm_viewer_->separation_constant_;
-	next_params.alignment_constant = swarm_viewer_->alignment_constant_;
-	next_params.cluster_constant = swarm_viewer_->cluster_constant_;
-	next_params.explore_constant = swarm_viewer_->explore_constant_;
+	//Params next_params;
+	//next_params.separation_constant = swarm_viewer_->separation_constant_;
+	//next_params.alignment_constant = swarm_viewer_->alignment_constant_;
+	//next_params.cluster_constant = swarm_viewer_->cluster_constant_;
+	//next_params.explore_constant = swarm_viewer_->explore_constant_;
 
 	next_results_map_[temperature][thread_id] = next_params;
 
@@ -586,6 +586,25 @@ SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int th
 	return simulator_thread;
 }
 
+
+SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int thread_id, int iteration) {
+
+	//seperation_constant = perturb_value(current_params.separation_constant, temperature, 0.0, 10.0);
+	//alignment_constant = perturb_value(current_params.alignment_constant, temperature, 0.0, 10.0);
+	//cluster_constant = perturb_value(current_params.cluster_constant, temperature, 0.0, 10.0);
+	//explore_constant = perturb_value(current_params.explore_constant, temperature, 0.0, 10.0);
+
+	Params next_params;
+	next_params.separation_constant = swarm_viewer_->separation_constant_;
+	next_params.alignment_constant = swarm_viewer_->alignment_constant_;
+	next_params.cluster_constant = swarm_viewer_->cluster_constant_;
+	next_params.explore_constant = swarm_viewer_->explore_constant_;
+
+	auto simulator_thread = init_mcmc_thread(temperature, thread_id, iteration, next_params);
+
+	return simulator_thread;
+}
+
 SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int thread_id, int iteration) {
 
 	double next_score = next_results_map_[temperature][thread_id].score;
@@ -595,8 +614,8 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 
 	if (next_score > best_score) {
 		best_results_map_[temperature][thread_id] = next_results_map_[temperature][thread_id];
+		result_progression_map_[temperature][thread_id].push_back(next_results_map_[temperature][thread_id]);
 	}
-	result_progression_map_[temperature][thread_id].push_back(next_results_map_[temperature][thread_id]);
 
 	double uniform_random_value = init_value(0.0, 1.0);
 
@@ -713,6 +732,9 @@ void ParallelMCMCOptimizer::print_results() {
 	auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
 	std::ofstream file("mcmc_results_" + std::to_string(timestamp) + ".csv");
 
+	std::cout << std::setprecision(17);
+	file << std::setprecision(17);
+
 	print_result_header(file);
 	print_result_header(std::cout);
 
@@ -736,6 +758,9 @@ void ParallelMCMCOptimizer::print_results() {
 	file << "Best params : \n";
 	print_result(best_params, std::cout);
 	print_result(best_params, file);
+	auto secs_count = std::chrono::duration_cast<std::chrono::seconds>(end_time_ - begin_time_).count();
+	std::cout << "Time taken : " << secs_count << "s => " << secs_count / 60 << "m " << secs_count % 60 << "s\n";
+	file << "Time taken : " << secs_count << "s => " << secs_count / 60 << "m " << secs_count % 60 << "s\n";
 	
 }
 
@@ -758,7 +783,36 @@ void ParallelMCMCOptimizer::print_progression_results() {
 			file.flush();
 		}
 	}
-	
+}
+
+void ParallelMCMCOptimizer::print_progression_results_2() {
+	auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+	std::ofstream file("mcmc_best_results_" + std::to_string(timestamp) + ".csv");
+
+
+	int max_param_size = 0;
+	for (auto& group_entry : result_progression_map_) {
+		for (auto& thread_entry : group_entry.second) {
+			max_param_size = std::max((int)thread_entry.second.size(), max_param_size);
+			std::stringstream ss;
+			ss << group_entry.first << "-" << thread_entry.first << ",";
+			file << ss.str();
+		}
+	}
+	file << "\n";
+
+
+	for (int i = 0; i < max_param_size; ++i) {
+		for (auto& group_entry : result_progression_map_) {
+			for (auto& thread_entry : group_entry.second) {
+				auto params_vector = thread_entry.second;
+				auto progression_value = (params_vector.size() - 1) < i ? "" : std::to_string(params_vector[i].score);
+				file << progression_value << ",";
+			}
+		}
+		file << "\n";
+		file.flush();
+	}
 }
 
 void ParallelMCMCOptimizer::refill_queue(int temperature, int thread_id, int iteration) {
@@ -834,7 +888,7 @@ void ParallelMCMCOptimizer::run_optimizer() {
 	no_of_threads_per_temperature = 10;
 
 	total_iterations_ = 30;
-	culling_iterations_ = 5;
+	culling_iterations_ = 10;
 	cull_threshold_ = 0.2;
 
 
@@ -864,6 +918,8 @@ void ParallelMCMCOptimizer::run_optimizer() {
 	//	&BridgeObject::send_sim_results,
 	//	this,
 	//	&ParallelMCMCOptimizer::restart_work);
+
+	begin_time_ = std::chrono::steady_clock::now();
 
 	std::cout << "ideal thread count : " << QThread::idealThreadCount() << "\n";
 
@@ -898,6 +954,8 @@ void ParallelMCMCOptimizer::cull_and_refill_queue(int iteration) {
 	int no_of_entries_to_keep = sort_vector.size() * cull_threshold_;
 	sort_vector.erase(sort_vector.begin() + no_of_entries_to_keep, sort_vector.end());
 
+	auto best_params = sort_vector[0];
+
 	int next_iteration = ++iteration;
 	for (int temperature = 0; temperature < temperatures_.size(); ++temperature) {
 		// start no_of_threads
@@ -919,7 +977,8 @@ void ParallelMCMCOptimizer::cull_and_refill_queue(int iteration) {
 				simulator_thread = get_next_mcmc(temperature, thread_id, next_iteration);
 			} else {
 				// reinitialize values
-				simulator_thread = init_mcmc_thread(temperature, thread_id, next_iteration);
+				next_results_map_[temperature][thread_id] = best_params;
+				simulator_thread = get_next_mcmc(temperature, thread_id, next_iteration);
 			}
 
 			simulator_threads_work_queue_.push_back(simulator_thread);
@@ -997,8 +1056,8 @@ void ParallelMCMCOptimizer::restart_work(int temperature, int thread_id, int ite
 		 seperation_constant,  alignment_constant,  cluster_constant,  explore_constant,
 		 seperation_distance,  simultaneous_sampling,  time_taken,  occlusion,  coverage);
 
-	//next_params.score = calculate_score(next_params, TIME_ONLY);
-	next_params.score = calculate_score(next_params, SIMUL_SAMPLING_ONLY);
+	next_params.score = calculate_score(next_params, TIME_ONLY);
+	//next_params.score = calculate_score(next_params, SIMUL_SAMPLING_ONLY);
 
 	//std::cout << "score : " << next_params.score << "\n";
 	next_results_map_[temperature][thread_id] = next_params;
@@ -1050,8 +1109,10 @@ void ParallelMCMCOptimizer::restart_work(int temperature, int thread_id, int ite
 	//}
 
 	if (current_working_threads_ == 0 && simulator_threads_work_queue_.size() == 0) {
+		end_time_ = std::chrono::steady_clock::now();
 		print_results();
 		print_progression_results();
+		print_progression_results_2();
 		std::cout << "Work done!\n No. of active threads : " << thread_pool_.activeThreadCount() << "\n";
 		thread_pool_.waitForDone();
 		emit finished();

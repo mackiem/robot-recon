@@ -496,6 +496,32 @@ void SwarmOccupancyTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
 }
 
 
+void SwarmOccupancyTree::remove_inner_interiors() {
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
+			glm::ivec3 grid_position(x, 0, z);
+
+			if (is_interior(grid_position)) {
+				std::vector<glm::ivec3> adjacent_cells;
+				adjacent_cells.reserve(9);
+				get_adjacent_cells(grid_position, adjacent_cells, 1);
+				bool unnecessary_interior = true;
+				for (auto& adjacent_cell : adjacent_cells) {
+					if (grid_position != adjacent_cell && !is_interior(adjacent_cell)) {
+						unnecessary_interior = false;
+						break;
+					}
+				}
+				if (unnecessary_interior) {
+					set(grid_position.x, grid_position.z, empty_value_);
+				}
+			}
+		}
+	}
+
+}
+
+
 void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id) {
 	//auto entry = sampling_tracker_->find(grid_cell);
 	//if (entry != sampling_tracker_->end()) {

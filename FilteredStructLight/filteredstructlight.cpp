@@ -850,7 +850,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	double max_constant_value = 100000.0;
 
-	int precision = 6;
+	int precision = 17;
 
 	QLabel* separation_label = new QLabel("Separation", group_box);
 	separation_constant_ = new QDoubleSpinBox(group_box);
@@ -1416,10 +1416,10 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 	swarm_left_panel_layout->addWidget(optimization_group_box);
 	swarm_left_panel_layout->addWidget(save_group_box);
 	swarm_left_panel_layout->addWidget(flow_control_group_box);
-	swarm_left_panel_layout->addWidget(misc_group_box);
-	swarm_left_panel_layout->addWidget(interior_group_box);
 	swarm_left_panel_layout->addWidget(robots_group_box);
 	swarm_left_panel_layout->addWidget(grid_group_box);
+	swarm_left_panel_layout->addWidget(misc_group_box);
+	swarm_left_panel_layout->addWidget(interior_group_box);
 
 	QWidget* left_panel = new QWidget(swarm_tab);
 	left_panel->setLayout(swarm_left_panel_layout);

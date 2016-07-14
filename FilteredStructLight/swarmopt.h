@@ -2,6 +2,7 @@
 #include "swarmviewer.h"
 #include <qthreadpool.h>
 #include "simulatorthread.h"
+#include <chrono>
 
 class SwarmOptimizer : public QObject {
 	Q_OBJECT
@@ -97,9 +98,12 @@ class ParallelMCMCOptimizer : public QObject {
 	std::vector<float> temperatures_;
 	BridgeObject* bridge_;
 	int current_working_threads_;
+	std::chrono::high_resolution_clock::time_point begin_time_;
+	std::chrono::high_resolution_clock::time_point end_time_;
 public:
 	double init_value(double min, double max);
 	double perturb_value(double current_value, double temperature, double min, double max);
+	SimulatorThread* init_mcmc_thread(int temperature, int thread_id, int iteration, const Params& next_params);
 	SimulatorThread* init_mcmc_thread(int temperature, int thread_id, int iteration);
 	SimulatorThread* get_next_mcmc(int temperature, int thread_id, int iteration);
 	void refill_queue_with_single_next_mcmc_thread(int temperature, int thread_id, int iteration);
@@ -107,6 +111,7 @@ public:
 	void print_result(const Params& params, std::ostream& stream);
 	void print_results();
 	void print_progression_results();
+	void print_progression_results_2();
 	void refill_queue(int temperature, int thread_id, int iteration);
 	double calculate_score(Params params, int case_no);
 

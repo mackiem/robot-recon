@@ -194,6 +194,7 @@ public:
 	bool frontier_bread_first_search(const glm::ivec3& current_cell, glm::ivec3& result_cell, 
 		int max_depth) const;
 	void mark_interior_line(glm::vec3 a, glm::vec3 b);
+	void remove_inner_interiors();
 	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id);
 	double calculate_multi_sampling_factor();
 	void calculate_multi_sampling();

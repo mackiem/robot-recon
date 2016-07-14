@@ -95,7 +95,7 @@ void RobotWorker::do_work() {
 		}
 		if (!paused_) {
 			if (slow_down_) {
-				QThread::currentThread()->msleep(30);
+				QThread::currentThread()->msleep(1);
 			}
 			step_count_--;
 			if (time_step_count_ > max_time_taken_) {
@@ -362,7 +362,9 @@ void SwarmViewer::derive_floor_plan(const VertexBufferData& bufferdata, float sc
 				intersection_points[1]);
 		}
 	}
-	int i = 0;
+
+	// remove interior of the interiors
+	//occupancy_grid_->remove_inner_interiors();
 }
 
 bool SwarmViewer::intersect(const cv::Vec3f& n, float d, 
