@@ -111,6 +111,10 @@ private:
 	static const char* SQUARE_RADIUS;
 	static const char* BOUNCE_FUNCTION_POWER;
 	static const char* BOUNCE_FUNCTION_MULTIPLIER;
+	static const char* MAX_TIME_TAKEN;
+	static const char* NO_OF_CLUSTERS;
+	static const char* DEATH_PERCENTAGE;
+	static const char* DEATH_TIME_TAKEN;
 	static const int MAX_FORMATION_NO;
 	static const int MAX_VIDEO_NO;
 
@@ -235,13 +239,13 @@ private:
 	QPushButton* swarm_resume_button_;
 	QLabel* time_step_count_label_;
 	QSpinBox* discovery_range_;
-	QPushButton* run_least_squared_optimization_button_;
+	//QPushButton* run_least_squared_optimization_button_;
 	QPushButton* run_mcmc_optimization_button_;
 	QDoubleSpinBox* magic_k_spin_box_;
 	QCheckBox* should_render_check_box_;
 	QCheckBox* slow_down_check_box_;
 	QLabel* avg_simultaneous_sampling_label_;
-	QPushButton* run_brute_force_optimization_button_;
+	//QPushButton* run_brute_force_optimization_button_;
 	QSpinBox* neighborhood_count_;
 	QDoubleSpinBox* obstacle_avoidance_near_range_min_;
 	QDoubleSpinBox* obstacle_avoidance_near_range_max_;
@@ -251,6 +255,30 @@ private:
 	QDoubleSpinBox* square_radius_;
 	QDoubleSpinBox* bounce_function_power_;
 	QDoubleSpinBox* bounce_function_multiplier_;
+	QLabel* coverage_label_;
+	QLabel* occlusion_label_;
+
+
+	QSpinBox* max_time_taken_spin_box_;
+	QSpinBox* no_of_clusters_spinbox_;
+
+	QDoubleSpinBox* death_percentage_spin_box_;
+	QSpinBox* death_time_taken_spin_box_;
+
+	// optimization
+	QPushButton* add_swarm_configuration_button_;
+	QListView* swarm_configs_for_optimization_list_;
+	QSpinBox* no_of_threads_spin_box_;
+	QSpinBox* no_of_iterations_spin_box_;
+	QSpinBox* culling_nth_iteration_spin_box_;
+	QLineEdit* optimization_config_filename_;
+	QPushButton* optimization_config_filename_browse_;
+	QPushButton* load_optimization_config_button_;
+	QPushButton* save_optimization_config_button_;
+	QStringListModel* swarm_configs_list_model_;
+	QPushButton* remove_swarm_configuration_button_;
+	QPushButton* batch_optimize_button_;
+
 	void load_recon_settings();
 
 	void shutdown_cam_thread();
@@ -282,11 +310,16 @@ private:
 	std::vector<std::string> frame_filenames_;
 	void connect_load_filename_to_save_settings();
 
+	void save_optimization_settings(const QString& filename);
+	void set_opt_params_to_ui(const OptimizationParams& opt_params);
+	void load_optimization_settings(const QString& filename);
+
 private slots:
 	void update_images(int frame_no);
 	void save_recon_settings();
 	void save_swarm_settings(QString swarm_conf_filepath);
 	void load_swarm_settings(QString swarm_conf_filepath);
+	OptimizationParams populate_opt_params_from_ui();
 	void load_swarm_config_settings();
 	void save_swarm_config_settings();
 public slots:
@@ -294,6 +327,7 @@ public slots:
 	void handle_frame_filenames(std::vector<std::string> image_list);
 	void update_time_step_count(int count);
 	void update_sampling(double sampling);
+	void update_sim_results(double timesteps, double multi_sampling, double density, double occlusion);
 };
 
 #endif // FILTEREDSTRUCTLIGHT_H

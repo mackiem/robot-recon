@@ -7,6 +7,7 @@
 #include "swarmtree.h"
 #include <QtCore/QThread>
 #include "swarmutils.h"
+#include "experimentalrobot.h"
 
 class ParallelMCMCOptimizer;
 class RobotWorker : public QObject {
@@ -22,14 +23,17 @@ class RobotWorker : public QObject {
 	long long last_updated_time_;
 	double accumulator_;
 	double max_time_taken_;
+	Swarm3DReconTree* recon_grid_;
 public:
 	RobotWorker();
 	void set_robots(std::vector<Robot*> robots);
 	void set_occupancy_tree(SwarmOccupancyTree* occupancy_grid);
+	void set_recon_tree(Swarm3DReconTree* recon_grid);
 	void set_slow_down(int slow_down);
 	void abort();
 	void set_max_time_taken(int max_time_taken);
 	double calculate_coverage();
+	double calculate_occulusion_factor();
 	void finish_work();
 
 
@@ -45,7 +49,9 @@ public slots:
 signals:
 	void update_time_step_count(int count);
 	void update_sampling(double sampling);
-	void update_sim_results(double timesteps, double multi_sampling, double coverage);
+	void update_sim_results(double timesteps, double multi_sampling, double density, double occlusion);
+	void update_coverage(double density);
+	void update_occlusion(double occlusion);
 
 
 };
@@ -73,6 +79,7 @@ private:
 
 	SwarmOccupancyTree* occupancy_grid_;
 	SwarmCollisionTree* collision_grid_;
+	Swarm3DReconTree* recon_grid_;
 
 	bool render_;
 	GLint model_loc_;
@@ -97,7 +104,16 @@ private:
 	bool slow_down_;
 	int neighborhood_count_;
 	bool collide_with_robots_;
-
+	Recon3DPoints* recon_points_;
+	int no_of_clusters_;
+	float death_percentage_;
+	std::unordered_map<int, int> death_map_;
+	int death_time_taken_;
+	double occlusion_result_;
+	QStringList swarm_configs_for_optimization_;
+	int culling_nth_iteration_for_optimization_;
+	int no_of_iterations_for_optimization_;
+	int no_of_threads_for_optimization_;
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;
@@ -153,13 +169,16 @@ public:
 	virtual ~SwarmViewer();
 	void cleanup();
 	void create_light_model(RenderMesh& light_mesh);
-	void create_robot_model(RenderMesh& light_mesh, cv::Vec4f color);
+	void create_robot_model(RenderMesh& light_mesh, cv::Vec4f color, VertexBufferData& bufferdata);
+	void upload_robot_model(RenderMesh& robot_mesh, VertexBufferData& bufferdata);
 	void create_lights();
 	std::vector<glm::vec3> create_starting_formation(Formation type);
+	void populate_color_map();
+	void populate_death_map();
 	void create_robots();
 	//void create_occupancy_grid_overlay(int grid_resolution, int grid_size, bool initialize = false);
 	void create_occupancy_grid(int grid_resolution, int grid_size);
-	void get_sim_results(double& timesteps, double& multi_sampling, double& coverage);
+	void get_sim_results(double& timesteps, double& multi_sampling, double& coverage, double& occlusion);
 
 	unsigned int grid_resolution_;
 	float grid_length_;
@@ -197,10 +216,12 @@ signals:
 	void physics_thread_resume();
 	void optimizer_reset_sim();
 	void update_sim_results_to_optimizer(double timesteps, double multi_sampling, double coverage);
+	void update_sim_results_ui(double timesteps, double multi_sampling, double density, double occlusion);
 
 public slots:
 
-void update_sim_results(double timesteps, double multi_sampling, double coverage);
+void update_sim_results(double timesteps, double multi_sampling, double density, double occlusion);
+//void update_sim_results(double timesteps, double multi_sampling, double coverage);
 void set_no_of_robots(int no_of_robots);
 
 void set_separation_distance(float distance);
@@ -256,5 +277,23 @@ void set_should_render(int render);
 void set_slow_down(int slow_down);
 
 void set_collide_with_robots(int collide);
+
+void set_no_of_clusters(int no_of_clusters);
+void set_max_time_taken(int max_time_taken);
+void set_death_percentage(double death_percentage);
+void set_death_time_taken(int death_time_taken);
+
+
+	//QListView* swarm_configs_for_optimization_list_;
+	//QSpinBox* no_of_threads_spin_box_;
+	//QSpinBox* no_of_iterations_spin_box_;
+	//QSpinBox* culling_nth_iteration_spin_box_;
+
+void set_swarm_configs_for_optimization(QStringList swarm_configs_for_optimization);
+void set_no_of_threads_for_optimization(int no_of_threads_for_optimization);
+void set_no_of_iterations_for_optimization(int no_of_iterations_for_optimization);
+void set_culling_nth_iteration_for_optimization(int culling_nth_iteration_for_optimization);
+
+void run_batch_optimization(OptimizationParams opt_params);
 
 };

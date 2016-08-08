@@ -74,8 +74,9 @@ SwarmOptimizer::swarm_sim_opt_error_(int *m_ptr, int *n_ptr, double *params, dou
 	double current_time_taken;
 	double current_multi_sampling;
 	double current_coverage;
+	double occlusion;
 
-	swarm_viewer_g->get_sim_results(current_time_taken, current_multi_sampling, current_coverage);
+	swarm_viewer_g->get_sim_results(current_time_taken, current_multi_sampling, current_coverage, occlusion);
 
 	std::cout << "Time taken for step : " << current_time_taken << std::endl;
 	std::cout << "Multi sampling for step : " << current_multi_sampling << std::endl;
@@ -299,13 +300,14 @@ double SwarmMCMCOptimizer::run_simulation(double separation_constant, double clu
 	double current_time_taken;
 	double current_multi_sampling;
 	double current_coverage;
+	double occlusion;
 
 
 	swarm_viewer_->sim_results_updated_ = false;
 	swarm_viewer_->optimizer_reset_sim();
 	QCoreApplication::processEvents();
 
-	swarm_viewer_->get_sim_results(current_time_taken, current_multi_sampling, current_coverage);
+	swarm_viewer_->get_sim_results(current_time_taken, current_multi_sampling, current_coverage, occlusion);
 
 	// minimize time taken
 	// maximize multi sampling
@@ -335,12 +337,13 @@ double SwarmMCMCOptimizer::run_simulation(double alignment_constant, double clus
 	double current_time_taken;
 	double current_multi_sampling;
 	double current_coverage;
+	double occlusion;
 
 	swarm_viewer_->sim_results_updated_ = false;
 	swarm_viewer_->optimizer_reset_sim();
 	QCoreApplication::processEvents();
 
-	swarm_viewer_->get_sim_results(current_time_taken, current_multi_sampling, current_coverage);
+	swarm_viewer_->get_sim_results(current_time_taken, current_multi_sampling, current_coverage, occlusion);
 
 	// minimize time taken
 	// maximize multi sampling

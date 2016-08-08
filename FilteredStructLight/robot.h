@@ -8,6 +8,22 @@
 #include "swarmtree.h"
 #include <memory>
 
+struct Recon3DPoints : public VisObject {
+	unsigned int grid_resolution_per_side_;
+	float grid_length_;
+	QGLShaderProgram* shader_;
+	Swarm3DReconTree* recon_grid_;
+	std::vector<int> count_;
+	std::vector<int> base_vertex_;
+
+	Recon3DPoints(UniformLocations& locations, Swarm3DReconTree* recon_grid, unsigned int grid_resolution_per_side, 
+		float grid_length, QGLShaderProgram* shader);
+	void update_3d_points(const glm::ivec3& position);
+	void create_points();
+
+
+};
+
 struct GridOverlay : public VisObject {
 	SwarmOccupancyTree* occupany_grid_;
 	unsigned int grid_resolution_per_side_;
@@ -95,6 +111,8 @@ protected:
 	float minimum_separation_distance_;
 	float separation_distance_;
 
+	bool dead_;
+
 	// exploration force requirements
 	// location in grid for frontier calculation
 	float mass_;
@@ -106,6 +124,7 @@ protected:
 	glm::vec3 previous_position_;
 	float robot_radius_;
 	GridOverlay* overlay_;
+	Recon3DPoints* recon_points_;
 	float attraction_distance_threshold_;
 	int sensor_range_;
 
@@ -124,6 +143,7 @@ protected:
 	int cluster_id_;
 	std::vector<glm::ivec3> adjacent_cells_;
 	std::vector<glm::vec3> interior_cells_;
+	bool interior_updated_;
 	//int grid_cube_length_;
 	//int grid_resolution_per_side_;
 	//std::vector<glm::ivec3> get_adjacent_cells(const glm::ivec3& position) const;
@@ -155,10 +175,14 @@ protected:
 	bool render_; 
 	bool collide_with_robots_;
 
+
 public:
+	bool is_dead();
+	int get_cluster_id();
 	unsigned int get_id();
 	glm::vec3 get_position();
 	glm::vec3 get_velocity();
+	void set_recon_3d_points(Recon3DPoints* recon_points);
 	static int MAX_DEPTH;
 	void set_explore_constant(float constant);
 	void set_separation_constant(float constant);
@@ -221,7 +245,7 @@ public:
 	bool is_colliding(const glm::vec3& other_object_position, float radius) const;
 	bool is_colliding_with_interior(const std::vector<glm::vec3>& interior_positions) const;
 	bool is_colliding_with_robots(const std::vector<int>& robot_ids) const;
-	void update_visualization_structs();
+	virtual void update_visualization_structs();
 	void calculate_sampling_factor();
 	double calculate_coverage();
 	void reallocate_pools();

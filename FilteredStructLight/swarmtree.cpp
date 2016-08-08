@@ -7,6 +7,7 @@
 #include <map>
 #include <functional>
 #include <chrono>
+#include <random>
 
 //#include <vld.h>
 
@@ -32,6 +33,37 @@ glm::ivec3 SwarmOccupancyTree::map_to_grid(const glm::vec3& position) const  {
 	}
 
 	return grid_pos;
+}
+
+glm::ivec3 Swarm3DReconTree::map_to_grid(const glm::vec3& position) const  {
+	glm::vec3 grid_pos_float =  (position / static_cast<float>(grid_cube_length_));
+	glm::ivec3 grid_pos(grid_pos_float.x, grid_pos_float.y, grid_pos_float.z);
+
+	// if greater than grid resolution, throw error
+	if (is_out_of_bounds(grid_pos)) {
+		throw OutOfGridBoundsException("Out of bounds");
+	}
+
+	return grid_pos;
+}
+
+bool Swarm3DReconTree::is_out_of_bounds(const glm::ivec3& position) const {
+	int max_grid_no = resolution_per_side_ - 1;
+	if (position.x > max_grid_no
+		|| position.y > max_grid_no
+		|| position.z > max_grid_no) {
+		return true;
+	}
+
+	
+	if (position.x < 0
+		// only 2D commenting this out
+		//|| position.y <= 0
+		|| position.z < 0) {
+		return true;
+	}
+
+	return false;
 }
 
 glm::vec3 SwarmOccupancyTree::map_to_position(const glm::ivec3& grid_position)  const {
@@ -257,6 +289,40 @@ void SwarmCollisionTree::insert(int robot_id, const glm::ivec3& position) {
 	robot_positions->insert(robot_id);
 }
 
+Swarm3DReconTree::Swarm3DReconTree(unsigned grid_resolution, int grid_cube_length): 
+Quadtree<std::vector<glm::vec3>*>(grid_resolution, nullptr), grid_cube_length_(grid_cube_length), grid_resolution_(grid_resolution) {
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
+			auto new_vector = new std::vector<glm::vec3>();
+			set(x, z, new_vector);
+		}
+	}
+}
+
+void Swarm3DReconTree::insert(glm::vec3& points, const glm::ivec3& position) {
+	auto points_3d = at(position.x, position.z);
+	points_3d->push_back(points);
+	multi_sampling_map_[position] = 0;
+}
+
+std::vector<glm::vec3>* Swarm3DReconTree::get_3d_points(const glm::ivec3& position) {
+	auto points_3d = at(position.x, position.z);
+	return points_3d;
+}
+
+void Swarm3DReconTree::update_multi_sampling_map(const glm::ivec3& position) {
+	multi_sampling_map_[position]++;
+}
+
+Swarm3DReconTree::~Swarm3DReconTree() {
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
+			auto container = at(x, z);
+			delete container;
+			unset(x, z);
+		}
+	}
+}
 
 std::vector<int> SwarmCollisionTree::find_adjacent_robots(int robot_id, const glm::ivec3& position) const {
 	// if 3D we need to get 24 cells
@@ -495,6 +561,117 @@ void SwarmOccupancyTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
 	}
 }
 
+void Swarm3DReconTree::mark_interior_line(glm::vec3 a, glm::vec3 b) {
+
+	float length = glm::length(b - a);
+	float division_factor = (grid_cube_length_ / 6.f);
+	int no_of_segments = (length / division_factor) + 1;
+
+	glm::vec3 direction;
+	if (length > 1e-3) {
+		direction = glm::normalize(b - a);
+	}
+
+	for (int i = 0; i < no_of_segments; ++i) {
+		glm::vec3 position = a + direction * (division_factor) * static_cast<float>(i);
+		try {
+			auto grid_position = map_to_grid(position);
+			insert(position, grid_position);
+			//SwarmUtils::print_vector("mark interior A", a);
+			//SwarmUtils::print_vector("mark interior B", b);
+			//SwarmUtils::print_vector("marking grid position", grid_position);
+			//SwarmUtils::print_vector("marking position", position);
+		} catch (OutOfGridBoundsException& ex) {
+			// ignore
+		}
+	}
+}
+
+double Swarm3DReconTree::calculate_multi_sampling_factor() {
+	int total_no_of_samples = 0;
+	for (auto& map_entry : multi_sampling_map_) {
+		total_no_of_samples += map_entry.second;
+	}
+	return (multi_sampling_map_.size() > 0)  ? (total_no_of_samples / double(multi_sampling_map_.size())) : 0.0;
+}
+
+double Swarm3DReconTree::calculate_density() {
+	int total_no_of_points = 0;
+	int sampled_no_of_points = 0;
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
+			auto grid_position = glm::ivec3(x, 0, z);
+			auto points_3d = get_3d_points(grid_position);
+			if (points_3d->size() > 0) {
+				total_no_of_points++;
+				int no_of_samples = multi_sampling_map_[grid_position];
+				if (no_of_samples > 0) {
+					sampled_no_of_points++;
+				}
+			}
+		}
+	}
+	return (total_no_of_points > 0) ? sampled_no_of_points / (double)(total_no_of_points) : 0.0;
+}
+
+void Swarm3DReconTree::mark_random_points_in_triangle(glm::vec3 a, glm::vec3 b, glm::vec3 c) {
+
+	std::random_device rd;
+	std::mt19937 eng(rd());
+	std::uniform_real_distribution<double> dist(0, 1);
+
+	int no_of_points_per_unit_area = 1;
+
+	// max length of plane
+	glm::vec3 ab = b - a;
+	glm::vec3 bc = c - b;
+	glm::vec3 ca = a - c;
+
+	float ab_len = glm::length(ab);
+	float bc_len = glm::length(bc);
+	float ca_len = glm::length(ca);
+
+	float p = (ab_len + bc_len + ca_len) / 2.f;
+	
+	// heron's formula
+	float triangle_area = std::sqrt(p * (p - ab_len) * (p - bc_len) * (p - ca_len));
+	int triangle_area_iterations = 20;
+	if (triangle_area > 1.f) {
+		triangle_area_iterations = (triangle_area > 100.f) ? std::min(triangle_area * 0.2f, 1250.f) : triangle_area_iterations;
+	}
+
+
+	for (int i = 0; i < (triangle_area_iterations); ++i) {
+		for (int j = 0; j < no_of_points_per_unit_area; ++j) {
+
+			double r1 = dist(eng);
+			double r2 = dist(eng);
+
+			// barycentric coordinates
+			if ((r1 + r2) > 1.0) {
+				r1 = 1.0 - r1;
+				r2 = 1.0 - r2;
+			}
+			double r3 = 1.0 - (r1 + r2);
+
+			
+			//glm::vec3 p_in_triangle = (1 - sqrt(r1)) * a + (sqrt(r1) * (1 - r2)) * b + (sqrt(r1) * r2) * c;
+			glm::vec3 p_in_triangle = (float)r1 * a + ((float)r2) * b + (float(r3)) * c;
+
+			try {
+				auto xz_position = p_in_triangle;
+				xz_position.y = 0.f;
+				auto grid_position = map_to_grid(xz_position);
+				insert(p_in_triangle, grid_position);
+			}
+			catch (OutOfGridBoundsException& ex) {
+				// ignore
+				std::cout << "Out of grid while deriving points\n";
+			}
+		}
+	}
+	
+}
 
 void SwarmOccupancyTree::remove_inner_interiors() {
 	for (int x = 0; x < resolution_per_side_; ++x) {
@@ -542,15 +719,15 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 
 	if (update_multisampling_) {
 		if (timestep != last_multisample_timestep_) {
-			calculate_multi_sampling();
+			calculate_simultaneous_sampling();
 			sampling_tracker_->clear();
 			update_multisampling_ = false;
 		}
 	}
 }
 
-double SwarmOccupancyTree::calculate_multi_sampling_factor() {
-		//sampling_avg_storage_.push_back(calculate_multi_sampling());
+double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
+		//sampling_avg_storage_.push_back(calculate_simultaneous_sampling());
 
 		//int no_of_timesteps = 0;
 
@@ -562,7 +739,7 @@ double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 		//if (interior_list_.size() > 0) {
 		//	sampling_factor /= interior_list_.size();
 		//}
-	calculate_multi_sampling();
+	calculate_simultaneous_sampling();
 
 	double sampling_factor = 0.0;
 
@@ -577,7 +754,7 @@ double SwarmOccupancyTree::calculate_multi_sampling_factor() {
 	return sampling_factor;
 }
 
-void SwarmOccupancyTree::calculate_multi_sampling() {
+void SwarmOccupancyTree::calculate_simultaneous_sampling() {
 
 
 	double sampling_factor = 0.0;

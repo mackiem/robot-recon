@@ -55,10 +55,36 @@ const char* FilteredStructLight::SHOW_BUILDING_LABEL = "show_interior";
 const char* FilteredStructLight::INTERIOR_MODEL_FILENAME = "interior_model_filename";
 
 const char* FilteredStructLight::SWARM_CONFIG_FILENAME_LABEL = "swarm_config_filename";
+const char* FilteredStructLight::OPT_CONFIG_FILENAME_LABEL = "opt_config_filename";
 
 const char* FilteredStructLight::SQUARE_RADIUS = "square_radius";
 const char* FilteredStructLight::BOUNCE_FUNCTION_POWER = "bounce_function_power";
 const char* FilteredStructLight::BOUNCE_FUNCTION_MULTIPLIER = "bounce_function_multiplier";
+
+
+	//QSpinBox* max_time_taken_spin_box_;
+// flow control
+
+//robots
+	//QSpinBox* no_of_clusters_;
+
+// misc
+	//QDoubleSpinBox* death_percentage_;
+	//QSpinBox* death_time_taken_;
+
+	//// optimization
+	//QPushButton* add_swarm_configuration_button_;
+	//QListView* swarm_configs_for_optimization_list_;
+	//QSpinBox* no_of_threads_spin_box_;
+	//QSpinBox* no_of_iterations_spin_box_;
+	//QSpinBox* culling_nth_iteration_spin_box_;
+
+const char* FilteredStructLight::MAX_TIME_TAKEN = "max_time_taken";
+const char* FilteredStructLight::NO_OF_CLUSTERS = "no_of_clusters";
+const char* FilteredStructLight::DEATH_PERCENTAGE = "death_percentage";
+const char* FilteredStructLight::DEATH_TIME_TAKEN = "death_time_taken";
+
+
 
 FilteredStructLight::FilteredStructLight(QWidget *parent)
 	: QMainWindow(parent)
@@ -301,6 +327,40 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	emit bounce_function_multiplier_->valueChanged(bounce_function_multiplier_->value());
 }
 
+OptimizationParams FilteredStructLight::populate_opt_params_from_ui() {
+	OptimizationParams opt_params;
+
+	opt_params.swarm_configs = swarm_configs_list_model_->stringList();
+	opt_params.no_of_iterations = no_of_iterations_spin_box_->value();
+	opt_params.no_of_threads = no_of_threads_spin_box_->value();
+	opt_params.culling_nth_iteration = culling_nth_iteration_spin_box_->value();
+
+	return opt_params;
+}
+
+void FilteredStructLight::save_optimization_settings(const QString& filename) {
+	auto opt_params = populate_opt_params_from_ui();
+	SwarmUtils::save_optimization_params(opt_params, filename);
+}
+
+void FilteredStructLight::set_opt_params_to_ui(const OptimizationParams& opt_params) {
+	swarm_configs_list_model_->setStringList(opt_params.swarm_configs);
+	no_of_iterations_spin_box_->setValue(opt_params.no_of_iterations);
+	no_of_threads_spin_box_->setValue(opt_params.no_of_threads);
+	culling_nth_iteration_spin_box_->setValue(opt_params.culling_nth_iteration);
+
+	emit no_of_iterations_spin_box_->valueChanged(opt_params.no_of_iterations);
+	emit no_of_threads_spin_box_->valueChanged(opt_params.no_of_threads);
+	emit culling_nth_iteration_spin_box_->valueChanged(opt_params.culling_nth_iteration);
+	
+}
+
+
+void FilteredStructLight::load_optimization_settings(const QString& filename) {
+	auto opt_params = SwarmUtils::load_optimization_params(filename);
+	set_opt_params_to_ui(opt_params);
+}
+
 void FilteredStructLight::load_swarm_config_settings() {
 	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
 	const char * default_filename = "swarm-config/default_swarm_config.ini";
@@ -309,16 +369,25 @@ void FilteredStructLight::load_swarm_config_settings() {
 	if (!file.exists()) {
 		filename = default_filename;
 	}
-
 	swarm_config_filename_->setText(filename);
+
+	const char * default_opt_filename = "opt-config/default_opt_config.ini";
+	QString opt_filename = settings.value(OPT_CONFIG_FILENAME_LABEL, default_opt_filename).toString();
+	QFile opt_file(opt_filename);
+	if (!opt_file.exists()) {
+		opt_filename = default_opt_filename;
+	}
+	optimization_config_filename_->setText(default_opt_filename);
 }
 
 void FilteredStructLight::save_swarm_config_settings() {
 	QSettings settings(swarm_settings_filepath_, QSettings::IniFormat);
 
 	settings.setValue(SWARM_CONFIG_FILENAME_LABEL, swarm_config_filename_->text());
+	settings.setValue(OPT_CONFIG_FILENAME_LABEL, optimization_config_filename_->text());
 
 }
+
 
 void FilteredStructLight::shutdown_cam_thread() {
 	cam_thread_->shutdown();
@@ -813,8 +882,8 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
-	QHBoxLayout* robots_layout = new QHBoxLayout();
 
+	QHBoxLayout* robots_layout = new QHBoxLayout();
 	robots_spinbox_ = new QSpinBox(group_box);
 	robots_spinbox_->setRange(1, 2000);
 	QLabel* robots_label = new QLabel("# of Robots");
@@ -822,6 +891,15 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	robots_layout->addWidget(robots_spinbox_);
 
 	group_box_layout->addLayout(robots_layout);
+
+	QHBoxLayout* no_of_clusters_layout = new QHBoxLayout();
+	no_of_clusters_spinbox_ = new QSpinBox(group_box);
+	no_of_clusters_spinbox_->setRange(1, 2000);
+	QLabel* no_of_clusters_label = new QLabel("# of clusters");
+	no_of_clusters_layout->addWidget(no_of_clusters_label);
+	no_of_clusters_layout->addWidget(no_of_clusters_spinbox_);
+
+	group_box_layout->addLayout(no_of_clusters_layout);
 
 	QGroupBox* formation = new QGroupBox("Formation");
 	QVBoxLayout* formation_vbox_layout = new QVBoxLayout();
@@ -1034,6 +1112,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	group_box->setLayout(group_box_layout);
 
 	connect(robots_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_no_of_robots);
+	connect(no_of_clusters_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_no_of_clusters);
 	connect(exploration_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_exploration_constant);
 	connect(separation_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_constant);
 	connect(alignment_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_alignment_constant);
@@ -1144,6 +1223,12 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 	QGroupBox* misc_group_box = new QGroupBox("Misc", group_box);
 	QVBoxLayout* misc_group_box_layout = new QVBoxLayout();
 
+	QLabel* death_percentage_label = new QLabel("Death Percentage");
+	death_percentage_spin_box_ = new QDoubleSpinBox(misc_group_box);
+
+	QLabel* death_time_taken_label = new QLabel("Death Time Taken");
+	death_time_taken_spin_box_ = new QSpinBox(misc_group_box);
+
 	QLabel* square_radius_label = new QLabel("Square Radius");
 	square_radius_ = new QDoubleSpinBox(misc_group_box);
 
@@ -1152,6 +1237,14 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 
 	QLabel* bounce_function_multiplier_label = new QLabel("Bounce Func. Multiplier");
 	bounce_function_multiplier_ = new QDoubleSpinBox(misc_group_box);
+
+	QHBoxLayout* death_percentage_layout = new QHBoxLayout();
+	death_percentage_layout->addWidget(death_percentage_label);
+	death_percentage_layout->addWidget(death_percentage_spin_box_);
+
+	QHBoxLayout* death_time_taken_layout = new QHBoxLayout();
+	death_time_taken_layout->addWidget(death_time_taken_label);
+	death_time_taken_layout->addWidget(death_time_taken_spin_box_);
 
 	QHBoxLayout* square_radius_layout = new QHBoxLayout();
 	square_radius_layout->addWidget(square_radius_label);
@@ -1165,6 +1258,8 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 	bounce_function_multiplier_layout->addWidget(bounce_function_multiplier_label);
 	bounce_function_multiplier_layout->addWidget(bounce_function_multiplier_);
 
+	misc_group_box_layout->addLayout(death_percentage_layout);
+	misc_group_box_layout->addLayout(death_time_taken_layout);
 	misc_group_box_layout->addLayout(square_radius_layout);
 	misc_group_box_layout->addLayout(bounce_function_power_layout);
 	misc_group_box_layout->addLayout(bounce_function_multiplier_layout);
@@ -1172,6 +1267,8 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 	misc_group_box->setLayout(misc_group_box_layout);
 
 	connect(square_radius_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_square_formation_radius);
+	connect(death_percentage_spin_box_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_death_percentage);
+	connect(death_time_taken_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_death_time_taken);
 	connect(bounce_function_power_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_bounce_function_power);
 	connect(bounce_function_multiplier_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_bounce_function_multiplier);
 	
@@ -1210,27 +1307,147 @@ void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 
 }
 
+
 void FilteredStructLight::add_swarm_optimization_options(QGroupBox* group_box) {
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
 
-	run_brute_force_optimization_button_ = new QPushButton("Run Brute Force Optimization", group_box);
-	group_box_layout->addWidget(run_brute_force_optimization_button_);
+	optimization_config_filename_ = new QLineEdit(group_box);
+	optimization_config_filename_browse_ = new QPushButton("...", group_box);
+	optimization_config_filename_browse_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+	optimization_config_filename_browse_->setMaximumSize(30, 30);
 
-	run_mcmc_optimization_button_ = new QPushButton("Run MCMC Optimization", group_box);
+	QHBoxLayout* filename_layout = new QHBoxLayout();
+	filename_layout->addWidget(optimization_config_filename_);
+	filename_layout->addWidget(optimization_config_filename_browse_);
+
+	connect(optimization_config_filename_browse_, &QPushButton::clicked, this, 
+		[&] {
+		QString filename = QFileDialog::getOpenFileName(this, QString("Open Optimization Config"), "optimization-config",
+			"Ini Files(*.ini)");
+		QFile file(filename);
+		if (file.exists()) {
+			optimization_config_filename_->setText(filename);
+			emit load_optimization_config_button_->clicked();
+			//emit optimization_reset_button_->clicked();
+		}
+
+	});
+
+	//connect(optimization_config_filename_, &QLineEdit::textChanged, this, 
+	//	&optimizationViewer::set_model_filename);
+
+	QHBoxLayout* load_save_layout = new QHBoxLayout();
+	load_optimization_config_button_ = new QPushButton("Load Conf.", group_box);
+	save_optimization_config_button_ = new QPushButton("Save Conf.", group_box);
+
+
+	connect(load_optimization_config_button_, &QPushButton::clicked, this, 
+		[&] {
+		load_optimization_settings(optimization_config_filename_->text());
+	});
+
+	connect(save_optimization_config_button_, &QPushButton::clicked, this, 
+		[&] {
+		save_optimization_settings(optimization_config_filename_->text());
+	});
+
+
+	load_save_layout->addWidget(save_optimization_config_button_);
+	load_save_layout->addWidget(load_optimization_config_button_);
+
+	//connect(optimization_config_filename_, &QLineEdit::textChanged, optimization_viewer_, 
+	//	&optimizationViewer::set_optimization_config_filename);
+
+	group_box_layout->addLayout(filename_layout);
+	group_box_layout->addLayout(load_save_layout);
+
+	// list view and add
+
+	QGroupBox* swarm_config_group_box = new QGroupBox("Swarm Conf. for Opt.", group_box);
+
+	QHBoxLayout* opt_list_layout = new QHBoxLayout();
+	swarm_configs_for_optimization_list_ = new QListView(group_box);
+
+	QVBoxLayout* opt_list_button_layout = new QVBoxLayout();
+	add_swarm_configuration_button_ = new QPushButton("<< Add", group_box);
+	remove_swarm_configuration_button_ = new QPushButton(">> Remove", group_box);
+
+	opt_list_button_layout->addWidget(add_swarm_configuration_button_);
+	opt_list_button_layout->addWidget(remove_swarm_configuration_button_);
+
+	swarm_configs_list_model_ = new QStringListModel(group_box);
+	swarm_configs_for_optimization_list_->setModel(swarm_configs_list_model_);
+
+	connect(add_swarm_configuration_button_, &QPushButton::clicked, this, 
+		[&] {
+		QStringList files = QFileDialog::getOpenFileNames(this, QString("Open Optimization Config"), "optimization-config",
+			"Ini Files(*.ini)");
+		swarm_configs_list_model_->setStringList(files);
+	});
+
+	opt_list_layout->addWidget(swarm_configs_for_optimization_list_);
+	opt_list_layout->addLayout(opt_list_button_layout);
+
+	swarm_config_group_box->setLayout(opt_list_layout);
+
+	group_box_layout->addWidget(swarm_config_group_box);
+
+	batch_optimize_button_ = new QPushButton("Batch Optimize", group_box);
+	group_box_layout->addWidget(batch_optimize_button_);
+
+
+	QLabel* no_of_threads_label = new QLabel("no_of_threads");
+	no_of_threads_spin_box_ = new QSpinBox(group_box);
+
+	QHBoxLayout* no_of_threads_layout = new QHBoxLayout();
+	no_of_threads_layout->addWidget(no_of_threads_label);
+	no_of_threads_layout->addWidget(no_of_threads_spin_box_);
+
+	group_box_layout->addLayout(no_of_threads_layout);
+
+	QLabel* no_of_iterations_label = new QLabel("no_of_iterations");
+	no_of_iterations_spin_box_ = new QSpinBox(group_box);
+
+	QHBoxLayout* no_of_iterations_layout = new QHBoxLayout();
+	no_of_iterations_layout->addWidget(no_of_iterations_label);
+	no_of_iterations_layout->addWidget(no_of_iterations_spin_box_);
+
+	group_box_layout->addLayout(no_of_iterations_layout);
+
+	QLabel* culling_nth_iteration_label = new QLabel("culling_nth_iteration");
+	culling_nth_iteration_spin_box_ = new QSpinBox(group_box);
+
+	QHBoxLayout* culling_nth_iteration_layout = new QHBoxLayout();
+	culling_nth_iteration_layout->addWidget(culling_nth_iteration_label);
+	culling_nth_iteration_layout->addWidget(culling_nth_iteration_spin_box_);
+
+	group_box_layout->addLayout(culling_nth_iteration_layout);
+
+	//run_brute_force_optimization_button_ = new QPushButton("Run Brute Force Optimization", group_box);
+	//group_box_layout->addWidget(run_brute_force_optimization_button_);
+
+	run_mcmc_optimization_button_ = new QPushButton("Optimize with current params", group_box);
 	group_box_layout->addWidget(run_mcmc_optimization_button_);
 
-	run_least_squared_optimization_button_ = new QPushButton("Run Least Squares Optimization", group_box);
-	group_box_layout->addWidget(run_least_squared_optimization_button_);
+	//run_least_squared_optimization_button_ = new QPushButton("Run Least Squares Optimization", group_box);
+	//group_box_layout->addWidget(run_least_squared_optimization_button_);
 
 
-	connect(run_least_squared_optimization_button_, &QPushButton::clicked, 
-		swarm_viewer_, &SwarmViewer::run_least_squared_optimization);
+	//connect(run_least_squared_optimization_button_, &QPushButton::clicked, 
+	//	swarm_viewer_, &SwarmViewer::run_least_squared_optimization);
 
 	connect(run_mcmc_optimization_button_, &QPushButton::clicked, 
 		swarm_viewer_, &SwarmViewer::run_mcmc_optimization);
 
-	connect(run_brute_force_optimization_button_, &QPushButton::clicked, 
-		swarm_viewer_, &SwarmViewer::run_mcmc_optimization);
+	connect(batch_optimize_button_, &QPushButton::clicked, this, 
+		[&] {
+		auto op_params = populate_opt_params_from_ui();
+		swarm_viewer_->run_batch_optimization(op_params);
+	});
+	
+
+	//connect(run_brute_force_optimization_button_, &QPushButton::clicked, 
+	//	swarm_viewer_, &SwarmViewer::run_mcmc_optimization);
 
 	group_box->setLayout(group_box_layout);
 }
@@ -1310,6 +1527,22 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	group_box_layout->addLayout(sampling_config_layout);
 
+	QHBoxLayout* coverage_layout = new QHBoxLayout();
+	QLabel* coverage_label = new QLabel("Coverage", group_box);
+	coverage_label_ = new QLabel("0.0", group_box);
+	coverage_layout->addWidget(coverage_label);
+	coverage_layout->addWidget(coverage_label_);
+
+	group_box_layout->addLayout(coverage_layout);
+
+	QHBoxLayout* occlusion_layout = new QHBoxLayout();
+	QLabel* occlusion_label = new QLabel("Occlusion", group_box);
+	occlusion_label_ = new QLabel("0.0", group_box);
+	occlusion_layout->addWidget(occlusion_label);
+	occlusion_layout->addWidget(occlusion_label_);
+
+	group_box_layout->addLayout(occlusion_layout);
+
 	QHBoxLayout* sim_controls_layout = new QHBoxLayout();
 	swarm_pause_button_ = new QPushButton("Pause", group_box);
 	swarm_step_button_ = new QPushButton("Step", group_box);
@@ -1339,6 +1572,17 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	group_box_layout->addLayout(movement_constant_layout);
 
+	QHBoxLayout* max_time_layout = new QHBoxLayout();
+	QLabel* max_time_taken_label = new QLabel("Max Time Taken");
+	max_time_taken_spin_box_ = new QSpinBox(group_box);
+	max_time_taken_spin_box_->setMinimum(1);
+	max_time_taken_spin_box_->setMaximum(100000);
+
+	max_time_layout->addWidget(max_time_taken_label);
+	max_time_layout->addWidget(max_time_taken_spin_box_);
+
+	group_box_layout->addLayout(max_time_layout);
+
 	connect(magic_k_spin_box_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
 		swarm_viewer_, &SwarmViewer::set_magic_k);
 
@@ -1361,8 +1605,11 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	group_box->setLayout(group_box_layout);
 	connect(swarm_reset_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::reset_sim );
-	connect(swarm_viewer_, &SwarmViewer::update_time_step_count, this, &FilteredStructLight::update_time_step_count);
-	connect(swarm_viewer_, &SwarmViewer::update_sampling, this, &FilteredStructLight::update_sampling);
+	connect(max_time_taken_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_max_time_taken);
+	//connect(swarm_viewer_, &SwarmViewer::update_time_step_count, this, &FilteredStructLight::update_time_step_count);
+	//connect(swarm_viewer_, &SwarmViewer::update_sampling, this, &FilteredStructLight::update_sampling);
+	connect(swarm_viewer_, &SwarmViewer::update_sim_results_ui, this, &FilteredStructLight::update_sim_results);
+
 
 }
 
@@ -1763,6 +2010,7 @@ void FilteredStructLight::connect_load_filename_to_save_settings() {
 	);
 }
 
+
 void FilteredStructLight::update_images(int frame_no) {
 	if ((frame_no >= 0) && (frame_no < (frame_filenames_.size()))) {
 		QPixmap pixmap(frame_filenames_[frame_no].c_str());
@@ -1792,6 +2040,13 @@ void FilteredStructLight::update_time_step_count(int count) {
 void FilteredStructLight::update_sampling(double sampling) {
 	QString samping_string = QString::number(sampling);
 	avg_simultaneous_sampling_label_->setText(samping_string);
+}
+
+void FilteredStructLight::update_sim_results(double timesteps, double multi_sampling, double density, double occlusion) {
+	update_time_step_count(timesteps);
+	update_sampling(multi_sampling);
+	coverage_label_->setText(QString::number(density));
+	occlusion_label_->setText(QString::number(occlusion));
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {
@@ -2061,6 +2316,7 @@ void FilteredStructLight::setupUi() {
 
 	load_swarm_config_settings();
 	load_swarm_settings(swarm_config_filename_->text());
+	load_optimization_settings(optimization_config_filename_->text());
 
 	connect_load_filename_to_save_settings();
 

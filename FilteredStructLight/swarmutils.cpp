@@ -1,6 +1,34 @@
 #include "swarmutils.h"
 #include <tiny_obj_loader.h>
 #include "renderentity.h"
+#include <qsettings.h>
+
+const char* SwarmUtils::OPT_SWARM_CONFIGS_LIST = "OPT_SWARM_CONFIGS_LIST";
+const char* SwarmUtils::OPT_NO_OF_THREADS = "OPT_NO_OF_THREADS";
+const char* SwarmUtils::OPT_NO_OF_ITERATIONS = "OPT_NO_OF_ITERATIONS";
+const char* SwarmUtils::OPT_CULLING_NTH_ITERATION = "OPT_CULLING_NTH_ITERATION";
+
+OptimizationParams SwarmUtils::load_optimization_params(const QString& filename) {
+	QSettings settings(filename, QSettings::IniFormat);
+	
+	OptimizationParams optimization_params;
+
+	optimization_params.swarm_configs = settings.value(OPT_SWARM_CONFIGS_LIST, "").toStringList();
+	optimization_params.no_of_iterations = settings.value(OPT_NO_OF_ITERATIONS, "10").toInt();
+	optimization_params.no_of_threads = settings.value(OPT_NO_OF_THREADS, "10").toInt();
+	optimization_params.culling_nth_iteration = settings.value(OPT_CULLING_NTH_ITERATION, "5").toInt();
+
+	return optimization_params;
+}
+
+void SwarmUtils::save_optimization_params(const OptimizationParams& params, const QString& filename) {
+	QSettings settings(filename, QSettings::IniFormat);
+
+	settings.setValue(OPT_SWARM_CONFIGS_LIST, params.swarm_configs);
+	settings.setValue(OPT_NO_OF_THREADS, params.no_of_threads);
+	settings.setValue(OPT_NO_OF_ITERATIONS, params.no_of_iterations);
+	settings.setValue(OPT_CULLING_NTH_ITERATION, params.culling_nth_iteration);
+}
 
 void SwarmUtils::print_vector(const std::string& name, const glm::vec3& vector) {
 //#ifdef DEBUG

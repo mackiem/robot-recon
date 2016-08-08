@@ -245,8 +245,8 @@ void QArrayRadioButton::clicked_with_id(int _t1)
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 struct qt_meta_stringdata_FilteredStructLight_t {
-    QByteArrayData data[18];
-    char stringdata[321];
+    QByteArrayData data[25];
+    char stringdata[430];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -263,26 +263,36 @@ QT_MOC_LITERAL(4, 44, 19),
 QT_MOC_LITERAL(5, 64, 19),
 QT_MOC_LITERAL(6, 84, 19),
 QT_MOC_LITERAL(7, 104, 19),
-QT_MOC_LITERAL(8, 124, 26),
-QT_MOC_LITERAL(9, 151, 26),
-QT_MOC_LITERAL(10, 178, 29),
-QT_MOC_LITERAL(11, 208, 22),
-QT_MOC_LITERAL(12, 231, 24),
-QT_MOC_LITERAL(13, 256, 10),
-QT_MOC_LITERAL(14, 267, 22),
-QT_MOC_LITERAL(15, 290, 5),
-QT_MOC_LITERAL(16, 296, 15),
-QT_MOC_LITERAL(17, 312, 8)
+QT_MOC_LITERAL(8, 124, 27),
+QT_MOC_LITERAL(9, 152, 18),
+QT_MOC_LITERAL(10, 171, 26),
+QT_MOC_LITERAL(11, 198, 26),
+QT_MOC_LITERAL(12, 225, 29),
+QT_MOC_LITERAL(13, 255, 22),
+QT_MOC_LITERAL(14, 278, 24),
+QT_MOC_LITERAL(15, 303, 10),
+QT_MOC_LITERAL(16, 314, 22),
+QT_MOC_LITERAL(17, 337, 5),
+QT_MOC_LITERAL(18, 343, 15),
+QT_MOC_LITERAL(19, 359, 8),
+QT_MOC_LITERAL(20, 368, 18),
+QT_MOC_LITERAL(21, 387, 9),
+QT_MOC_LITERAL(22, 397, 14),
+QT_MOC_LITERAL(23, 412, 7),
+QT_MOC_LITERAL(24, 420, 9)
     },
     "FilteredStructLight\0update_images\0\0"
     "frame_no\0save_recon_settings\0"
     "save_swarm_settings\0swarm_conf_filepath\0"
-    "load_swarm_settings\0load_swarm_config_settings\0"
+    "load_swarm_settings\0populate_opt_params_from_ui\0"
+    "OptimizationParams\0load_swarm_config_settings\0"
     "save_swarm_config_settings\0"
     "start_reconstruction_sequence\0"
     "handle_frame_filenames\0std::vector<std::string>\0"
     "image_list\0update_time_step_count\0"
-    "count\0update_sampling\0sampling"
+    "count\0update_sampling\0sampling\0"
+    "update_sim_results\0timesteps\0"
+    "multi_sampling\0density\0occlusion"
 };
 #undef QT_MOC_LITERAL
 
@@ -292,7 +302,7 @@ static const uint qt_meta_data_FilteredStructLight[] = {
        7,       // revision
        0,       // classname
        0,    0, // classinfo
-      10,   14, // methods
+      12,   14, // methods
        0,    0, // properties
        0,    0, // enums/sets
        0,    0, // constructors
@@ -300,28 +310,32 @@ static const uint qt_meta_data_FilteredStructLight[] = {
        0,       // signalCount
 
  // slots: name, argc, parameters, tag, flags
-       1,    1,   64,    2, 0x08 /* Private */,
-       4,    0,   67,    2, 0x08 /* Private */,
-       5,    1,   68,    2, 0x08 /* Private */,
-       7,    1,   71,    2, 0x08 /* Private */,
-       8,    0,   74,    2, 0x08 /* Private */,
-       9,    0,   75,    2, 0x08 /* Private */,
-      10,    0,   76,    2, 0x0a /* Public */,
-      11,    1,   77,    2, 0x0a /* Public */,
-      14,    1,   80,    2, 0x0a /* Public */,
-      16,    1,   83,    2, 0x0a /* Public */,
+       1,    1,   74,    2, 0x08 /* Private */,
+       4,    0,   77,    2, 0x08 /* Private */,
+       5,    1,   78,    2, 0x08 /* Private */,
+       7,    1,   81,    2, 0x08 /* Private */,
+       8,    0,   84,    2, 0x08 /* Private */,
+      10,    0,   85,    2, 0x08 /* Private */,
+      11,    0,   86,    2, 0x08 /* Private */,
+      12,    0,   87,    2, 0x0a /* Public */,
+      13,    1,   88,    2, 0x0a /* Public */,
+      16,    1,   91,    2, 0x0a /* Public */,
+      18,    1,   94,    2, 0x0a /* Public */,
+      20,    4,   97,    2, 0x0a /* Public */,
 
  // slots: parameters
     QMetaType::Void, QMetaType::Int,    3,
     QMetaType::Void,
     QMetaType::Void, QMetaType::QString,    6,
     QMetaType::Void, QMetaType::QString,    6,
+    0x80000000 | 9,
     QMetaType::Void,
     QMetaType::Void,
     QMetaType::Void,
-    QMetaType::Void, 0x80000000 | 12,   13,
-    QMetaType::Void, QMetaType::Int,   15,
-    QMetaType::Void, QMetaType::Double,   17,
+    QMetaType::Void, 0x80000000 | 14,   15,
+    QMetaType::Void, QMetaType::Int,   17,
+    QMetaType::Void, QMetaType::Double,   19,
+    QMetaType::Void, QMetaType::Double, QMetaType::Double, QMetaType::Double, QMetaType::Double,   21,   22,   23,   24,
 
        0        // eod
 };
@@ -335,12 +349,15 @@ void FilteredStructLight::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
         case 1: _t->save_recon_settings(); break;
         case 2: _t->save_swarm_settings((*reinterpret_cast< QString(*)>(_a[1]))); break;
         case 3: _t->load_swarm_settings((*reinterpret_cast< QString(*)>(_a[1]))); break;
-        case 4: _t->load_swarm_config_settings(); break;
-        case 5: _t->save_swarm_config_settings(); break;
-        case 6: _t->start_reconstruction_sequence(); break;
-        case 7: _t->handle_frame_filenames((*reinterpret_cast< std::vector<std::string>(*)>(_a[1]))); break;
-        case 8: _t->update_time_step_count((*reinterpret_cast< int(*)>(_a[1]))); break;
-        case 9: _t->update_sampling((*reinterpret_cast< double(*)>(_a[1]))); break;
+        case 4: { OptimizationParams _r = _t->populate_opt_params_from_ui();
+            if (_a[0]) *reinterpret_cast< OptimizationParams*>(_a[0]) = _r; }  break;
+        case 5: _t->load_swarm_config_settings(); break;
+        case 6: _t->save_swarm_config_settings(); break;
+        case 7: _t->start_reconstruction_sequence(); break;
+        case 8: _t->handle_frame_filenames((*reinterpret_cast< std::vector<std::string>(*)>(_a[1]))); break;
+        case 9: _t->update_time_step_count((*reinterpret_cast< int(*)>(_a[1]))); break;
+        case 10: _t->update_sampling((*reinterpret_cast< double(*)>(_a[1]))); break;
+        case 11: _t->update_sim_results((*reinterpret_cast< double(*)>(_a[1])),(*reinterpret_cast< double(*)>(_a[2])),(*reinterpret_cast< double(*)>(_a[3])),(*reinterpret_cast< double(*)>(_a[4]))); break;
         default: ;
         }
     }
@@ -371,13 +388,13 @@ int FilteredStructLight::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
     if (_id < 0)
         return _id;
     if (_c == QMetaObject::InvokeMetaMethod) {
-        if (_id < 10)
+        if (_id < 12)
             qt_static_metacall(this, _c, _id, _a);
-        _id -= 10;
+        _id -= 12;
     } else if (_c == QMetaObject::RegisterMethodArgumentMetaType) {
-        if (_id < 10)
+        if (_id < 12)
             *reinterpret_cast<int*>(_a[0]) = -1;
-        _id -= 10;
+        _id -= 12;
     }
     return _id;
 }

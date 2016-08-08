@@ -40,9 +40,9 @@ void SimulatorThread::create_robots() {
 		//robots_.push_back(robot);
 
 		Robot* robot = new ExperimentalRobot(uniform_locations_, 
-			i, occupancy_grid_, collision_grid_,  separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
+			i, occupancy_grid_, collision_grid_,  recon_grid_, 0, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
 			sensor_range_, discovery_range_, 
-			separation_distance_, robot_positions[i], square_radius_, bounce_function_power_, bounce_function_multiplier_, false, false, nullptr);
+			separation_distance_, robot_positions[i], square_radius_, bounce_function_power_, bounce_function_multiplier_, 0, false, false, nullptr);
 
 		//robot->mesh_.push_back(robot_mesh[0]);
 		robots_.push_back(robot);
@@ -583,7 +583,7 @@ void SimulatorThread::reset_sim() {
 	occupancy_grid_ = new SwarmOccupancyTree(grid_length_, grid_resolution_);
 	grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
 	collision_grid_ = new SwarmCollisionTree(grid_resolution_);
-
+	recon_grid_ = new Swarm3DReconTree(grid_resolution_, grid_length_);
 
 	load_interior_model();
 	occupancy_grid_->create_perimeter_list();
@@ -642,7 +642,7 @@ void SimulatorThread::finish_work() {
 	//std::normal_distribution<> normal_distribution(0.0, 1.0);
 	std::uniform_real_distribution<> uniform_real_distribution(0, 1);
 	//double simultaneous_sampling = uniform_real_distribution(mt);
-	double simultaneous_sampling = occupancy_grid_->calculate_multi_sampling_factor();
+	double simultaneous_sampling = occupancy_grid_->calculate_simultaneous_sampling_factor();
 	double occlusion = 0.0;
 	//double coverage = calculate_coverage();
 	double coverage = 0.0;
@@ -723,6 +723,9 @@ void SimulatorThread::cleanup() {
 	}
 	if (collision_grid_) {
 		delete collision_grid_;
+	}
+	if (recon_grid_) {
+		delete recon_grid_;
 	}
 	
 }

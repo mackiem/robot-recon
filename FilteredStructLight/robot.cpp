@@ -10,6 +10,14 @@ int Robot::MAX_DEPTH = 10;
 #define PI 3.14159
 
 
+bool Robot::is_dead() {
+	return dead_;
+}
+
+int Robot::get_cluster_id() {
+	return cluster_id_;
+}
+
 unsigned Robot::get_id() {
 	return id_;
 }
@@ -20,6 +28,10 @@ glm::vec3 Robot::get_position() {
 
 glm::vec3 Robot::get_velocity() {
 	return velocity_;
+}
+
+void Robot::set_recon_3d_points(Recon3DPoints* recon_points) {
+	recon_points_ = recon_points;
 }
 
 void Robot::set_explore_constant(float constant) {
@@ -37,6 +49,7 @@ void Robot::set_work_constant(float constant) {
 void Robot::set_grid_overlay(GridOverlay* overlay) {
 	overlay_ = overlay;
 }
+
 
 bool Range::within_range(float grid_distance) {
 	return (min_ <= grid_distance && grid_distance < max_);
@@ -77,6 +90,7 @@ void Robot::get_adjacent_cells(const glm::vec3& position, std::vector<glm::ivec3
 
 void Robot::update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position) {
 	if (current_position == previous_position) {
+		interior_updated_ = false;
 		return;
 	}
 
@@ -84,6 +98,7 @@ void Robot::update_adjacent_and_interior(const glm::vec3& previous_position, con
 	adjacent_cells_.reserve(std::pow(sensor_range_ * 2, 2));
 	get_adjacent_cells(occupancy_grid_->map_to_position(current_position), adjacent_cells_);
 	interior_cells_ = get_interior_cell_positions(adjacent_cells_);
+	interior_updated_ = true;
 }
 
 void Robot::calculate_work_force() {
@@ -806,7 +821,7 @@ void Robot::update_visualization_structs() {
 }
 
 void Robot::calculate_sampling_factor() {
-	occupancy_grid_->calculate_multi_sampling_factor();
+	occupancy_grid_->calculate_simultaneous_sampling_factor();
 }
 
 double Robot::calculate_coverage() {

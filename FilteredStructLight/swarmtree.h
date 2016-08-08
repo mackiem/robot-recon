@@ -196,8 +196,8 @@ public:
 	void mark_interior_line(glm::vec3 a, glm::vec3 b);
 	void remove_inner_interiors();
 	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id);
-	double calculate_multi_sampling_factor();
-	void calculate_multi_sampling();
+	double calculate_simultaneous_sampling_factor();
+	void calculate_simultaneous_sampling();
 	static int INTERIOR_MARK;
 	static int SEARCH_VISITED;
 	static int SEARCH_NOT_VISITED;
@@ -235,5 +235,26 @@ public:
 	void insert(int robot_id, const glm::ivec3& position);
 	void update(int robot_id, const glm::ivec3& previous_position, const glm::ivec3& current_position);
 	virtual ~SwarmCollisionTree() override;
+};
+
+class Swarm3DReconTree : public mm::Quadtree<std::vector<glm::vec3>*> {
+private:
+	int grid_cube_length_;
+	int grid_resolution_;
+	std::unordered_map<glm::ivec3, int, IVec3Hasher> multi_sampling_map_;
+	int total_no_of_3d_points;
+public:
+	double calculate_multi_sampling_factor();
+	double calculate_density();
+	void update_multi_sampling_map(const glm::ivec3& position);
+
+	void mark_random_points_in_triangle(glm::vec3 a, glm::vec3 b, glm::vec3 c);
+	void mark_interior_line(glm::vec3 a, glm::vec3 b);
+	bool is_out_of_bounds(const glm::ivec3& position) const;
+	glm::ivec3 map_to_grid(const glm::vec3& position) const;
+	Swarm3DReconTree(unsigned grid_resolution, int grid_cube_length);
+	void insert(glm::vec3& points, const glm::ivec3& position);
+	std::vector<glm::vec3>* get_3d_points(const glm::ivec3& position);
+	virtual ~Swarm3DReconTree() override;
 };
 

@@ -2,48 +2,110 @@
 #include <chrono>
 #include "swarmutils.h"
 
+#define PI 3.14159265359	
+
+
+//ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
+//	SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree, double explore_constant, double separation_constant, double alignment_constant,
+//	double cluster_constant, double perimeter_constant, double work_constant, Range explore_range,
+//	Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range,
+//	Range obstacle_avoidance_near_range, Range obstacle_avoidance_far_range, double sensor_range,
+//	int discovery_range, int neighborhood_count, double separation_distance, glm::vec3 position,
+//	QGLShaderProgram* shader, bool render, double magic_k, bool collide_with_robots, double square_radius, double bounce_function_power, double bounce_function_multiplier)
+//
+//	: Robot(locations,
+//	id, octree, collision_tree, explore_constant, separation_constant,
+//	alignment_constant, cluster_constant, perimeter_constant,
+//	work_constant,
+//	explore_range, separation_range, alignment_range, cluster_range, perimeter_range, obstacle_avoidance_near_range,
+//	obstacle_avoidance_far_range, sensor_range, discovery_range, neighborhood_count,
+//	separation_distance, position, shader, render, magic_k, collide_with_robots), square_radius_(square_radius), bounce_function_power_(bounce_function_power), 
+//	bounce_function_multiplier_(bounce_function_multiplier), recon_tree_(recon_tree)
+//{
+//	random_direction_ = glm::vec3(1.f, 0.f, 0.f);
+//	max_velocity_ = 4.f;
+//	robot_radius_ = 11.85f;
+//	previous_no_of_explored_cells_ = -1;
+//	death_time_ = -1;
+//	dead_ = false;
+//}
 
 ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
-	SwarmCollisionTree* collision_tree, double explore_constant, double separation_constant, double alignment_constant,
-	double cluster_constant, double perimeter_constant, double work_constant, Range explore_range,
-	Range separation_range, Range alignment_range, Range cluster_range, Range perimeter_range,
-	Range obstacle_avoidance_near_range, Range obstacle_avoidance_far_range, double sensor_range,
-	int discovery_range, int neighborhood_count, double separation_distance, glm::vec3 position,
-	QGLShaderProgram* shader, bool render, double magic_k, bool collide_with_robots, double square_radius, double bounce_function_power, double bounce_function_multiplier)
-
-	: Robot(locations,
-	id, octree, collision_tree, explore_constant, separation_constant,
-	alignment_constant, cluster_constant, perimeter_constant,
-	work_constant,
-	explore_range, separation_range, alignment_range, cluster_range, perimeter_range, obstacle_avoidance_near_range,
-	obstacle_avoidance_far_range, sensor_range, discovery_range, neighborhood_count,
-	separation_distance, position, shader, render, magic_k, collide_with_robots), square_radius_(square_radius), bounce_function_power_(bounce_function_power), 
-	bounce_function_multiplier_(bounce_function_multiplier)
-{
-	random_direction_ = glm::vec3(1.f, 0.f, 0.f);
-	max_velocity_ = 4.f;
-	robot_radius_ = 11.85f;
-	previous_no_of_explored_cells_ = -1;
-}
-
-ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
-	SwarmCollisionTree* collision_tree, double separation_constant, double alignment_constant,
+	SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree, int cluster_id, double separation_constant, double alignment_constant,
 	double cluster_constant, double explore_constant, double sensor_range,
 	int discovery_range, double separation_distance, glm::vec3 position,
-	double square_radius, double bounce_function_power, double bounce_function_multiplier, bool collide_with_robots, bool render, QGLShaderProgram* shader)
+	double square_radius, double bounce_function_power, double bounce_function_multiplier, int max_time, 
+	bool collide_with_robots, bool render, QGLShaderProgram* shader)
 
 	: Robot(locations, id, octree, collision_tree,  separation_constant,
 	alignment_constant, cluster_constant, explore_constant,sensor_range, discovery_range, separation_distance, position, render, shader),  
 	square_radius_(square_radius), bounce_function_power_(bounce_function_power), 
-	bounce_function_multiplier_(bounce_function_multiplier)
+	bounce_function_multiplier_(bounce_function_multiplier), recon_tree_(recon_tree), max_time_(max_time)
 {
 	random_direction_ = glm::vec3(1.f, 0.f, 0.f);
 	max_velocity_ = 4.f;
 	robot_radius_ = 11.85f;
 	previous_no_of_explored_cells_ = -1;
 	explore_range_ = Range(0, occupancy_grid_->get_grid_resolution_per_side() * 1.414);
+	death_time_ = -1;
+	dead_ = false;
+	dead_color_changed_ = false;
+	cluster_id_ = cluster_id;
+	populate_occlusion_map();
 }
 
+void ExperimentalRobot::populate_occlusion_map() {
+	measurement_time_step_ = 100;
+	int no_of_divisions = max_time_ / measurement_time_step_;
+
+	for (int i = 0; i < no_of_divisions; ++i) {
+		occlusions_per_timestamp_map_[i * measurement_time_step_] = 0;
+	}
+}
+
+
+void ExperimentalRobot::update_visualization_structs() {
+	Robot::update_visualization_structs();
+	recon_mutex_.lock();
+	for (auto& reconstructed_position : reconstructed_positions_) {
+		//recon_points_->update_3d_points(occupancy_grid_->map_to_grid(reconstructed_position));
+		recon_points_->update_3d_points((reconstructed_position));
+	}
+	reconstructed_positions_.clear();
+	if (!dead_color_changed_ && dead_) {
+		cv::Vec4f black(0.f, 0.f, 0.f, 1.f);
+		change_color(black);
+		dead_color_changed_ = true;
+	}
+	recon_mutex_.unlock();
+}
+
+void ExperimentalRobot::change_color(cv::Vec4f& color) {
+	RenderEntity& entity = mesh_[mesh_.size() - 1];
+
+	if (colors_.size() > 0) {
+		std::vector<cv::Vec4f> fill_color(colors_.size());
+		std::fill(fill_color.begin(), fill_color.end(), color);
+
+		glBindVertexArray(entity.vao_);
+		glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, colors_.size() * sizeof(cv::Vec4f), &fill_color[0]);
+
+		glBindVertexArray(0);
+	}
+}
+
+void ExperimentalRobot::set_colors_buffer(std::vector<cv::Vec4f>& colors) {
+	colors_ = colors;
+}
+
+void ExperimentalRobot::set_death_time(int death_time) {
+	death_time_ = death_time;
+}
+
+void ExperimentalRobot::set_cluster_id(int cluster_id) {
+	cluster_id_ = cluster_id;
+}
 
 ExperimentalRobot::~ExperimentalRobot()
 {
@@ -72,13 +134,13 @@ glm::vec3 ExperimentalRobot::calculate_alignment_velocity() {
 	glm::vec3 v;
 	int count = 0;
 	for (auto& robot_id : robot_ids_) {
-		float distance_apart = glm::length(robots_[robot_id]->get_position() - position_);
-		//if (distance_apart < 200.f) {
+		if (robots_[robot_id]->get_cluster_id() == cluster_id_
+			&& !robots_[robot_id]->is_dead()) {
 			if (robot_id != id_) {
 				v += robots_[robot_id]->get_velocity();
 				count++;
 			}
-		//}
+		}
 	}
 	if (count > 0) {
 		v /= static_cast<float>(count);
@@ -161,15 +223,17 @@ glm::vec3 ExperimentalRobot::bounce_off_corners_velocity() {
 glm::vec3 ExperimentalRobot::calculate_clustering_velocity() {
 	glm::vec3 pc;
 	int count = 0;
+
 	for (auto& robot_id : robot_ids_) {
-		float distance_apart = glm::length(robots_[robot_id]->get_position() - position_);
-		//if (distance_apart < 200.f) {
+		if (robots_[robot_id]->get_cluster_id() == cluster_id_ 
+			&& !robots_[robot_id]->is_dead()) {
 			if (robot_id != id_) {
 				pc += robots_[robot_id]->get_position();
 				count++;
 			}
-		//}
+		}
 	}
+
 	if (count > 0) {
 		pc /= static_cast<float>(count);
 	} else {
@@ -360,6 +424,25 @@ glm::vec3 ExperimentalRobot::calculate_explore_velocity() {
 	
 }
 
+
+void ExperimentalRobot::reconstruct_points() {
+	// make a reconstruction grid
+	for (auto& adjacent : adjacent_cells_) {
+		// this may slow things down, look into doing it when grid cell changes
+		//auto points_3d = recon_tree_->get_3d_points(interior);
+		//update_some_data_struct_to_render_points(points_3d);
+		if (render_) {
+			if (past_reconstructed_positions_.find(adjacent) == past_reconstructed_positions_.end()) {
+				recon_mutex_.lock();
+				reconstructed_positions_.push_back(adjacent);
+				recon_mutex_.unlock();
+				past_reconstructed_positions_.insert(adjacent);
+			}
+		}
+		recon_tree_->update_multi_sampling_map(adjacent);
+	}
+}
+
 std::vector<glm::vec3> ExperimentalRobot::get_corners(const glm::vec3& interior_cell) const {
 	// 4 corners
 	std::vector<glm::vec3> corners(4);
@@ -392,6 +475,23 @@ std::vector<glm::vec3> ExperimentalRobot::get_corners(const glm::vec3& interior_
 	corners[3] = interior_cell + glm::vec3(x * half_distance, 0, z * half_distance);
 	
 	return corners;
+}
+
+double ExperimentalRobot::calculate_occulsion() {
+	double occlusion = 0.0;
+	double entry_count = 0;
+
+	for (auto& occlusion_per_timestamp: occlusions_per_timestamp_map_) {
+		if (occlusion_per_timestamp.first <= final_timestamp_) {
+			occlusion += occlusion_per_timestamp.second;
+			entry_count++;
+		}
+	}
+	if (entry_count > 0) {
+		occlusion /= entry_count;
+	}
+	return occlusion;
+	
 }
 
 bool ExperimentalRobot::is_colliding_precisely(const glm::vec3& interior_cell) {
@@ -458,14 +558,26 @@ void ExperimentalRobot::update(int timestamp) {
 	//	last_updated_time_ = current_timestamp.count();
 	//	return;
 	//}
+	if (dead_) {
+		return;
+	}
 
 	const float delta_time = 2500; // in ms
 
-	//accumulator_ += current_timestamp.count() - last_updated_time_;
+	if (death_time_ > 0 && timestamp > death_time_) {
+		dead_ = true;
+	}
+
+	final_timestamp_ = timestamp;
+
 
 	try {
 
 		robot_ids_ = get_other_robots(adjacent_cells_);
+
+		if (timestamp > 0 && ((timestamp % measurement_time_step_) == 0)) {
+			occlusions_per_timestamp_map_[timestamp] = robot_ids_.size();
+		}
 
 		glm::vec3 separation_velocity = calculate_separation_velocity();
 		glm::vec3 alignment_velocity = calculate_alignment_velocity();
@@ -498,9 +610,9 @@ void ExperimentalRobot::update(int timestamp) {
 		//	int v = 0;
 		//}
 
-		for (auto& interior : interior_cells_) {
-			occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior), timestamp, id_);
-		}
+		//for (auto& interior : interior_cells_) {
+		//	occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior), timestamp, id_);
+		//}
 
 		//SwarmUtils::print_vector(std::to_string(id_) + " : ", bounce_velocity);
 		//SwarmUtils::print_vector(std::to_string(id_) + " : ", position_);
@@ -517,23 +629,26 @@ void ExperimentalRobot::update(int timestamp) {
 			//std::vector<glm::ivec3> sensored_cells = (*heap_pool_)[current_pool_count_++];
 			//occupancy_grid_->get_adjacent_cells(grid_position, sensored_cells, discovery_range_);
 
-			for (auto sensored_cell : adjacent_cells_) {
-				float distance = glm::length(glm::vec3(grid_position - sensored_cell));
+			if (interior_updated_) {
+				for (auto sensored_cell : adjacent_cells_) {
+					float distance = glm::length(glm::vec3(grid_position - sensored_cell));
 
-				if (distance <= discovery_range_) {
+					if (distance <= discovery_range_) {
 
-					if (!occupancy_grid_->is_interior(sensored_cell)) {
-						if (render_) {
-							explored_mutex_.lock();
-							explored_cells_.push_back(sensored_cell);
-							explored_mutex_.unlock();
+						if (!occupancy_grid_->is_interior(sensored_cell)) {
+							if (render_) {
+								explored_mutex_.lock();
+								explored_cells_.push_back(sensored_cell);
+								explored_mutex_.unlock();
+							}
+							occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
+							occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
 						}
-						occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
-						occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
-					}
-					else {
+						else {
+						}
 					}
 				}
+				reconstruct_points();
 			}
 		}
 		catch (OutOfGridBoundsException& exception) {
