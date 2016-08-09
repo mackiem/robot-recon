@@ -349,7 +349,7 @@ void FilteredStructLight::qt_static_metacall(QObject *_o, QMetaObject::Call _c, 
         case 1: _t->save_recon_settings(); break;
         case 2: _t->save_swarm_settings((*reinterpret_cast< QString(*)>(_a[1]))); break;
         case 3: _t->load_swarm_settings((*reinterpret_cast< QString(*)>(_a[1]))); break;
-        case 4: { OptimizationParams _r = _t->populate_opt_params_from_ui();
+        case 4: { OptimizationParams _r = _t->get_opt_params_from_ui();
             if (_a[0]) *reinterpret_cast< OptimizationParams*>(_a[0]) = _r; }  break;
         case 5: _t->load_swarm_config_settings(); break;
         case 6: _t->save_swarm_config_settings(); break;

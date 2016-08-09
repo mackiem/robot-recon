@@ -68,55 +68,11 @@ private:
 	static const char* CHECKERBOARD_VIDEO_FILENAME_LABEL;
 	static const char* SCANLINE_VIDEO_FILENAME_LABEL;
 	static const char* VELOCITY_LABEL;
-	static const char* ROBOTS_NO_LABEL;
-	static const char* EXPLORATION_CONSTANT_LABEL;
-	static const char* SEPARATION_CONSTANT_LABEL;
-	static const char* ALIGNMENT_CONSTANT_LABEL;
-	static const char* CLUSTER_CONSTANT_LABEL;
-	static const char* PERIMETER_CONSTANT_LABEL;
-
-
-	static const char* EXPLORE_RANGE_MIN_LABEL;
-	static const char* SEPARATION_RANGE_MIN_LABEL;
-	static const char* ALIGNMENT_RANGE_MIN_LABEL;
-	static const char* CLUSTER_RANGE_MIN_LABEL;
-	static const char* PERIMETER_RANGE_MIN_LABEL;
-	static const char* OBSTACLE_AVOIDANCE_NEAR_RANGE_MIN_LABEL;
-	static const char* OBSTACLE_AVOIDANCE_NEAR_RANGE_MAX_LABEL;
-	static const char* EXPLORE_RANGE_MAX_LABEL;
-	static const char* SEPARATION_RANGE_MAX_LABEL;
-	static const char* ALIGNMENT_RANGE_MAX_LABEL;
-	static const char* CLUSTER_RANGE_MAX_LABEL;
-	static const char* PERIMETER_RANGE_MAX_LABEL;
-	static const char* OBSTACLE_AVOIDANCE_FAR_RANGE_MIN_LABEL;
-	static const char* OBSTACLE_AVOIDANCE_FAR_RANGE_MAX_LABEL;
-	static const char* GOTO_WORK_CONSTANT_LABEL;
-	static const char* SEPARATION_DISTANCE_LABEL;
-	static const char* FORMATION_LABEL;
-	static const char* SENSOR_RANGE_LABEL;
-	static const char* DISCOVERY_RANGE_LABEL;
-	static const char* SHOW_FORCES_LABEL;
-	static const char* COLLIDE_WITH_OTHER_ROBOTS_LABEL;
-	static const char* MAGICK_LABEL;
-	static const char* NEIGHBORHOOD_COUNT_LABEL;
-	static const char* GRID_RESOLUTION_LABEL;
-	static const char* GRID_LENGTH_LABEL;
-	static const char* BUILDING_INTERIOR_SCALE_LABEL;
-	static const char* BUILDING_OFFSET_X_LABEL;
-	static const char* BUILDING_OFFSET_Y_LABEL;
-	static const char* BUILDING_OFFSET_Z_LABEL;
-	static const char* SHOW_BUILDING_LABEL;
-	static const char* INTERIOR_MODEL_FILENAME;
-	static const char* SWARM_CONFIG_FILENAME_LABEL;
-	static const char* SQUARE_RADIUS;
-	static const char* BOUNCE_FUNCTION_POWER;
-	static const char* BOUNCE_FUNCTION_MULTIPLIER;
-	static const char* MAX_TIME_TAKEN;
-	static const char* NO_OF_CLUSTERS;
-	static const char* DEATH_PERCENTAGE;
-	static const char* DEATH_TIME_TAKEN;
 	static const int MAX_FORMATION_NO;
 	static const int MAX_VIDEO_NO;
+
+	static const char* SWARM_CONFIG_FILENAME_LABEL;
+	static const char* OPT_CONFIG_FILENAME_LABEL;
 
 	QString recon_settings_filepath_;
 
@@ -317,9 +273,11 @@ private:
 private slots:
 	void update_images(int frame_no);
 	void save_recon_settings();
+	SwarmParams get_swarm_params_from_ui();
+	void set_swarm_params_to_ui(const SwarmParams& swarm_params);
 	void save_swarm_settings(QString swarm_conf_filepath);
 	void load_swarm_settings(QString swarm_conf_filepath);
-	OptimizationParams populate_opt_params_from_ui();
+	OptimizationParams get_opt_params_from_ui();
 	void load_swarm_config_settings();
 	void save_swarm_config_settings();
 public slots:

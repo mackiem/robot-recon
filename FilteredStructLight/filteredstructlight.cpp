@@ -10,56 +10,8 @@ const char* FilteredStructLight::CHECKERBOARD_VIDEO_FILENAME_LABEL = "checkerboa
 const char* FilteredStructLight::SCANLINE_VIDEO_FILENAME_LABEL = "scanline_video_filename";
 const char* FilteredStructLight::VELOCITY_LABEL = "velocity";
 
-
-const char* FilteredStructLight::ROBOTS_NO_LABEL = "robots_no";
-const char* FilteredStructLight::EXPLORATION_CONSTANT_LABEL = "exploration_constant";
-const char* FilteredStructLight::SEPARATION_CONSTANT_LABEL = "separation_constant";
-const char* FilteredStructLight::ALIGNMENT_CONSTANT_LABEL = "alignment_constant";
-const char* FilteredStructLight::CLUSTER_CONSTANT_LABEL = "cluster_constant";
-const char* FilteredStructLight::PERIMETER_CONSTANT_LABEL = "perimeter_constant";
-const char* FilteredStructLight::GOTO_WORK_CONSTANT_LABEL = "goto_work_constant";
-//const char* FilteredStructLight::SEPARATION_DISTANCE_LABEL = "separation_distance";
-const char* FilteredStructLight::SHOW_FORCES_LABEL = "show_forces";
-
-const char* FilteredStructLight::COLLIDE_WITH_OTHER_ROBOTS_LABEL = "collide_with_other_robots";
-
-const char* FilteredStructLight::MAGICK_LABEL = "magick";
-const char* FilteredStructLight::FORMATION_LABEL = "formation";
-const char* FilteredStructLight::SENSOR_RANGE_LABEL = "sensor_range";
-const char* FilteredStructLight::DISCOVERY_RANGE_LABEL = "discovery_range";
-
-const char* FilteredStructLight::EXPLORE_RANGE_MIN_LABEL = "explore_range_min";
-const char* FilteredStructLight::SEPARATION_RANGE_MIN_LABEL = "separation_range_min";
-const char* FilteredStructLight::ALIGNMENT_RANGE_MIN_LABEL = "alignment_range_min";
-const char* FilteredStructLight::CLUSTER_RANGE_MIN_LABEL = "cluster_range_min";
-const char* FilteredStructLight::PERIMETER_RANGE_MIN_LABEL = "perimeter_range_min";
-const char* FilteredStructLight::OBSTACLE_AVOIDANCE_NEAR_RANGE_MIN_LABEL = "obstacle_avoidance_near_range_min";
-const char* FilteredStructLight::OBSTACLE_AVOIDANCE_NEAR_RANGE_MAX_LABEL = "obstacle_avoidance_near_range_max";
-
-const char* FilteredStructLight::EXPLORE_RANGE_MAX_LABEL = "explore_range_max";
-const char* FilteredStructLight::SEPARATION_RANGE_MAX_LABEL = "separation_range_max";
-const char* FilteredStructLight::ALIGNMENT_RANGE_MAX_LABEL = "alignment_range_max";
-const char* FilteredStructLight::CLUSTER_RANGE_MAX_LABEL = "cluster_range_max";
-const char* FilteredStructLight::PERIMETER_RANGE_MAX_LABEL = "perimeter_range_max";
-const char* FilteredStructLight::OBSTACLE_AVOIDANCE_FAR_RANGE_MIN_LABEL = "obstacle_avoidance_far_range_min";
-const char* FilteredStructLight::OBSTACLE_AVOIDANCE_FAR_RANGE_MAX_LABEL = "obstacle_avoidance_far_range_max";
-
-const char* FilteredStructLight::NEIGHBORHOOD_COUNT_LABEL = "neighborhood_count";
-const char* FilteredStructLight::GRID_RESOLUTION_LABEL = "grid_resolution";
-const char* FilteredStructLight::GRID_LENGTH_LABEL = "grid_length";
-const char* FilteredStructLight::BUILDING_INTERIOR_SCALE_LABEL = "interior_scale";
-const char* FilteredStructLight::BUILDING_OFFSET_X_LABEL = "interior_offset_x";
-const char* FilteredStructLight::BUILDING_OFFSET_Y_LABEL = "interior_offset_y";
-const char* FilteredStructLight::BUILDING_OFFSET_Z_LABEL = "interior_offset_z";
-const char* FilteredStructLight::SHOW_BUILDING_LABEL = "show_interior";
-const char* FilteredStructLight::INTERIOR_MODEL_FILENAME = "interior_model_filename";
-
 const char* FilteredStructLight::SWARM_CONFIG_FILENAME_LABEL = "swarm_config_filename";
 const char* FilteredStructLight::OPT_CONFIG_FILENAME_LABEL = "opt_config_filename";
-
-const char* FilteredStructLight::SQUARE_RADIUS = "square_radius";
-const char* FilteredStructLight::BOUNCE_FUNCTION_POWER = "bounce_function_power";
-const char* FilteredStructLight::BOUNCE_FUNCTION_MULTIPLIER = "bounce_function_multiplier";
 
 
 	//QSpinBox* max_time_taken_spin_box_;
@@ -78,12 +30,6 @@ const char* FilteredStructLight::BOUNCE_FUNCTION_MULTIPLIER = "bounce_function_m
 	//QSpinBox* no_of_threads_spin_box_;
 	//QSpinBox* no_of_iterations_spin_box_;
 	//QSpinBox* culling_nth_iteration_spin_box_;
-
-const char* FilteredStructLight::MAX_TIME_TAKEN = "max_time_taken";
-const char* FilteredStructLight::NO_OF_CLUSTERS = "no_of_clusters";
-const char* FilteredStructLight::DEATH_PERCENTAGE = "death_percentage";
-const char* FilteredStructLight::DEATH_TIME_TAKEN = "death_time_taken";
-
 
 
 FilteredStructLight::FilteredStructLight(QWidget *parent)
@@ -140,41 +86,33 @@ void FilteredStructLight::save_recon_settings() {
 	settings.setValue(VELOCITY_LABEL, velocity_line_edit_->text());
 }
 
-void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
-	QSettings settings(swarm_conf_filepath, QSettings::IniFormat);
+SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
+	//QSettings settings(swarm_conf_filepath, QSettings::IniFormat);
 
-	settings.setValue(ROBOTS_NO_LABEL, robots_spinbox_->value());
-	settings.setValue(EXPLORATION_CONSTANT_LABEL, exploration_constant_->value());
-	settings.setValue(SEPARATION_CONSTANT_LABEL, separation_constant_->value());
-	settings.setValue(ALIGNMENT_CONSTANT_LABEL, alignment_constant_->value());
-	settings.setValue(CLUSTER_CONSTANT_LABEL, cluster_constant_->value());
-	settings.setValue(PERIMETER_CONSTANT_LABEL, perimeter_constant_->value());
-	settings.setValue(GOTO_WORK_CONSTANT_LABEL, goto_work_constant_->value());
+	SwarmParams swarm_params;
+	swarm_params.no_of_robots = robots_spinbox_->value();
 
-	settings.setValue(SEPARATION_RANGE_MIN_LABEL, separation_range_min_->value());
-	settings.setValue(SEPARATION_RANGE_MAX_LABEL, separation_range_max_->value());
+	swarm_params.exploration_constant_ = exploration_constant_->value();
+	swarm_params.separation_constant_ = separation_constant_->value();
+	swarm_params.alignment_constant_ = alignment_constant_->value();
+	swarm_params.cluster_constant_ = cluster_constant_->value();
+	swarm_params.perimeter_constant_ = perimeter_constant_->value();
+	swarm_params.goto_work_constant_ = goto_work_constant_->value();
 
-	settings.setValue(ALIGNMENT_RANGE_MIN_LABEL, alignment_range_min_->value());
-	settings.setValue(ALIGNMENT_RANGE_MAX_LABEL, alignment_range_max_->value());
-
-	settings.setValue(CLUSTER_RANGE_MIN_LABEL, cluster_range_min_->value());
-	settings.setValue(CLUSTER_RANGE_MAX_LABEL, cluster_range_max_->value());
-
-	settings.setValue(PERIMETER_RANGE_MIN_LABEL, perimeter_range_min_->value());
-	settings.setValue(PERIMETER_RANGE_MAX_LABEL, perimeter_range_max_->value());
-
-	settings.setValue(EXPLORE_RANGE_MIN_LABEL, explore_range_min_->value());
-	settings.setValue(EXPLORE_RANGE_MAX_LABEL, explore_range_max_->value());
-
-	settings.setValue(OBSTACLE_AVOIDANCE_NEAR_RANGE_MIN_LABEL, obstacle_avoidance_near_range_min_->value());
-	settings.setValue(OBSTACLE_AVOIDANCE_NEAR_RANGE_MAX_LABEL, obstacle_avoidance_near_range_max_->value());
-
-	settings.setValue(OBSTACLE_AVOIDANCE_FAR_RANGE_MIN_LABEL, obstacle_avoidance_far_range_min_->value());
-	settings.setValue(OBSTACLE_AVOIDANCE_FAR_RANGE_MAX_LABEL, obstacle_avoidance_far_range_max_->value());
-
-	settings.setValue(SENSOR_RANGE_LABEL, sensor_range_->value());
-
-	settings.setValue(DISCOVERY_RANGE_LABEL, discovery_range_->value());
+	swarm_params.separation_range_min_ = separation_range_min_->value();
+	swarm_params.separation_range_max_ = separation_range_max_->value();
+	swarm_params.alignment_range_min_ = alignment_range_min_->value();
+	swarm_params.alignment_range_max_ = alignment_range_max_->value();
+	swarm_params.cluster_range_min_ = cluster_range_min_->value();
+	swarm_params.cluster_range_max_ = cluster_range_max_->value();
+	swarm_params.perimeter_range_min_ = perimeter_range_min_->value();
+	swarm_params.perimeter_range_max_ = perimeter_range_max_->value();
+	swarm_params.explore_range_min_ = explore_range_min_->value();
+	swarm_params.explore_range_max_ = explore_range_max_->value();
+	swarm_params.obstacle_avoidance_near_range_min_ = obstacle_avoidance_near_range_min_->value();
+	swarm_params.obstacle_avoidance_near_range_max_ = obstacle_avoidance_near_range_max_->value();
+	swarm_params.obstacle_avoidance_far_range_min_ = obstacle_avoidance_far_range_min_->value();
+	swarm_params.obstacle_avoidance_far_range_max_ = obstacle_avoidance_far_range_max_->value();
 
 	int formation = 0;
 	for (int i = 0; i < MAX_FORMATION_NO; ++i) {
@@ -183,99 +121,96 @@ void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
 			break;
 		}
 	}
-	settings.setValue(FORMATION_LABEL, formation);
+	swarm_params.formation = formation;
+	swarm_params.magic_k_spin_box_ = magic_k_spin_box_->value();
+	swarm_params.neighborhood_count_ = neighborhood_count_->value();
 	
-	settings.setValue(MAGICK_LABEL, magic_k_spin_box_->value());
 
-	settings.setValue(NEIGHBORHOOD_COUNT_LABEL, neighborhood_count_->value());
-	
-	//settings.setValue(SEPARATION_DISTANCE_LABEL, separation_distance_->value());
+	swarm_params.grid_resolution_spin_box_ = grid_resolution_spin_box_->value();
 
-	settings.setValue(GRID_RESOLUTION_LABEL, grid_resolution_spin_box_->value());
-	settings.setValue(GRID_LENGTH_LABEL, grid_length_spin_box_->value());
+	swarm_params.grid_length_spin_box_ = grid_length_spin_box_->value();
+	swarm_params.scale_spinbox_ = scale_spinbox_->value();
+	swarm_params.x_spin_box_ = x_spin_box_->value();
+	swarm_params.y_spin_box_ = y_spin_box_->value();
+	swarm_params.z_spin_box_ = z_spin_box_->value();
+	swarm_params.show_interior_ = show_interior_->isChecked();
+	swarm_params.model_filename_ = model_filename_->text();
+	swarm_params.show_forces_ = show_forces_->isChecked();
+	swarm_params.collide_with_other_robots_ = collide_with_other_robots_->isChecked();
+	swarm_params.square_radius_ = square_radius_->value();
+	swarm_params.bounce_function_power_ = bounce_function_power_->value();
+	swarm_params.bounce_function_multiplier_ = bounce_function_multiplier_->value();
+	swarm_params.sensor_range_ = sensor_range_->value();
+	swarm_params.discovery_range_ = discovery_range_->value();
 
-	settings.setValue(BUILDING_INTERIOR_SCALE_LABEL, scale_spinbox_->value());
-	settings.setValue(BUILDING_OFFSET_X_LABEL, x_spin_box_->value());
-	settings.setValue(BUILDING_OFFSET_Y_LABEL, y_spin_box_->value());
-	settings.setValue(BUILDING_OFFSET_Z_LABEL, z_spin_box_->value());
-	settings.setValue(SHOW_BUILDING_LABEL, (show_interior_->isChecked()));
-	settings.setValue(INTERIOR_MODEL_FILENAME, model_filename_->text());
-
-	settings.setValue(SHOW_FORCES_LABEL, (show_forces_->isChecked()));
-
-	settings.setValue(COLLIDE_WITH_OTHER_ROBOTS_LABEL, (collide_with_other_robots_->isChecked()));
-
-	settings.setValue(SQUARE_RADIUS, square_radius_->value());
-	settings.setValue(BOUNCE_FUNCTION_POWER, bounce_function_power_->value());
-	settings.setValue(BOUNCE_FUNCTION_MULTIPLIER, bounce_function_multiplier_->value());
+	return swarm_params;
 }
 
 
-void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
-	QSettings settings(swarm_conf_filepath, QSettings::IniFormat);
+void FilteredStructLight::set_swarm_params_to_ui(const SwarmParams& swarm_params) {
 	
-	robots_spinbox_->setValue(settings.value(ROBOTS_NO_LABEL, "10").toInt());
+	robots_spinbox_->setValue(swarm_params.no_of_robots);
 	emit robots_spinbox_->valueChanged(robots_spinbox_->value());
-	exploration_constant_->setValue(settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
+	exploration_constant_->setValue(swarm_params.exploration_constant_);
 	emit exploration_constant_->valueChanged(exploration_constant_->value());
-	separation_constant_->setValue(settings.value(SEPARATION_CONSTANT_LABEL, "1").toDouble());
+	separation_constant_->setValue(swarm_params.separation_constant_);
 	emit separation_constant_->valueChanged(separation_constant_->value());
-	alignment_constant_->setValue(settings.value(ALIGNMENT_CONSTANT_LABEL, "1").toDouble());
+	alignment_constant_->setValue(swarm_params.alignment_constant_);
 	emit alignment_constant_->valueChanged(alignment_constant_->value());
-	cluster_constant_->setValue(settings.value(CLUSTER_CONSTANT_LABEL, "1").toDouble());
+	cluster_constant_->setValue(swarm_params.cluster_constant_);
 	emit cluster_constant_->valueChanged(cluster_constant_->value());
-	perimeter_constant_->setValue(settings.value(PERIMETER_CONSTANT_LABEL, "1").toDouble());
+	perimeter_constant_->setValue(swarm_params.perimeter_constant_);
 	emit perimeter_constant_->valueChanged(perimeter_constant_->value());
-	goto_work_constant_->setValue(settings.value(GOTO_WORK_CONSTANT_LABEL, "1").toDouble());
+	goto_work_constant_->setValue(swarm_params.goto_work_constant_);
 	emit goto_work_constant_->valueChanged(goto_work_constant_->value());
 
-	int formation_index = (settings.value(FORMATION_LABEL, "0").toInt());
+	int formation_index = (swarm_params.formation);
 	formation_buttons_[formation_index]->toggle();
 
-	grid_resolution_spin_box_->setValue(settings.value(GRID_RESOLUTION_LABEL, "4096").toInt());
-	grid_length_spin_box_->setValue(settings.value(GRID_LENGTH_LABEL, "20").toInt());
+	grid_resolution_spin_box_->setValue(swarm_params.grid_resolution_spin_box_);
+	grid_length_spin_box_->setValue(swarm_params.grid_length_spin_box_);
 	emit grid_length_spin_box_->valueChanged(grid_length_spin_box_->value());
 
-	sensor_range_->setValue(settings.value(SENSOR_RANGE_LABEL, "5").toDouble());
+	sensor_range_->setValue(swarm_params.sensor_range_);
 	emit sensor_range_->valueChanged(sensor_range_->value());
 
-	discovery_range_->setValue(settings.value(DISCOVERY_RANGE_LABEL, "0").toInt());
+	discovery_range_->setValue(swarm_params.discovery_range_);
 	emit discovery_range_->valueChanged(discovery_range_->value());
 
-	separation_range_min_->setValue(settings.value(SEPARATION_RANGE_MIN_LABEL, "0").toDouble());
+	separation_range_min_->setValue(swarm_params.separation_range_min_);
 	emit separation_range_min_->valueChanged(separation_range_min_->value());
-	separation_range_max_->setValue(settings.value(SEPARATION_RANGE_MAX_LABEL, "1").toDouble());
+	separation_range_max_->setValue(swarm_params.separation_range_max_);
 	emit separation_range_max_->valueChanged(separation_range_max_->value());
 
-	alignment_range_min_->setValue(settings.value(ALIGNMENT_RANGE_MIN_LABEL, "0").toDouble());
+	alignment_range_min_->setValue(swarm_params.alignment_range_min_);
 	emit alignment_range_min_->valueChanged(alignment_range_min_->value());
-	alignment_range_max_->setValue(settings.value(ALIGNMENT_RANGE_MAX_LABEL, "1").toDouble());
+	alignment_range_max_->setValue(swarm_params.alignment_range_max_);
 	emit alignment_range_max_->valueChanged(alignment_range_max_->value());
 
-	cluster_range_min_->setValue(settings.value(CLUSTER_RANGE_MIN_LABEL, "0").toDouble());
+	cluster_range_min_->setValue(swarm_params.cluster_range_min_);
 	emit cluster_range_min_->valueChanged(cluster_range_min_->value());
-	cluster_range_max_->setValue(settings.value(CLUSTER_RANGE_MAX_LABEL, "1").toDouble());
+	cluster_range_max_->setValue(swarm_params.cluster_range_max_);
 	emit cluster_range_max_->valueChanged(cluster_range_max_->value());
 
-	perimeter_range_min_->setValue(settings.value(PERIMETER_RANGE_MIN_LABEL, "0").toDouble());
+	perimeter_range_min_->setValue(swarm_params.perimeter_range_min_);
 	emit perimeter_range_min_->valueChanged(perimeter_range_min_->value());
-	perimeter_range_max_->setValue(settings.value(PERIMETER_RANGE_MAX_LABEL, "1").toDouble());
+	perimeter_range_max_->setValue(swarm_params.perimeter_range_max_);
 	emit perimeter_range_max_->valueChanged(perimeter_range_max_->value());
 
-	explore_range_min_->setValue(settings.value(EXPLORE_RANGE_MIN_LABEL, "0").toDouble());
+	explore_range_min_->setValue(swarm_params.explore_range_min_);
 	emit explore_range_min_->valueChanged(explore_range_min_->value());
-	explore_range_max_->setValue(settings.value(EXPLORE_RANGE_MAX_LABEL, "1").toDouble());
+	explore_range_max_->setValue(swarm_params.explore_range_max_);
 	emit explore_range_max_->valueChanged(explore_range_max_->value());
 
 
-	obstacle_avoidance_far_range_min_->setValue(settings.value(OBSTACLE_AVOIDANCE_FAR_RANGE_MIN_LABEL, "1").toDouble());
+	obstacle_avoidance_far_range_min_->setValue(swarm_params.obstacle_avoidance_far_range_min_);
 	emit obstacle_avoidance_far_range_min_->valueChanged(obstacle_avoidance_far_range_min_->value());
-	obstacle_avoidance_far_range_max_->setValue(settings.value(OBSTACLE_AVOIDANCE_FAR_RANGE_MAX_LABEL, "5").toDouble());
+	obstacle_avoidance_far_range_max_->setValue(swarm_params.obstacle_avoidance_far_range_max_);
 	emit obstacle_avoidance_far_range_max_->valueChanged(obstacle_avoidance_far_range_max_->value());
 
-	obstacle_avoidance_near_range_min_->setValue(settings.value(OBSTACLE_AVOIDANCE_NEAR_RANGE_MIN_LABEL, "0").toDouble());
+	obstacle_avoidance_near_range_min_->setValue(swarm_params.obstacle_avoidance_near_range_min_);
 	emit obstacle_avoidance_near_range_min_->valueChanged(obstacle_avoidance_near_range_min_->value());
-	obstacle_avoidance_near_range_max_->setValue(settings.value(OBSTACLE_AVOIDANCE_NEAR_RANGE_MAX_LABEL, "1").toDouble());
+	obstacle_avoidance_near_range_max_->setValue(swarm_params.obstacle_avoidance_near_range_max_);
 	emit obstacle_avoidance_near_range_max_->valueChanged(obstacle_avoidance_near_range_max_->value());
 
 
@@ -283,24 +218,24 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	//emit separation_distance_->valueChanged(separation_distance_->value());
 
 
-	model_filename_->setText(settings.value(INTERIOR_MODEL_FILENAME, "interior/house interior.obj").toString());
+	model_filename_->setText(swarm_params.model_filename_);
 	emit model_filename_->textChanged(model_filename_->text());
 
 
-	scale_spinbox_->setValue(settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toDouble());
-	x_spin_box_->setValue(settings.value(BUILDING_OFFSET_X_LABEL, "0").toInt());
-	y_spin_box_->setValue(settings.value(BUILDING_OFFSET_Y_LABEL, "0").toInt());
-	z_spin_box_->setValue(settings.value(BUILDING_OFFSET_Z_LABEL, "0").toInt());
+	scale_spinbox_->setValue(swarm_params.scale_spinbox_);
+	x_spin_box_->setValue(swarm_params.x_spin_box_);
+	y_spin_box_->setValue(swarm_params.y_spin_box_);
+	z_spin_box_->setValue(swarm_params.z_spin_box_);
 
-	Qt::CheckState show_interior = settings.value(SHOW_BUILDING_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
+	Qt::CheckState show_interior = swarm_params.show_interior_ ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
 	show_interior_->setCheckState(show_interior);
 	emit show_interior_->stateChanged(show_interior);
 
-	Qt::CheckState show_forces = settings.value(SHOW_FORCES_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
+	Qt::CheckState show_forces = swarm_params.show_forces_ ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
 	show_forces_->setCheckState(show_forces);
 	emit show_forces_->stateChanged(show_forces);
 
-	Qt::CheckState collide_with_other_robots = settings.value(COLLIDE_WITH_OTHER_ROBOTS_LABEL, "1").toBool() ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
+	Qt::CheckState collide_with_other_robots = swarm_params.collide_with_other_robots_ ? Qt::CheckState::Checked : Qt::CheckState::Unchecked ;
 	collide_with_other_robots_->setCheckState(collide_with_other_robots);
 	emit collide_with_other_robots_->stateChanged(collide_with_other_robots);
 
@@ -311,23 +246,34 @@ void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
 	slow_down_check_box_->setChecked(false);
 	emit slow_down_check_box_->stateChanged(false);
 
-	neighborhood_count_->setValue(settings.value(NEIGHBORHOOD_COUNT_LABEL, "5").toInt());
+	neighborhood_count_->setValue(swarm_params.neighborhood_count_);
 	emit neighborhood_count_->valueChanged(neighborhood_count_->value());
 
-	magic_k_spin_box_->setValue(settings.value(MAGICK_LABEL, "0.1").toDouble());
+	magic_k_spin_box_->setValue(swarm_params.magic_k_spin_box_);
 	emit magic_k_spin_box_->valueChanged(magic_k_spin_box_->value());
 
-	square_radius_->setValue(settings.value(SQUARE_RADIUS, "4.0").toDouble());
+	square_radius_->setValue(swarm_params.square_radius_);
 	emit square_radius_->valueChanged(square_radius_->value());
 
-	bounce_function_power_->setValue(settings.value(BOUNCE_FUNCTION_POWER, "3.0").toDouble());
+	bounce_function_power_->setValue(swarm_params.bounce_function_power_);
 	emit bounce_function_power_->valueChanged(bounce_function_power_->value());
 
-	bounce_function_multiplier_->setValue(settings.value(BOUNCE_FUNCTION_MULTIPLIER, "1.0").toDouble());
+	bounce_function_multiplier_->setValue(swarm_params.bounce_function_multiplier_);
 	emit bounce_function_multiplier_->valueChanged(bounce_function_multiplier_->value());
 }
 
-OptimizationParams FilteredStructLight::populate_opt_params_from_ui() {
+void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
+	auto swarm_params = get_swarm_params_from_ui();
+	SwarmUtils::save_swarm_params(swarm_params, swarm_conf_filepath);
+}
+
+void FilteredStructLight::load_swarm_settings(QString swarm_conf_filepath) {
+	auto swarm_params = SwarmUtils::load_swarm_params(swarm_conf_filepath);
+	set_swarm_params_to_ui(swarm_params);
+
+}
+
+OptimizationParams FilteredStructLight::get_opt_params_from_ui() {
 	OptimizationParams opt_params;
 
 	opt_params.swarm_configs = swarm_configs_list_model_->stringList();
@@ -339,7 +285,7 @@ OptimizationParams FilteredStructLight::populate_opt_params_from_ui() {
 }
 
 void FilteredStructLight::save_optimization_settings(const QString& filename) {
-	auto opt_params = populate_opt_params_from_ui();
+	auto opt_params = get_opt_params_from_ui();
 	SwarmUtils::save_optimization_params(opt_params, filename);
 }
 
@@ -1441,7 +1387,7 @@ void FilteredStructLight::add_swarm_optimization_options(QGroupBox* group_box) {
 
 	connect(batch_optimize_button_, &QPushButton::clicked, this, 
 		[&] {
-		auto op_params = populate_opt_params_from_ui();
+		auto op_params = get_opt_params_from_ui();
 		swarm_viewer_->run_batch_optimization(op_params);
 	});
 	
