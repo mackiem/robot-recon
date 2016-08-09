@@ -215,11 +215,11 @@ private:
 	QLabel* occlusion_label_;
 
 
-	QSpinBox* max_time_taken_spin_box_;
-	QSpinBox* no_of_clusters_spinbox_;
+	QSpinBox* max_time_taken_;
+	QSpinBox* no_of_clusters_;
 
-	QDoubleSpinBox* death_percentage_spin_box_;
-	QSpinBox* death_time_taken_spin_box_;
+	QDoubleSpinBox* death_percentage_;
+	QSpinBox* death_time_taken_;
 
 	// optimization
 	QPushButton* add_swarm_configuration_button_;

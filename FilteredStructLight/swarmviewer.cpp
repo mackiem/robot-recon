@@ -401,114 +401,96 @@ void SwarmViewer::set_shaders() {
 
 
 
-void SwarmViewer::derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset) {
-	std::vector<std::vector<cv::Vec3f>> triangle_list;
-	cv::Vec3f vertex_offset(offset.x, offset.y, offset.z);
-	glm::mat3 rot_mat = glm::mat3(model_rotation_);
-	cv::Mat rotation_mat = convert_mat(rot_mat);
+//void SwarmViewer::derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset) {
+//	std::vector<std::vector<cv::Vec3f>> triangle_list;
+//	cv::Vec3f vertex_offset(offset.x, offset.y, offset.z);
+//	glm::mat4 model_rotation;
+//	glm::mat3 rot_mat = glm::mat3(model_rotation);
+//	cv::Mat rotation_mat = convert_mat(rot_mat);
+//
+//	int total_count = 0;
+//	for (size_t i = 0; i < bufferdata.count.size(); ++i) {
+//		// get triangle vertices
+//
+//		int index_offset = bufferdata.base_index[i];
+//		int base_vertex = bufferdata.offset[i];
+//		std::vector<cv::Vec3f> triangle;
+//		for (size_t j = 0; j < bufferdata.count[i]; ++j) {
+//			int index = bufferdata.indices[index_offset + j];
+//			cv::Mat rotated_point_matrix = rotation_mat * cv::Mat(bufferdata.positions[base_vertex + index]);
+//			cv::Vec3f rotated_point((float*)rotated_point_matrix.datastart);
+//			cv::Vec3f triangle_point = scale * (rotated_point + vertex_offset);
+//			triangle.push_back(triangle_point);
+//			if ((j+1) % 3 == 0 && j > 0) {
+//				triangle_list.push_back(triangle);
+//				triangle.clear();
+//			}
+//		}
+//		total_count += bufferdata.count[i];
+//	}
+//
+//	total_count /= 3;
+//
+//	// get floor plane
+//	cv::Vec3f n(0.f, OCCUPANCY_GRID_HEIGHT, 0.f);
+//	float d = OCCUPANCY_GRID_HEIGHT * OCCUPANCY_GRID_HEIGHT;
+//
+//	// for each triangle, check if 2 sides intersect with the plane,
+//	// then rasterize that line to the grid (bresenham line algorithm)
+//	for (auto& triangle : triangle_list) {
+//		assert(triangle.size() == 3);
+//		std::vector<glm::vec3> intersection_points;
+//		for (int i = 0; i < 3; ++i) {
+//			cv::Vec3f a = triangle[i];
+//			int b_index = (i == 2) ? 0 : i + 1;
+//			cv::Vec3f b = triangle[b_index];
+//
+//			cv::Vec3f intersection_pt;
+//			bool does_intersect = intersect(n, d, a, b, intersection_pt);
+//
+//			if (does_intersect) {
+//				intersection_points.push_back(glm::vec3(intersection_pt[0], intersection_pt[1],
+//					intersection_pt[2]));
+//			}
+//
+//			if ((a[1] > OCCUPANCY_GRID_HEIGHT && b[1] < OCCUPANCY_GRID_HEIGHT)
+//				|| (a[1] < OCCUPANCY_GRID_HEIGHT && b[1] > OCCUPANCY_GRID_HEIGHT)) {
+//				std::string result = (does_intersect) ? "true" : "false";
+//				//std::cout << "Does intersect. Algorithm output : " <<  result << std::endl;
+//				assert(does_intersect);
+//			}
+//		}
+//			
+//
+//
+//		assert(intersection_points.size() == 0 || intersection_points.size() == 2);
+//		if (intersection_points.size() == 2) {
+//			occupancy_grid_->mark_interior_line(intersection_points[0],
+//				intersection_points[1]);
+//			//recon_grid_->mark_interior_line(intersection_points[0],
+//			//	intersection_points[1]);
+//		}
+//
+//		glm::vec3 points[3];
+//		for (int i = 0; i < 3; ++i) {
+//			points[i] = glm::vec3(triangle[i][0], triangle[i][1], triangle[i][2]);
+//		}
+//		recon_grid_->mark_random_points_in_triangle(points[0], points[1], points[2]);
+//	}
+//
+//	//	for (int z = 0; z < grid_resolution_per_side_; ++z) {
+//	//		for (int x = 0; x < grid_resolution_per_side_; ++x) {
+//	//			auto empty_return_value = recon_grid_->get_3d_points(glm::ivec3(x, 0, z));
+//	//			std::cout << "(" << x << ", " << z << ") -> " << empty_return_value->size() << "\n";
+//	//	}
+//	//}
+//
+//
+//
+//	// remove interior of the interiors
+//	//occupancy_grid_->remove_inner_interiors();
+//}
 
-	int total_count = 0;
-	for (size_t i = 0; i < bufferdata.count.size(); ++i) {
-		// get triangle vertices
-
-		int index_offset = bufferdata.base_index[i];
-		int base_vertex = bufferdata.offset[i];
-		std::vector<cv::Vec3f> triangle;
-		for (size_t j = 0; j < bufferdata.count[i]; ++j) {
-			int index = bufferdata.indices[index_offset + j];
-			cv::Mat rotated_point_matrix = rotation_mat * cv::Mat(bufferdata.positions[base_vertex + index]);
-			cv::Vec3f rotated_point((float*)rotated_point_matrix.datastart);
-			cv::Vec3f triangle_point = scale * (rotated_point + vertex_offset);
-			triangle.push_back(triangle_point);
-			if ((j+1) % 3 == 0 && j > 0) {
-				triangle_list.push_back(triangle);
-				triangle.clear();
-			}
-		}
-		total_count += bufferdata.count[i];
-	}
-
-	total_count /= 3;
-
-	// get floor plane
-	cv::Vec3f n(0.f, OCCUPANCY_GRID_HEIGHT, 0.f);
-	float d = OCCUPANCY_GRID_HEIGHT * OCCUPANCY_GRID_HEIGHT;
-
-	// for each triangle, check if 2 sides intersect with the plane,
-	// then rasterize that line to the grid (bresenham line algorithm)
-	for (auto& triangle : triangle_list) {
-		assert(triangle.size() == 3);
-		std::vector<glm::vec3> intersection_points;
-		for (int i = 0; i < 3; ++i) {
-			cv::Vec3f a = triangle[i];
-			int b_index = (i == 2) ? 0 : i + 1;
-			cv::Vec3f b = triangle[b_index];
-
-			cv::Vec3f intersection_pt;
-			bool does_intersect = intersect(n, d, a, b, intersection_pt);
-
-			if (does_intersect) {
-				intersection_points.push_back(glm::vec3(intersection_pt[0], intersection_pt[1],
-					intersection_pt[2]));
-			}
-
-			if ((a[1] > OCCUPANCY_GRID_HEIGHT && b[1] < OCCUPANCY_GRID_HEIGHT)
-				|| (a[1] < OCCUPANCY_GRID_HEIGHT && b[1] > OCCUPANCY_GRID_HEIGHT)) {
-				std::string result = (does_intersect) ? "true" : "false";
-				//std::cout << "Does intersect. Algorithm output : " <<  result << std::endl;
-				assert(does_intersect);
-			}
-		}
-			
-
-
-		assert(intersection_points.size() == 0 || intersection_points.size() == 2);
-		if (intersection_points.size() == 2) {
-			occupancy_grid_->mark_interior_line(intersection_points[0],
-				intersection_points[1]);
-			//recon_grid_->mark_interior_line(intersection_points[0],
-			//	intersection_points[1]);
-		}
-
-		glm::vec3 points[3];
-		for (int i = 0; i < 3; ++i) {
-			points[i] = glm::vec3(triangle[i][0], triangle[i][1], triangle[i][2]);
-		}
-		recon_grid_->mark_random_points_in_triangle(points[0], points[1], points[2]);
-	}
-
-	//	for (int z = 0; z < grid_resolution_per_side_; ++z) {
-	//		for (int x = 0; x < grid_resolution_per_side_; ++x) {
-	//			auto empty_return_value = recon_grid_->get_3d_points(glm::ivec3(x, 0, z));
-	//			std::cout << "(" << x << ", " << z << ") -> " << empty_return_value->size() << "\n";
-	//	}
-	//}
-
-
-
-	// remove interior of the interiors
-	//occupancy_grid_->remove_inner_interiors();
-}
-
-bool SwarmViewer::intersect(const cv::Vec3f& n, float d, 
-	const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt) const {
-
-	cv::Vec3f v = b - a;
-
-	float denominator = n.dot(v);
-	if (std::abs(denominator) < 1e-6) {
-		return false;
-	}
-
-	float numerator = d - n.dot(a);
-	float t = numerator / denominator;
-
-	if (t >= 0 && t <= 1) {
-		intersection_pt = a + t * v;
-		return true;
-	}
-	return false;
-}
 
 void SwarmViewer::quad_tree_test() {
 	//int resolution = 5;
@@ -559,17 +541,7 @@ void SwarmViewer::quad_tree_test() {
 	//quadtree_.reset();
 }
 
-void SwarmViewer::load_interior_model() {
-	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
-
-	std::string model_filename = (interior_model_filename_.compare("") == 0) ? DEFAULT_INTERIOR_MODEL_FILENAME
-		: interior_model_filename_;
-
-	VertexBufferData* vertex_buffer_data = new VertexBufferData();
-	load_obj(model_filename,  *vertex_buffer_data);
-
-	float scale = interior_scale_;
-
+void SwarmViewer::upload_interior_model_data_to_gpu(VertexBufferData* vertex_buffer_data) {
 	if (render_) {
 		cv::Vec4f color(0.8f, 0.5f, 0.5f, 1.f);
 		vertex_buffer_data->colors = std::vector<cv::Vec4f>(vertex_buffer_data->positions.size(), color);
@@ -586,21 +558,33 @@ void SwarmViewer::load_interior_model() {
 		interior_model_object->mesh_ = interior_model_mesh;
 
 
-		glm::mat4 model = glm::scale(glm::mat4(1.f), glm::vec3(scale, scale, scale));
-		model = glm::translate(model, interior_offset_);
-		model = model * model_rotation_;
+		glm::mat4 model = glm::scale(glm::mat4(1.f), glm::vec3(swarm_params_.scale_spinbox_, swarm_params_.scale_spinbox_, swarm_params_.scale_spinbox_));
+		model = glm::translate(model, glm::vec3(swarm_params_.x_spin_box_, swarm_params_.y_spin_box_, swarm_params_.z_spin_box_));
+		//model = model * model_rotation_;
 		update_model(interior_model_object->mesh_, model);
 
 		default_vis_objects_.push_back(interior_model_object);
 	}
-
-
-	if (interior_model_filename_.compare("") > 0) {
-		derive_floor_plan(*vertex_buffer_data, scale, interior_offset_);
-	}
-
-	delete vertex_buffer_data;
+	
 }
+
+//void SwarmViewer::load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data) {
+//	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
+//
+//	std::string model_filename = (swarm_params.model_filename_.compare("") == 0) ? DEFAULT_INTERIOR_MODEL_FILENAME
+//		: swarm_params.model_filename_;
+//
+//	vertex_buffer_data = new VertexBufferData();
+//	load_obj(model_filename,  *vertex_buffer_data);
+//
+//	float scale = swarm_params.scale_spinbox_;
+//
+//	if (swarm_params.model_filename_.compare("") > 0) {
+//		derive_floor_plan(*vertex_buffer_data, scale, glm::vec3(swarm_params.x_spin_box_, swarm_params.y_spin_box_, swarm_params.z_spin_box_));
+//	}
+//
+//	//delete vertex_buffer_data;
+//}
 
 void SwarmViewer::change_to_top_down_view() {
 	look_at_z_ = 0.f;
@@ -612,7 +596,7 @@ void SwarmViewer::change_to_top_down_view() {
 	m_zRot = 0.f;
 
 	camera_distance_ = 0.f;
-	float length = grid_resolution_per_side_ * grid_length_;
+	float length = swarm_params_.grid_resolution_per_side_ * swarm_params_.grid_length_;
 	glm::vec3 mid_point(length / 2.f, 0.f, length/2.f);
 
 	center_ = mid_point;
@@ -758,7 +742,8 @@ void SwarmViewer::cleanup() {
 	
 }
 
-void SwarmViewer::reset_sim() {
+
+void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	makeCurrent();
 	shutdown_worker();
 	cleanup();
@@ -770,18 +755,23 @@ void SwarmViewer::reset_sim() {
 
 	render_ = gui_render_;
 
-	occupancy_grid_ = new SwarmOccupancyTree(grid_length_, grid_resolution_);
-	grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
-	collision_grid_ = new SwarmCollisionTree(grid_resolution_);
-	recon_grid_ = new Swarm3DReconTree(grid_resolution_, grid_length_);
+	occupancy_grid_ = new SwarmOccupancyTree(swarm_params.grid_length_, swarm_params.grid_resolution_);
+	swarm_params.grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
+	collision_grid_ = new SwarmCollisionTree(swarm_params.grid_resolution_);
+	recon_grid_ = new Swarm3DReconTree(swarm_params.grid_resolution_, swarm_params.grid_length_);
 
 
-	load_interior_model();
+	VertexBufferData* vertex_buffer_data;
+	SwarmUtils::load_interior_model(swarm_params, vertex_buffer_data);
+	upload_interior_model_data_to_gpu(vertex_buffer_data);
+	delete vertex_buffer_data;
+
 	occupancy_grid_->create_perimeter_list();
 	occupancy_grid_->create_empty_space_list();
 	occupancy_grid_->create_interior_list();
 
-	create_robots();
+	SwarmUtils::create_robots(swarm_params, death_map_, occupancy_grid_, collision_grid_, recon_grid_, uniform_locations_, &m_shader, render_, robots_);
+
 	// assumption - global position of other robots are known
 	for (auto& robot : robots_) {
 		robot->update_robots(robots_);
@@ -796,25 +786,23 @@ void SwarmViewer::reset_sim() {
 	// graphics setup
 	change_to_top_down_view();
 	if (render_) {
-		create_occupancy_grid(grid_resolution_per_side_, grid_length_);
+		create_occupancy_grid(swarm_params.grid_resolution_per_side_, swarm_params.grid_length_);
 		robot_color_map_[occupancy_grid_->get_interior_mark()] = cv::Vec4f(1.f, 1.f, 1.f, 1.f);
 		create_lights();
 
 		overlay_ = new GridOverlay(uniform_locations_,
-			occupancy_grid_, grid_resolution_per_side_, grid_length_, robot_color_map_, &m_shader);
+			occupancy_grid_, swarm_params.grid_resolution_per_side_, swarm_params.grid_length_, robot_color_map_, &m_shader);
 		update_perimiter_positions_in_overlay();
 
 		reset_vis_objects_.push_back(overlay_);
 
-		recon_points_ = new Recon3DPoints(uniform_locations_, recon_grid_, grid_resolution_per_side_, grid_length_, &m_shader);
+		recon_points_ = new Recon3DPoints(uniform_locations_, recon_grid_, swarm_params.grid_resolution_per_side_, swarm_params.grid_length_, &m_shader);
 		reset_vis_objects_.push_back(recon_points_);
 
 		for (auto& robot : robots_) {
 			robot->set_grid_overlay(overlay_);
 			robot->set_recon_3d_points(recon_points_);
 		}
-
-
 	}
 
 	robot_worker_ = new RobotWorker();
@@ -832,50 +820,50 @@ void SwarmViewer::reset_sim() {
 	robot_worker_->set_occupancy_tree(occupancy_grid_);
 	robot_worker_->set_recon_tree(recon_grid_);
 	robot_worker_->set_slow_down(slow_down_);
-	robot_worker_->set_max_time_taken(max_time_taken_);
+	robot_worker_->set_max_time_taken(swarm_params.max_time_taken_);
 	robot_update_thread_.start();
 }
-
-void SwarmViewer::set_show_forces(int show) {
-	show_forces_ = show;
-	for (auto& robot : robots_) {
-		robot->set_show_forces(show_forces_);
-	}
-}
-
-void SwarmViewer::set_model_filename(QString filename) {
-	interior_model_filename_ = filename.toStdString();
-}
-
-void SwarmViewer::set_separation_range(double min, double max) {
-	separation_range_ = Range(min, max);
-	separation_distance_ = max * grid_length_;
-}
-
-void SwarmViewer::set_alignment_range(double min, double max) {
-	alignment_range_ = Range(min, max);
-}
-
-void SwarmViewer::set_cluster_range(double min, double max) {
-	cluster_range_ = Range(min, max);
-}
-
-void SwarmViewer::set_perimeter_range(double min, double max) {
-	perimeter_range_ = Range(min, max);
-}
-
-void SwarmViewer::set_explore_range(double min, double max) {
-	explore_range_ = Range(min, max);
-}
-
-void SwarmViewer::set_obstacle_avoidance_near_range(double min, double max) {
-	obstacle_near_range_ = Range(min, max);
-
-}
-
-void SwarmViewer::set_obstacle_avoidance_far_range(double min, double max) {
-	obstacle_far_range_ = Range(min, max);
-}
+//
+//void SwarmViewer::set_show_forces(int show) {
+//	show_forces_ = show;
+//	for (auto& robot : robots_) {
+//		robot->set_show_forces(show_forces_);
+//	}
+//}
+//
+//void SwarmViewer::set_model_filename(QString filename) {
+//	interior_model_filename_ = filename.toStdString();
+//}
+//
+//void SwarmViewer::set_separation_range(double min, double max) {
+//	separation_range_ = Range(min, max);
+//	separation_distance_ = max * grid_length_;
+//}
+//
+//void SwarmViewer::set_alignment_range(double min, double max) {
+//	alignment_range_ = Range(min, max);
+//}
+//
+//void SwarmViewer::set_cluster_range(double min, double max) {
+//	cluster_range_ = Range(min, max);
+//}
+//
+//void SwarmViewer::set_perimeter_range(double min, double max) {
+//	perimeter_range_ = Range(min, max);
+//}
+//
+//void SwarmViewer::set_explore_range(double min, double max) {
+//	explore_range_ = Range(min, max);
+//}
+//
+//void SwarmViewer::set_obstacle_avoidance_near_range(double min, double max) {
+//	obstacle_near_range_ = Range(min, max);
+//
+//}
+//
+//void SwarmViewer::set_obstacle_avoidance_far_range(double min, double max) {
+//	obstacle_far_range_ = Range(min, max);
+//}
 
 void SwarmViewer::pause() {
 	emit physics_thread_pause();
@@ -891,24 +879,24 @@ void SwarmViewer::resume() {
 	step_count_ = -1;
 }
 
-void SwarmViewer::run_least_squared_optimization() {
-	int preferred_neighborhood_count = 5;
+//void SwarmViewer::run_least_squared_optimization() {
+	//int preferred_neighborhood_count = 5;
 
-	SwarmOptimizer* optimizer_worker = new SwarmOptimizer();
-	QThread* optimizer_thread = new QThread();
+	//SwarmOptimizer* optimizer_worker = new SwarmOptimizer();
+	//QThread* optimizer_thread = new QThread();
 
-	connect(optimizer_thread, SIGNAL(started()), optimizer_worker, SLOT(optimize_swarm_params()));
-	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(quit()));
-	connect(optimizer_thread, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
-	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
+	//connect(optimizer_thread, SIGNAL(started()), optimizer_worker, SLOT(optimize_swarm_params()));
+	//connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(quit()));
+	//connect(optimizer_thread, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
+	//connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
 
 
-	optimizer_worker->set_optimize_swarm_params(this, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_, explore_constant_,
-		separation_range_, alignment_range_, cluster_range_, preferred_neighborhood_count);
+	//optimizer_worker->set_optimize_swarm_params(this, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_, explore_constant_,
+	//	separation_range_, alignment_range_, cluster_range_, preferred_neighborhood_count);
 
-	optimizer_worker->moveToThread(optimizer_thread);
-	optimizer_thread->start();
-}
+	//optimizer_worker->moveToThread(optimizer_thread);
+	//optimizer_thread->start();
+//}
 
 void SwarmViewer::run_mcmc_optimization() {
 
@@ -922,7 +910,6 @@ void SwarmViewer::run_mcmc_optimization() {
 	//connect(optimizer_thread, SIGNAL(started()), optimizer_worker, SLOT(optimize_experimental_brute_force()));
 	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(quit()));
 	connect(optimizer_thread, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
-	connect(optimizer_worker, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
 
 
 	optimizer_worker->set_viewer(this);
@@ -937,10 +924,10 @@ void SwarmViewer::run_mcmc_optimization() {
 	std::cout << "Optimizer started \n";
 }
 
-void SwarmViewer::set_magic_k(double magic_k) {
-	magic_k_ = magic_k;
-}
-
+//void SwarmViewer::set_magic_k(double magic_k) {
+//	magic_k_ = magic_k;
+//}
+//
 void SwarmViewer::set_should_render(int render) {
 	gui_render_ = render;
 }
@@ -948,63 +935,63 @@ void SwarmViewer::set_should_render(int render) {
 void SwarmViewer::set_slow_down(int slow_down) {
 	slow_down_ = slow_down;
 }
-
-void SwarmViewer::set_collide_with_robots(int collide) {
-	collide_with_robots_ = collide;
-}
-
-void SwarmViewer::set_no_of_clusters(int no_of_clusters) {
-	no_of_clusters_ = no_of_clusters;
-}
-
-void SwarmViewer::set_max_time_taken(int max_time_taken) {
-	max_time_taken_ = max_time_taken;
-}
-
-void SwarmViewer::set_death_percentage(double death_percentage) {
-	death_percentage_ = death_percentage;
-}
-
-void SwarmViewer::set_death_time_taken(int death_time_taken) {
-	death_time_taken_ = death_time_taken;
-}
-
-void SwarmViewer::set_swarm_configs_for_optimization(QStringList swarm_configs_for_optimization) {
-	swarm_configs_for_optimization_ = swarm_configs_for_optimization;
-}
-
-void SwarmViewer::set_no_of_threads_for_optimization(int no_of_threads_for_optimization) {
-	no_of_threads_for_optimization_ = no_of_threads_for_optimization;
-}
-
-void SwarmViewer::set_no_of_iterations_for_optimization(int no_of_iterations_for_optimization) {
-	no_of_iterations_for_optimization_ = no_of_iterations_for_optimization;
-}
-
-void SwarmViewer::set_culling_nth_iteration_for_optimization(int culling_nth_iteration_for_optimization) {
-	culling_nth_iteration_for_optimization_ = culling_nth_iteration_for_optimization;
-}
-
-void SwarmViewer::run_batch_optimization(OptimizationParams opt_params) {
-	std::cout << opt_params.no_of_iterations << "\n";
-}
-
-void SwarmViewer::set_sensor_range(double sensor_range) {
-	sensor_range_ = sensor_range;
-}
-
-
-void SwarmViewer::set_discovery_range(int discovery_range) {
-	discovery_range_ = discovery_range;
-}
-
-void SwarmViewer::set_neighborhood_count(int count) {
-	neighborhood_count_ = count;
-}
-
-void SwarmViewer::set_formation(int formation) {
-	formation_ = formation;
-}
+//
+//void SwarmViewer::set_collide_with_robots(int collide) {
+//	collide_with_robots_ = collide;
+//}
+//
+//void SwarmViewer::set_no_of_clusters(int no_of_clusters_) {
+//	no_of_clusters_ = no_of_clusters_;
+//}
+//
+//void SwarmViewer::set_max_time_taken(int max_time_taken) {
+//	max_time_taken_ = max_time_taken;
+//}
+//
+//void SwarmViewer::set_death_percentage(double death_percentage_) {
+//	death_percentage_ = death_percentage_;
+//}
+//
+//void SwarmViewer::set_death_time_taken(int death_time_taken) {
+//	death_time_taken_ = death_time_taken;
+//}
+//
+//void SwarmViewer::set_swarm_configs_for_optimization(QStringList swarm_configs_for_optimization) {
+//	swarm_configs_for_optimization_ = swarm_configs_for_optimization;
+//}
+//
+//void SwarmViewer::set_no_of_threads_for_optimization(int no_of_threads_for_optimization) {
+//	no_of_threads_for_optimization_ = no_of_threads_for_optimization;
+//}
+//
+//void SwarmViewer::set_no_of_iterations_for_optimization(int no_of_iterations_for_optimization) {
+//	no_of_iterations_for_optimization_ = no_of_iterations_for_optimization;
+//}
+//
+//void SwarmViewer::set_culling_nth_iteration_for_optimization(int culling_nth_iteration_for_optimization) {
+//	culling_nth_iteration_for_optimization_ = culling_nth_iteration_for_optimization;
+//}
+//
+//void SwarmViewer::run_batch_optimization(OptimizationParams opt_params) {
+//	std::cout << opt_params.no_of_iterations << "\n";
+//}
+//
+//void SwarmViewer::set_sensor_range(double sensor_range) {
+//	sensor_range_ = sensor_range;
+//}
+//
+//
+//void SwarmViewer::set_discovery_range(int discovery_range) {
+//	discovery_range_ = discovery_range;
+//}
+//
+//void SwarmViewer::set_neighborhood_count(int count) {
+//	neighborhood_count_ = count;
+//}
+//
+//void SwarmViewer::set_formation(int formation) {
+//	formation_ = formation;
+//}
 
 void SwarmViewer::update_sim_results(double timesteps, double multi_sampling, double density, double occlusion) {
 	time_steps_result_ = timesteps;
@@ -1038,10 +1025,10 @@ SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer
 	sim_results_updated_ = false;
 
 
-	max_time_taken_ = 20010.0;
-	no_of_clusters_ = 4;
-	death_percentage_ = .3f;
-	death_time_taken_ = 2500;
+	//max_time_taken_ = 20010.0;
+	//no_of_clusters_ = 4;
+	//death_percentage_ = .3f;
+	//death_time_taken_ = 2500;
 
 	//square_radius_ = 4.f;
 
@@ -1147,242 +1134,242 @@ void SwarmViewer::create_lights() {
 }
 
 
-std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
-	std::vector<glm::vec3> robot_positions;
-
-	switch (type) {
-	case SQUARE: {
-		double side_length = square_radius_ * grid_length_ * 2;
-		double distance_between_robots = side_length * 4.0 / (double)no_of_robots_;
-
-		glm::vec3 robots_mid_point(side_length / 2.f, 0.f, side_length / 2.f);
-		glm::vec3 grid_mid_point(grid_resolution_per_side_ / 2.0 * grid_length_, 0.f, grid_resolution_per_side_ / 2.0 * grid_length_);
-		glm::vec3 offset = grid_mid_point - robots_mid_point;
-
-		for (int i = 0; i < no_of_robots_; ++i) {
-			double robot_position_on_line = i * distance_between_robots;
-			int square_segment = std::floor(robot_position_on_line / side_length);
-			double left_over_distance = std::fmod(robot_position_on_line, side_length);
-
-			glm::vec3 square_starting_position;
-			glm::vec3 added_distance;
-
-			switch (square_segment) {
-			case 0: {
-				square_starting_position = glm::vec3(0.f, 0.f, 0.f);
-				added_distance = glm::vec3(left_over_distance, 0.f, 0.f);
-				break;
-			}
-			case 1: {
-				square_starting_position = glm::vec3(side_length, 0.f, 0.f);
-				added_distance = glm::vec3(0.f, 0.f, left_over_distance);
-				break;
-			}
-			case 2: {
-				square_starting_position = glm::vec3(side_length, 0.f, side_length);
-				added_distance = glm::vec3(-left_over_distance, 0.f, 0.f);
-				break;
-			}
-			case 3: {
-				square_starting_position = glm::vec3(0.f, 0.f, side_length);
-				added_distance = glm::vec3(0.f, 0.f, -left_over_distance);
-				break;
-			}
-			default: {
-				std::cout << "Something bad happened\n";
-				break;
-			}
-			}
-
-			glm::vec3 robot_position = square_starting_position + added_distance + offset;
-			try {
-				auto robot_grid_position = occupancy_grid_->map_to_grid(robot_position);
-				if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
-					&& !occupancy_grid_->is_interior(robot_grid_position)) {
-					robot_positions.push_back(robot_position);
-				}
-			} catch (OutOfGridBoundsException& ex) {
-				// ignore
-			}
-		}
-
-
-
-		//int no_of_robots_per_side = ((no_of_robots_ - 4)/ 4.f) + 2;
-		//glm::ivec3 robots_mid_point((no_of_robots_per_side / 2.f) - 1, 0, (no_of_robots_per_side / 2.f) - 1);
-		//glm::ivec3 mid_point((grid_resolution_per_side_ / 2.f) - 1, 0, (grid_resolution_per_side_ / 2.f) - 1);
-		//glm::ivec3 offset = mid_point - robots_mid_point;
-		//
-		//for (int x = 0; x < no_of_robots_per_side; ++x) {
-		//	for (int z = 0; z < no_of_robots_per_side; z++) {
-		//		if ((z == 0 || z == (no_of_robots_per_side - 1)) || (x == 0 || x == (no_of_robots_per_side - 1))) {
-
-		//			//SwarmUtils::print_vector("init pos : ", glm::ivec3(x, 0, z));
-
-		//			glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z) + offset;
-
-		//			glm::vec3 push_back_offset;
-		//			glm::vec3 real_mid_point (grid_resolution_per_side_ * grid_length_ / 2.f, 0, grid_resolution_per_side_ * grid_length_ / 2.f);
-		//			glm::vec3 vector_from_mid_point = glm::vec3(occupancy_grid_->map_to_position(robot_grid_position) - real_mid_point);
-		//			auto length_from_mid_point = glm::length(vector_from_mid_point);
-		//			
-		//			if (length_from_mid_point > 1e-6) {
-		//				float square_length = square_radius_ *  grid_length_;
-		//				float cos_theta = 1.f;
-
-		//				if ((x == 0 || x == (no_of_robots_per_side - 1)) && (z == 0 || z == (no_of_robots_per_side - 1))) {
-		//					cos_theta = std::cos(glm::radians(45.f));
-		//					//std::cout << "1\n";
-		//				} else if (z == 0 || z == (no_of_robots_per_side - 1)) {
-		//					cos_theta = glm::dot(glm::vec3(0.f, 0.f, 1.f), glm::normalize(vector_from_mid_point));
-		//				} else if (x == 0 || x == (no_of_robots_per_side - 1)) {
-		//					cos_theta = glm::dot(glm::vec3(1.f, 0.f, 0.f), glm::normalize(vector_from_mid_point));
-		//				}
-
-		//				float push_back_length = square_length / std::abs(cos_theta);
-		//				//std::cout  << "\n" << x << ", " << z << " : " 
-		//				//	<< std::abs(cos_theta) << " " << length_from_mid_point << " " << push_back_length << std::endl;
-		//				//SwarmUtils::print_vector("robot grid pos", robot_grid_position);
-		//				//SwarmUtils::print_vector("real mid point", real_mid_point);
-		//				//SwarmUtils::print_vector("vector from mid point", vector_from_mid_point);
-		//				
-
-		//				//push_back_length = 0.f;
-		//				push_back_offset = push_back_length * (glm::normalize(vector_from_mid_point));
-		//			}
-
-		//			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
-		//				&& !occupancy_grid_->is_interior(robot_grid_position)) {
-		//				auto robot_position = occupancy_grid_->map_to_position(robot_grid_position) + push_back_offset;
-		//				robot_positions.push_back(robot_position);
-		//			}
-		//		}
-		//	}
-		//}
-
-		//int z = no_of_robots_per_side;
-		//int x = 0;
-
-		//std::cout << "No of robots : " << no_of_robots_per_side << " " << robot_positions.size() << std::endl;
-		no_of_robots_ = robot_positions.size();
-		break;
-	}
-	case SQUARE_CLOSE_TO_EDGE: {
-		//int no_of_robots_per_side = ((no_of_robots_ - 4)/ 4.f) + 2;
-		//glm::ivec3 robots_mid_point((no_of_robots_per_side / 2) - 1, 0, (no_of_robots_per_side / 2) - 1);
-		//glm::ivec3 mid_point((grid_resolution_per_side_ / 2) - 1, 0, (grid_resolution_per_side_ / 2) - 1);
-		//glm::ivec3 offset = mid_point - robots_mid_point;
-
-		int distance_from_edge = 5;
-		
-		for (int x = 0; x < grid_resolution_per_side_ - 1; ++x) {
-			for (int z = 0; z < grid_resolution_per_side_ - 1; z++) {
-				if (((x - distance_from_edge == 0) || (grid_resolution_per_side_ - 1 - x - distance_from_edge == 0)) && 
-					((z - distance_from_edge >= 0) && (grid_resolution_per_side_ - 1 - z - distance_from_edge >= 0)) ||
-					(((z - distance_from_edge == 0) || (grid_resolution_per_side_ - 1 - z - distance_from_edge == 0)) && 
-					((x - distance_from_edge >= 0) && (grid_resolution_per_side_ - 1 - x - distance_from_edge >= 0)))) {
-
-					glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z); // +offset;
-					if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
-						&& !occupancy_grid_->is_interior(robot_grid_position)) {
-						if (robot_positions.size() < no_of_robots_) {
-							robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
-						}
-						//SwarmUtils::print_vector("Grid Pos : ", robot_grid_position);
-					}
-				}
-			}
-		}
-
-		//int z = no_of_robots_per_side;
-		//int x = 0;
-
-		//std::cout << "No of robots : " << robot_positions.size() << std::endl;
-		no_of_robots_ = robot_positions.size();
-		break;
-	}
-	case GRID: {
-		int no_of_robots_per_side = std::sqrt(no_of_robots_);
-		glm::ivec3 robots_mid_point((no_of_robots_per_side / 2) - 1, 0, (no_of_robots_per_side / 2) - 1);
-		glm::ivec3 mid_point((grid_resolution_per_side_ / 2) - 1, 0, (grid_resolution_per_side_ / 2) - 1);
-		glm::ivec3 offset = mid_point - robots_mid_point;
-		
-		for (int x = 0; x < no_of_robots_per_side; ++x) {
-			for (int z = 0; z < no_of_robots_per_side; z++) {
-				//if ((z == 0 || z == (no_of_robots_per_side - 1)) || (x == 0 || x == no_of_robots_per_side - 1)) {
-					glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z) + offset;
-					if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
-						&& !occupancy_grid_->is_interior(robot_grid_position)) {
-						robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
-					}
-				//}
-			}
-		}
-
-		int z = no_of_robots_per_side;
-		int x = 0;
-
-		no_of_robots_ = robot_positions.size();
-		//while (robot_positions.size() < no_of_robots_) {
-		//	std::cout << "Unable to fill all positions. Robots left : " << no_of_robots_ - robot_positions.size() << std::endl;
-		//	glm::ivec3 robot_grid_position = glm::ivec3(x++, 0, z) + offset;
-		//	occupancy_grid_->map_to_position(robot_grid_position);
-		//	if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
-		//		&& !occupancy_grid_->is_interior(robot_grid_position)) {
-		//		robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
-		//	}
-		//}
-		break;
-
-	}
-	case RANDOM: {
-		std::random_device rd;
-		std::mt19937 rng;
-		rng.seed(rd());
-		std::uniform_int_distribution<int> position_generator(0, grid_resolution_per_side_ - 1);
-		int robot_count = 0;
-		int iterations = 0;
-		while ((no_of_robots_ != robot_count) && ((no_of_robots_ + 100) > iterations)) {
-			glm::ivec3 robot_grid_position(position_generator(rng), 0, position_generator(rng));
-			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
-				&& !occupancy_grid_->is_interior(robot_grid_position)) {
-				robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
-				robot_count++;
-			}
-			iterations++;
-		}
-		break;
-	}
-	case CIRCLE: {
-		float perimeter_length = 2 * grid_length_ * no_of_robots_;
-		float radius = perimeter_length / (2 * PI);
-		glm::vec3 real_mid_point(grid_resolution_per_side_ * grid_length_ / 2.f, 0, grid_resolution_per_side_ * grid_length_ / 2.f);
-		glm::vec3 center = real_mid_point;
-
-		for (int i = 0; i < no_of_robots_; ++i) {
-			float theta = 2 * PI * i / no_of_robots_;
-			float x = center.x + radius * glm::cos(theta);
-			float z = center.z + radius * glm::sin(theta);
-			auto robot_position = glm::vec3(x, 0.f, z);
-			auto robot_grid_position = occupancy_grid_->map_to_grid(robot_position);
-			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
-				&& !occupancy_grid_->is_interior(robot_grid_position)) {
-				robot_positions.push_back(robot_position);
-			}
-		}
-		no_of_robots_ = robot_positions.size();
-
-	}
-
-	default: break;
-
-	}
-
-	return robot_positions;
-}
+//std::vector<glm::vec3> SwarmViewer::create_starting_formation(Formation type) {
+//	std::vector<glm::vec3> robot_positions;
+//
+//	switch (type) {
+//	case SQUARE: {
+//		double side_length = square_radius_ * grid_length_ * 2;
+//		double distance_between_robots = side_length * 4.0 / (double)no_of_robots_;
+//
+//		glm::vec3 robots_mid_point(side_length / 2.f, 0.f, side_length / 2.f);
+//		glm::vec3 grid_mid_point(grid_resolution_per_side_ / 2.0 * grid_length_, 0.f, grid_resolution_per_side_ / 2.0 * grid_length_);
+//		glm::vec3 offset = grid_mid_point - robots_mid_point;
+//
+//		for (int i = 0; i < no_of_robots_; ++i) {
+//			double robot_position_on_line = i * distance_between_robots;
+//			int square_segment = std::floor(robot_position_on_line / side_length);
+//			double left_over_distance = std::fmod(robot_position_on_line, side_length);
+//
+//			glm::vec3 square_starting_position;
+//			glm::vec3 added_distance;
+//
+//			switch (square_segment) {
+//			case 0: {
+//				square_starting_position = glm::vec3(0.f, 0.f, 0.f);
+//				added_distance = glm::vec3(left_over_distance, 0.f, 0.f);
+//				break;
+//			}
+//			case 1: {
+//				square_starting_position = glm::vec3(side_length, 0.f, 0.f);
+//				added_distance = glm::vec3(0.f, 0.f, left_over_distance);
+//				break;
+//			}
+//			case 2: {
+//				square_starting_position = glm::vec3(side_length, 0.f, side_length);
+//				added_distance = glm::vec3(-left_over_distance, 0.f, 0.f);
+//				break;
+//			}
+//			case 3: {
+//				square_starting_position = glm::vec3(0.f, 0.f, side_length);
+//				added_distance = glm::vec3(0.f, 0.f, -left_over_distance);
+//				break;
+//			}
+//			default: {
+//				std::cout << "Something bad happened\n";
+//				break;
+//			}
+//			}
+//
+//			glm::vec3 robot_position = square_starting_position + added_distance + offset;
+//			try {
+//				auto robot_grid_position = occupancy_grid_->map_to_grid(robot_position);
+//				if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+//					&& !occupancy_grid_->is_interior(robot_grid_position)) {
+//					robot_positions.push_back(robot_position);
+//				}
+//			} catch (OutOfGridBoundsException& ex) {
+//				// ignore
+//			}
+//		}
+//
+//
+//
+//		//int no_of_robots_per_side = ((no_of_robots_ - 4)/ 4.f) + 2;
+//		//glm::ivec3 robots_mid_point((no_of_robots_per_side / 2.f) - 1, 0, (no_of_robots_per_side / 2.f) - 1);
+//		//glm::ivec3 mid_point((grid_resolution_per_side_ / 2.f) - 1, 0, (grid_resolution_per_side_ / 2.f) - 1);
+//		//glm::ivec3 offset = mid_point - robots_mid_point;
+//		//
+//		//for (int x = 0; x < no_of_robots_per_side; ++x) {
+//		//	for (int z = 0; z < no_of_robots_per_side; z++) {
+//		//		if ((z == 0 || z == (no_of_robots_per_side - 1)) || (x == 0 || x == (no_of_robots_per_side - 1))) {
+//
+//		//			//SwarmUtils::print_vector("init pos : ", glm::ivec3(x, 0, z));
+//
+//		//			glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z) + offset;
+//
+//		//			glm::vec3 push_back_offset;
+//		//			glm::vec3 real_mid_point (grid_resolution_per_side_ * grid_length_ / 2.f, 0, grid_resolution_per_side_ * grid_length_ / 2.f);
+//		//			glm::vec3 vector_from_mid_point = glm::vec3(occupancy_grid_->map_to_position(robot_grid_position) - real_mid_point);
+//		//			auto length_from_mid_point = glm::length(vector_from_mid_point);
+//		//			
+//		//			if (length_from_mid_point > 1e-6) {
+//		//				float square_length = square_radius_ *  grid_length_;
+//		//				float cos_theta = 1.f;
+//
+//		//				if ((x == 0 || x == (no_of_robots_per_side - 1)) && (z == 0 || z == (no_of_robots_per_side - 1))) {
+//		//					cos_theta = std::cos(glm::radians(45.f));
+//		//					//std::cout << "1\n";
+//		//				} else if (z == 0 || z == (no_of_robots_per_side - 1)) {
+//		//					cos_theta = glm::dot(glm::vec3(0.f, 0.f, 1.f), glm::normalize(vector_from_mid_point));
+//		//				} else if (x == 0 || x == (no_of_robots_per_side - 1)) {
+//		//					cos_theta = glm::dot(glm::vec3(1.f, 0.f, 0.f), glm::normalize(vector_from_mid_point));
+//		//				}
+//
+//		//				float push_back_length = square_length / std::abs(cos_theta);
+//		//				//std::cout  << "\n" << x << ", " << z << " : " 
+//		//				//	<< std::abs(cos_theta) << " " << length_from_mid_point << " " << push_back_length << std::endl;
+//		//				//SwarmUtils::print_vector("robot grid pos", robot_grid_position);
+//		//				//SwarmUtils::print_vector("real mid point", real_mid_point);
+//		//				//SwarmUtils::print_vector("vector from mid point", vector_from_mid_point);
+//		//				
+//
+//		//				//push_back_length = 0.f;
+//		//				push_back_offset = push_back_length * (glm::normalize(vector_from_mid_point));
+//		//			}
+//
+//		//			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+//		//				&& !occupancy_grid_->is_interior(robot_grid_position)) {
+//		//				auto robot_position = occupancy_grid_->map_to_position(robot_grid_position) + push_back_offset;
+//		//				robot_positions.push_back(robot_position);
+//		//			}
+//		//		}
+//		//	}
+//		//}
+//
+//		//int z = no_of_robots_per_side;
+//		//int x = 0;
+//
+//		//std::cout << "No of robots : " << no_of_robots_per_side << " " << robot_positions.size() << std::endl;
+//		no_of_robots_ = robot_positions.size();
+//		break;
+//	}
+//	case SQUARE_CLOSE_TO_EDGE: {
+//		//int no_of_robots_per_side = ((no_of_robots_ - 4)/ 4.f) + 2;
+//		//glm::ivec3 robots_mid_point((no_of_robots_per_side / 2) - 1, 0, (no_of_robots_per_side / 2) - 1);
+//		//glm::ivec3 mid_point((grid_resolution_per_side_ / 2) - 1, 0, (grid_resolution_per_side_ / 2) - 1);
+//		//glm::ivec3 offset = mid_point - robots_mid_point;
+//
+//		int distance_from_edge = 5;
+//		
+//		for (int x = 0; x < grid_resolution_per_side_ - 1; ++x) {
+//			for (int z = 0; z < grid_resolution_per_side_ - 1; z++) {
+//				if (((x - distance_from_edge == 0) || (grid_resolution_per_side_ - 1 - x - distance_from_edge == 0)) && 
+//					((z - distance_from_edge >= 0) && (grid_resolution_per_side_ - 1 - z - distance_from_edge >= 0)) ||
+//					(((z - distance_from_edge == 0) || (grid_resolution_per_side_ - 1 - z - distance_from_edge == 0)) && 
+//					((x - distance_from_edge >= 0) && (grid_resolution_per_side_ - 1 - x - distance_from_edge >= 0)))) {
+//
+//					glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z); // +offset;
+//					if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+//						&& !occupancy_grid_->is_interior(robot_grid_position)) {
+//						if (robot_positions.size() < no_of_robots_) {
+//							robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
+//						}
+//						//SwarmUtils::print_vector("Grid Pos : ", robot_grid_position);
+//					}
+//				}
+//			}
+//		}
+//
+//		//int z = no_of_robots_per_side;
+//		//int x = 0;
+//
+//		//std::cout << "No of robots : " << robot_positions.size() << std::endl;
+//		no_of_robots_ = robot_positions.size();
+//		break;
+//	}
+//	case GRID: {
+//		int no_of_robots_per_side = std::sqrt(no_of_robots_);
+//		glm::ivec3 robots_mid_point((no_of_robots_per_side / 2) - 1, 0, (no_of_robots_per_side / 2) - 1);
+//		glm::ivec3 mid_point((grid_resolution_per_side_ / 2) - 1, 0, (grid_resolution_per_side_ / 2) - 1);
+//		glm::ivec3 offset = mid_point - robots_mid_point;
+//		
+//		for (int x = 0; x < no_of_robots_per_side; ++x) {
+//			for (int z = 0; z < no_of_robots_per_side; z++) {
+//				//if ((z == 0 || z == (no_of_robots_per_side - 1)) || (x == 0 || x == no_of_robots_per_side - 1)) {
+//					glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z) + offset;
+//					if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+//						&& !occupancy_grid_->is_interior(robot_grid_position)) {
+//						robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
+//					}
+//				//}
+//			}
+//		}
+//
+//		int z = no_of_robots_per_side;
+//		int x = 0;
+//
+//		no_of_robots_ = robot_positions.size();
+//		//while (robot_positions.size() < no_of_robots_) {
+//		//	std::cout << "Unable to fill all positions. Robots left : " << no_of_robots_ - robot_positions.size() << std::endl;
+//		//	glm::ivec3 robot_grid_position = glm::ivec3(x++, 0, z) + offset;
+//		//	occupancy_grid_->map_to_position(robot_grid_position);
+//		//	if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+//		//		&& !occupancy_grid_->is_interior(robot_grid_position)) {
+//		//		robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
+//		//	}
+//		//}
+//		break;
+//
+//	}
+//	case RANDOM: {
+//		std::random_device rd;
+//		std::mt19937 rng;
+//		rng.seed(rd());
+//		std::uniform_int_distribution<int> position_generator(0, grid_resolution_per_side_ - 1);
+//		int robot_count = 0;
+//		int iterations = 0;
+//		while ((no_of_robots_ != robot_count) && ((no_of_robots_ + 100) > iterations)) {
+//			glm::ivec3 robot_grid_position(position_generator(rng), 0, position_generator(rng));
+//			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+//				&& !occupancy_grid_->is_interior(robot_grid_position)) {
+//				robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
+//				robot_count++;
+//			}
+//			iterations++;
+//		}
+//		break;
+//	}
+//	case CIRCLE: {
+//		float perimeter_length = 2 * grid_length_ * no_of_robots_;
+//		float radius = perimeter_length / (2 * PI);
+//		glm::vec3 real_mid_point(grid_resolution_per_side_ * grid_length_ / 2.f, 0, grid_resolution_per_side_ * grid_length_ / 2.f);
+//		glm::vec3 center = real_mid_point;
+//
+//		for (int i = 0; i < no_of_robots_; ++i) {
+//			float theta = 2 * PI * i / no_of_robots_;
+//			float x = center.x + radius * glm::cos(theta);
+//			float z = center.z + radius * glm::sin(theta);
+//			auto robot_position = glm::vec3(x, 0.f, z);
+//			auto robot_grid_position = occupancy_grid_->map_to_grid(robot_position);
+//			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+//				&& !occupancy_grid_->is_interior(robot_grid_position)) {
+//				robot_positions.push_back(robot_position);
+//			}
+//		}
+//		no_of_robots_ = robot_positions.size();
+//
+//	}
+//
+//	default: break;
+//
+//	}
+//
+//	return robot_positions;
+//}
 
 void SwarmViewer::populate_color_map() {
-	int no_of_clusters = (no_of_clusters_ > no_of_robots_) ? no_of_robots_ : no_of_clusters_;
+	int no_of_clusters = (swarm_params_.no_of_clusters_ > swarm_params_.no_of_robots_) ? swarm_params_.no_of_robots_ : swarm_params_.no_of_clusters_;
 
 	std::vector<cv::Vec4f> robot_colors;
 
@@ -1417,9 +1404,9 @@ void SwarmViewer::populate_color_map() {
 		robot_colors.push_back(color);
 	}
 
-	int robots_in_a_cluster = no_of_robots_ / no_of_clusters;
+	int robots_in_a_cluster = swarm_params_.no_of_robots_ / no_of_clusters;
 
-	for (int i = 0; i < no_of_robots_; ++i) {
+	for (int i = 0; i < swarm_params_.no_of_robots_; ++i) {
 		if (no_of_clusters > 0) {
 			robot_color_map_[i] = robot_colors[i / robots_in_a_cluster];
 		} else {
@@ -1428,44 +1415,44 @@ void SwarmViewer::populate_color_map() {
 	}
 }
 
-void SwarmViewer::populate_death_map() {
+//void SwarmViewer::populate_death_map() {
+//
+//	std::set<int> dying_robots;
+//
+//	for (int i = 0; i < no_of_robots_; ++i) {
+//		death_map_[i] = -1;
+//	}
+//
+//	int no_of_dead_robots = no_of_robots_ * death_percentage_;
+//
+//	int dead_robots_count = 0;
+//
+//	std::random_device rd;
+//	std::mt19937 eng(rd());
+//	std::uniform_int_distribution<int> robot_distribution(0, no_of_robots_ - 1);
+//	std::uniform_int_distribution<int> death_time_distribution(0, death_time_taken_- 1);
+//
+//	while (no_of_dead_robots > dead_robots_count) {
+//		int robot_id = robot_distribution(eng);
+//		if (dying_robots.find(robot_id) == dying_robots.end()) {
+//			if (death_map_.find(robot_id) == death_map_.end()) {
+//				std::cout << "Unknown robot_id : " << robot_id << "\n";
+//			} else {
+//				int death_time = death_time_distribution(eng);
+//				death_map_[robot_id] = death_time;
+//				dead_robots_count++;
+//			}
+//			dying_robots.insert(robot_id);
+//		}
+//	}
+//	
+//}
 
-	std::set<int> dying_robots;
-
-	for (int i = 0; i < no_of_robots_; ++i) {
-		death_map_[i] = -1;
-	}
-
-	int no_of_dead_robots = no_of_robots_ * death_percentage_;
-
-	int dead_robots_count = 0;
-
-	std::random_device rd;
-	std::mt19937 eng(rd());
-	std::uniform_int_distribution<int> robot_distribution(0, no_of_robots_ - 1);
-	std::uniform_int_distribution<int> death_time_distribution(0, death_time_taken_- 1);
-
-	while (no_of_dead_robots > dead_robots_count) {
-		int robot_id = robot_distribution(eng);
-		if (dying_robots.find(robot_id) == dying_robots.end()) {
-			if (death_map_.find(robot_id) == death_map_.end()) {
-				std::cout << "Unknown robot_id : " << robot_id << "\n";
-			} else {
-				int death_time = death_time_distribution(eng);
-				death_map_[robot_id] = death_time;
-				dead_robots_count++;
-			}
-			dying_robots.insert(robot_id);
-		}
-	}
-	
-}
-
-void SwarmViewer::create_robots() {
+void SwarmViewer::upload_robots_to_gpu() {
 	m_shader.bind();
 
-	std::vector<glm::vec3> robot_positions = create_starting_formation(static_cast<Formation>(formation_));
-	assert(no_of_robots_ == robot_positions.size());
+	//std::vector<glm::vec3> robot_positions = create_starting_formation(static_cast<Formation>(formation_));
+	//assert(no_of_robots_ == robot_positions.size());
 
 	RenderMesh robot_mesh;
 	cv::Vec4f color(0.f, 1.f, 1.f, 1.f);
@@ -1474,53 +1461,67 @@ void SwarmViewer::create_robots() {
 	create_robot_model(robot_mesh, color, bufferdata);
 
 	populate_color_map();
-	populate_death_map();
+	//populate_death_map();
 
-	int no_of_clusters = (no_of_clusters_ > no_of_robots_) ? no_of_robots_ : no_of_clusters_;
-	int robots_in_a_cluster = no_of_robots_ / no_of_clusters;
 		
-	for (int i = 0; i < no_of_robots_; ++i) {
-		std::random_device rd;
-		std::mt19937 rng;
-		rng.seed(rd());
-		//std::uniform_real_distribution<float> color_generator(0.f, 1.f);
-		//cv::Vec4f color(color_generator(rng), color_generator(rng), color_generator(rng), 1.f);
-		//RenderMesh robot_mesh;
-		////cv::Vec4f color(0.f, 1.f, 1.f, 1.f);
-		//create_robot_model(robot_mesh, color);
+	for (int i = 0; i < swarm_params_.no_of_robots_; ++i) {
 
-
-
-		//Robot robot(uniform_locations_, i, occupancy_grid_, explore_constant_, separation_constant_, goto_work_constant_, separation_distance_, &m_shader);
-		//robot.mesh_.push_back(robot_mesh[0]);
-		//robots_.push_back(robot);
-
-		//Robot* robot = new ExperimentalRobot(uniform_locations_, 
-		//	i, occupancy_grid_, collision_grid_, explore_constant_, separation_constant_, alignment_constant_, cluster_constant_, perimeter_constant_,
-		//	goto_work_constant_,
-		//	explore_range_, separation_range_, alignment_range_, cluster_range_, perimeter_range_, obstacle_near_range_,
-		//	obstacle_far_range_, sensor_range_, discovery_range_, neighborhood_count_,
-		//	separation_distance_, robot_positions[i], &m_shader, render_, magic_k_, collide_with_robots_, square_radius_, bounce_function_power_, bounce_function_multiplier_);
-		ExperimentalRobot* robot = new ExperimentalRobot(uniform_locations_, 
-			i, occupancy_grid_, collision_grid_, recon_grid_, i / robots_in_a_cluster, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
-			sensor_range_, discovery_range_, 
-			separation_distance_, robot_positions[i], square_radius_, bounce_function_power_, bounce_function_multiplier_, max_time_taken_,
-			false, render_, &m_shader);
-
-		//robot->mesh_.push_back(robot_mesh[0]);
 		RenderMesh unique_mesh_for_each_robot;
 		upload_robot_model(unique_mesh_for_each_robot, bufferdata);
+
+		ExperimentalRobot* robot = dynamic_cast<ExperimentalRobot*>(robots_[i]);
 
 		robot->mesh_.push_back(unique_mesh_for_each_robot[0]);
 
 		robot->set_colors_buffer(bufferdata.colors);
 		robot->change_color(robot_color_map_[i]);
-		//robot->set_cluster_id(i / robots_in_a_cluster);
-		robot->set_death_time(death_map_[i]);
-
-		robots_.push_back(robot);
 	}
+	
 }
+
+//void SwarmViewer::create_robots() {
+//	m_shader.bind();
+//
+//	std::vector<glm::vec3> robot_positions = create_starting_formation(static_cast<Formation>(formation_));
+//	assert(no_of_robots_ == robot_positions.size());
+//
+//	RenderMesh robot_mesh;
+//	cv::Vec4f color(0.f, 1.f, 1.f, 1.f);
+//
+//	VertexBufferData bufferdata;
+//	create_robot_model(robot_mesh, color, bufferdata);
+//
+//	populate_color_map();
+//	populate_death_map();
+//
+//	int no_of_clusters = (no_of_clusters_ > no_of_robots_) ? no_of_robots_ : no_of_clusters_;
+//	int robots_in_a_cluster = no_of_robots_ / no_of_clusters;
+//		
+//	for (int i = 0; i < no_of_robots_; ++i) {
+//		std::random_device rd;
+//		std::mt19937 rng;
+//		rng.seed(rd());
+//
+//		ExperimentalRobot* robot = new ExperimentalRobot(uniform_locations_, 
+//			i, occupancy_grid_, collision_grid_, recon_grid_, i / robots_in_a_cluster, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
+//			sensor_range_, discovery_range_, 
+//			separation_distance_, robot_positions[i], square_radius_, bounce_function_power_, bounce_function_multiplier_, max_time_taken_,
+//			false, render_, &m_shader);
+//
+//		//robot->mesh_.push_back(robot_mesh[0]);
+//		RenderMesh unique_mesh_for_each_robot;
+//		upload_robot_model(unique_mesh_for_each_robot, bufferdata);
+//
+//		robot->mesh_.push_back(unique_mesh_for_each_robot[0]);
+//
+//		robot->set_colors_buffer(bufferdata.colors);
+//		robot->change_color(robot_color_map_[i]);
+//		//robot->set_cluster_id(i / robots_in_a_cluster);
+//		robot->set_death_time(death_map_[i]);
+//
+//		robots_.push_back(robot);
+//	}
+//}
 
 
 
@@ -1595,75 +1596,75 @@ void SwarmViewer::create_occupancy_grid(int grid_resolution_per_side, int grid_s
 	reset_vis_objects_.push_back(grid);
 }
 
-void SwarmViewer::set_no_of_robots(int no_of_robots) {
-	no_of_robots_ = no_of_robots;
-}
-
-void SwarmViewer::set_separation_distance(float distance) {
-	separation_distance_ = distance;
-}
-
-void SwarmViewer::set_grid_resolution(int grid_resolution) {
-	//grid_resolution_ = std::pow(std::pow(2, grid_resolution), 3);
-	grid_resolution_ = grid_resolution;
-}
-
-void SwarmViewer::set_grid_length(int grid_length) {
-	grid_length_ = grid_length;
-}
-
-void SwarmViewer::set_interior_scale(double scale) {
-	interior_scale_ = scale;
-}
-
-void SwarmViewer::set_interior_offset(glm::vec3 offset) {
-	interior_offset_ = offset;
-}
-
-void SwarmViewer::set_exploration_constant(double constant) {
-	explore_constant_ = constant;
-}
-
-void SwarmViewer::set_separation_constant(double constant) {
-	separation_constant_ = constant;
-}
-
-void SwarmViewer::set_alignment_constant(double constant) {
-	alignment_constant_ = constant;
-}
-
-void SwarmViewer::set_cluster_constant(double constant) {
-	cluster_constant_ = constant;
-}
-
-void SwarmViewer::set_perimeter_constant(double constant) {
-	perimeter_constant_ = constant;
-}
-
-void SwarmViewer::set_goto_work_constant(double constant) {
-	goto_work_constant_ = constant;
-}
-
-void SwarmViewer::set_show_interior(int show) {
-	show_interior_ = show;
-}
-
-void SwarmViewer::set_model_rotation(double x_rotation, double y_rotation, double z_rotation) {
-	glm::mat4 rotateX = glm::rotate(glm::mat4(1.f), glm::radians((float)x_rotation), glm::vec3(1.f, 0.f, 0.f));
-	glm::mat4 rotateY = glm::rotate(rotateX, glm::radians((float)y_rotation), glm::vec3(0.f, 1.f, 0.f));
-	glm::mat4 rotateZ = glm::rotate(rotateY,  glm::radians((float)z_rotation), glm::vec3(0.f, 0.f, 1.f));
-	
-	model_rotation_ = rotateZ;
-}
-
-void SwarmViewer::set_square_formation_radius(double radius) {
-	square_radius_ = radius;
-}
-
-void SwarmViewer::set_bounce_function_power(double bounce_function_power) {
-	bounce_function_power_ = bounce_function_power;
-}
-
-void SwarmViewer::set_bounce_function_multiplier(double bounce_function_multiplier) {
-	bounce_function_multiplier_ = bounce_function_multiplier;
-}
+//void SwarmViewer::set_no_of_robots(int no_of_robots) {
+//	no_of_robots_ = no_of_robots;
+//}
+//
+//void SwarmViewer::set_separation_distance(float distance) {
+//	separation_distance_ = distance;
+//}
+//
+//void SwarmViewer::set_grid_resolution(int grid_resolution) {
+//	//grid_resolution_ = std::pow(std::pow(2, grid_resolution), 3);
+//	grid_resolution_ = grid_resolution;
+//}
+//
+//void SwarmViewer::set_grid_length(int grid_length) {
+//	grid_length_ = grid_length;
+//}
+//
+//void SwarmViewer::set_interior_scale(double scale) {
+//	interior_scale_ = scale;
+//}
+//
+//void SwarmViewer::set_interior_offset(glm::vec3 offset) {
+//	interior_offset_ = offset;
+//}
+//
+//void SwarmViewer::set_exploration_constant(double constant) {
+//	explore_constant_ = constant;
+//}
+//
+//void SwarmViewer::set_separation_constant(double constant) {
+//	separation_constant_ = constant;
+//}
+//
+//void SwarmViewer::set_alignment_constant(double constant) {
+//	alignment_constant_ = constant;
+//}
+//
+//void SwarmViewer::set_cluster_constant(double constant) {
+//	cluster_constant_ = constant;
+//}
+//
+//void SwarmViewer::set_perimeter_constant(double constant) {
+//	perimeter_constant_ = constant;
+//}
+//
+//void SwarmViewer::set_goto_work_constant(double constant) {
+//	goto_work_constant_ = constant;
+//}
+//
+//void SwarmViewer::set_show_interior(int show) {
+//	show_interior_ = show;
+//}
+//
+//void SwarmViewer::set_model_rotation(double x_rotation, double y_rotation, double z_rotation) {
+//	glm::mat4 rotateX = glm::rotate(glm::mat4(1.f), glm::radians((float)x_rotation), glm::vec3(1.f, 0.f, 0.f));
+//	glm::mat4 rotateY = glm::rotate(rotateX, glm::radians((float)y_rotation), glm::vec3(0.f, 1.f, 0.f));
+//	glm::mat4 rotateZ = glm::rotate(rotateY,  glm::radians((float)z_rotation), glm::vec3(0.f, 0.f, 1.f));
+//	
+//	model_rotation_ = rotateZ;
+//}
+//
+//void SwarmViewer::set_square_formation_radius(double radius) {
+//	square_radius_ = radius;
+//}
+//
+//void SwarmViewer::set_bounce_function_power(double bounce_function_power) {
+//	bounce_function_power_ = bounce_function_power;
+//}
+//
+//void SwarmViewer::set_bounce_function_multiplier(double bounce_function_multiplier) {
+//	bounce_function_multiplier_ = bounce_function_multiplier;
+//}

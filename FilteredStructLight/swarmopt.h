@@ -80,7 +80,7 @@ class ParallelMCMCOptimizer : public QObject {
 		TIME_AND_SIMUL_SAMPLING = 2
 	};
 
-	SwarmViewer* swarm_viewer_;
+	//SwarmViewer* swarm_viewer_;
 	QMutex work_queue_lock_;
 	QThreadPool thread_pool_;
 	std::deque<SimulatorThread*> simulator_threads_work_queue_;
@@ -96,11 +96,15 @@ class ParallelMCMCOptimizer : public QObject {
 
 	float cull_threshold_;
 	std::vector<float> temperatures_;
-	BridgeObject* bridge_;
+	//BridgeObject* bridge_;
 	int current_working_threads_;
 	std::chrono::high_resolution_clock::time_point begin_time_;
 	std::chrono::high_resolution_clock::time_point end_time_;
+	SwarmParams swarm_params_;
+	OptimizationParams optimization_params_;
 public:
+	ParallelMCMCOptimizer(const SwarmParams& swarm_params, const OptimizationParams& optimization_params);
+
 	double init_value(double min, double max);
 	double perturb_value(double current_value, double temperature, double min, double max);
 	SimulatorThread* init_mcmc_thread(int temperature, int thread_id, int iteration, const Params& next_params);

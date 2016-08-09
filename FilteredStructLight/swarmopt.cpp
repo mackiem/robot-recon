@@ -539,6 +539,10 @@ void SwarmMCMCOptimizer::optimize_experimental_brute_force() {
 
 }
 
+ParallelMCMCOptimizer::ParallelMCMCOptimizer(const SwarmParams& swarm_params, const OptimizationParams& optimization_params) 
+	: swarm_params_(swarm_params), optimization_params_(optimization_params) {
+}
+
 double ParallelMCMCOptimizer::init_value(double min, double max) {
 	std::random_device rd;
 	std::mt19937 mt(rd());

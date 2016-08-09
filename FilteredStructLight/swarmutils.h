@@ -3,6 +3,9 @@
 #include <QStringList>
 #include <qspinbox.h>
 #include <qcheckbox.h>
+#include "swarmtree.h"
+#include "robot.h"
+#include <boost/detail/container_fwd.hpp>
 
 struct OptimizationParams {
 	// optimization
@@ -28,8 +31,8 @@ struct OptimizationParams {
 
 struct SwarmParams {
 
-	int no_of_robots;
-	double exploration_constant_;
+	int no_of_robots_;
+	double explore_constant_;
 	double separation_constant_;
 	double alignment_constant_;
 	double cluster_constant_;
@@ -52,8 +55,8 @@ struct SwarmParams {
 	int formation;
 	double magic_k_spin_box_;
 	int neighborhood_count_;
-	int grid_resolution_spin_box_;
-	int grid_length_spin_box_;
+	int grid_resolution_;
+	int grid_length_;
 	double scale_spinbox_;
 	int x_spin_box_;
 	int y_spin_box_;
@@ -67,6 +70,11 @@ struct SwarmParams {
 	double bounce_function_multiplier_;
 	double sensor_range_;
 	double discovery_range_;
+	int grid_resolution_per_side_;
+	int no_of_clusters_;
+	int max_time_taken_;
+	double death_percentage_;
+	int death_time_taken_;
 };
 
 struct VertexBufferData;
@@ -132,6 +140,13 @@ class SwarmUtils
 	static const char* NO_OF_CLUSTERS;
 	static const char* DEATH_PERCENTAGE;
 	static const char* DEATH_TIME_TAKEN;
+
+	// delete later
+	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
+	static const int DEFAULT_NO_OF_ROBOTS;
+	static const std::string OCCUPANCY_GRID_NAME;
+	static const std::string OCCUPANCY_GRID_OVERLAY_NAME;
+	static const int OCCUPANCY_GRID_HEIGHT;
 public:
 	static OptimizationParams load_optimization_params(const QString& filename);
 	static void save_optimization_params(const OptimizationParams& params, const QString& filename);
@@ -143,5 +158,12 @@ public:
 		std::vector<int>& count, std::vector<int>& offset, std::vector<int>& base_index);
 	static void load_obj(std::string filename, VertexBufferData& vertex_buffer_data);
 	static cv::Mat convert_mat(glm::mat3& input_mat);
+	static std::vector<glm::vec3> create_starting_formation(Formation type, SwarmParams& swarm_params, SwarmOccupancyTree* occupancy_grid_);
+	static void load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data);
+	static void create_robots(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_, SwarmOccupancyTree* occupancy_grid_, SwarmCollisionTree* collision_grid_, Swarm3DReconTree* recon_grid_, UniformLocations& uniform_locations, QGLShaderProgram* shader, bool render, std::vector<Robot*>& robots);
+	static void populate_death_map(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_);
+	static bool intersect(const cv::Vec3f& n, float d, const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt);
+	static void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset,
+		SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);
 };
 

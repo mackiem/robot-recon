@@ -14,7 +14,7 @@ const char* FilteredStructLight::SWARM_CONFIG_FILENAME_LABEL = "swarm_config_fil
 const char* FilteredStructLight::OPT_CONFIG_FILENAME_LABEL = "opt_config_filename";
 
 
-	//QSpinBox* max_time_taken_spin_box_;
+	//QSpinBox* max_time_taken_;
 // flow control
 
 //robots
@@ -90,9 +90,9 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 	//QSettings settings(swarm_conf_filepath, QSettings::IniFormat);
 
 	SwarmParams swarm_params;
-	swarm_params.no_of_robots = robots_spinbox_->value();
+	swarm_params.no_of_robots_ = robots_spinbox_->value();
 
-	swarm_params.exploration_constant_ = exploration_constant_->value();
+	swarm_params.explore_constant_ = exploration_constant_->value();
 	swarm_params.separation_constant_ = separation_constant_->value();
 	swarm_params.alignment_constant_ = alignment_constant_->value();
 	swarm_params.cluster_constant_ = cluster_constant_->value();
@@ -126,9 +126,9 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 	swarm_params.neighborhood_count_ = neighborhood_count_->value();
 	
 
-	swarm_params.grid_resolution_spin_box_ = grid_resolution_spin_box_->value();
+	swarm_params.grid_resolution_ = grid_resolution_spin_box_->value();
 
-	swarm_params.grid_length_spin_box_ = grid_length_spin_box_->value();
+	swarm_params.grid_length_ = grid_length_spin_box_->value();
 	swarm_params.scale_spinbox_ = scale_spinbox_->value();
 	swarm_params.x_spin_box_ = x_spin_box_->value();
 	swarm_params.y_spin_box_ = y_spin_box_->value();
@@ -143,15 +143,20 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 	swarm_params.sensor_range_ = sensor_range_->value();
 	swarm_params.discovery_range_ = discovery_range_->value();
 
+	swarm_params.no_of_clusters = no_of_clusters_->value();
+	swarm_params.max_time_taken_ = max_time_taken_->value();
+	swarm_params.death_percentage_ = death_percentage_->value();
+	swarm_params.death_time_taken_ = death_time_taken_->value();
+
 	return swarm_params;
 }
 
 
 void FilteredStructLight::set_swarm_params_to_ui(const SwarmParams& swarm_params) {
 	
-	robots_spinbox_->setValue(swarm_params.no_of_robots);
+	robots_spinbox_->setValue(swarm_params.no_of_robots_);
 	emit robots_spinbox_->valueChanged(robots_spinbox_->value());
-	exploration_constant_->setValue(swarm_params.exploration_constant_);
+	exploration_constant_->setValue(swarm_params.explore_constant_);
 	emit exploration_constant_->valueChanged(exploration_constant_->value());
 	separation_constant_->setValue(swarm_params.separation_constant_);
 	emit separation_constant_->valueChanged(separation_constant_->value());
@@ -167,8 +172,8 @@ void FilteredStructLight::set_swarm_params_to_ui(const SwarmParams& swarm_params
 	int formation_index = (swarm_params.formation);
 	formation_buttons_[formation_index]->toggle();
 
-	grid_resolution_spin_box_->setValue(swarm_params.grid_resolution_spin_box_);
-	grid_length_spin_box_->setValue(swarm_params.grid_length_spin_box_);
+	grid_resolution_spin_box_->setValue(swarm_params.grid_resolution_);
+	grid_length_spin_box_->setValue(swarm_params.grid_length_);
 	emit grid_length_spin_box_->valueChanged(grid_length_spin_box_->value());
 
 	sensor_range_->setValue(swarm_params.sensor_range_);
@@ -260,6 +265,19 @@ void FilteredStructLight::set_swarm_params_to_ui(const SwarmParams& swarm_params
 
 	bounce_function_multiplier_->setValue(swarm_params.bounce_function_multiplier_);
 	emit bounce_function_multiplier_->valueChanged(bounce_function_multiplier_->value());
+
+	max_time_taken_->setValue(swarm_params.max_time_taken_);
+	emit max_time_taken_->valueChanged(max_time_taken_->value());
+
+	death_time_taken_->setValue(swarm_params.death_time_taken_);
+	emit death_time_taken_->valueChanged(death_time_taken_->value());
+
+	no_of_clusters_->setValue(swarm_params.no_of_clusters_);
+	emit no_of_clusters_->valueChanged(no_of_clusters_->value());
+
+	death_percentage_->setValue(swarm_params.death_percentage_);
+	emit death_percentage_->valueChanged(death_percentage_->value());
+
 }
 
 void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
@@ -1170,10 +1188,10 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 	QVBoxLayout* misc_group_box_layout = new QVBoxLayout();
 
 	QLabel* death_percentage_label = new QLabel("Death Percentage");
-	death_percentage_spin_box_ = new QDoubleSpinBox(misc_group_box);
+	death_percentage_ = new QDoubleSpinBox(misc_group_box);
 
 	QLabel* death_time_taken_label = new QLabel("Death Time Taken");
-	death_time_taken_spin_box_ = new QSpinBox(misc_group_box);
+	death_time_taken_ = new QSpinBox(misc_group_box);
 
 	QLabel* square_radius_label = new QLabel("Square Radius");
 	square_radius_ = new QDoubleSpinBox(misc_group_box);
@@ -1186,11 +1204,11 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 
 	QHBoxLayout* death_percentage_layout = new QHBoxLayout();
 	death_percentage_layout->addWidget(death_percentage_label);
-	death_percentage_layout->addWidget(death_percentage_spin_box_);
+	death_percentage_layout->addWidget(death_percentage_);
 
 	QHBoxLayout* death_time_taken_layout = new QHBoxLayout();
 	death_time_taken_layout->addWidget(death_time_taken_label);
-	death_time_taken_layout->addWidget(death_time_taken_spin_box_);
+	death_time_taken_layout->addWidget(death_time_taken_);
 
 	QHBoxLayout* square_radius_layout = new QHBoxLayout();
 	square_radius_layout->addWidget(square_radius_label);
@@ -1213,8 +1231,8 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 	misc_group_box->setLayout(misc_group_box_layout);
 
 	connect(square_radius_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_square_formation_radius);
-	connect(death_percentage_spin_box_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_death_percentage);
-	connect(death_time_taken_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_death_time_taken);
+	connect(death_percentage_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_death_percentage);
+	connect(death_time_taken_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_death_time_taken);
 	connect(bounce_function_power_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_bounce_function_power);
 	connect(bounce_function_multiplier_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_bounce_function_multiplier);
 	
@@ -1520,12 +1538,12 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	QHBoxLayout* max_time_layout = new QHBoxLayout();
 	QLabel* max_time_taken_label = new QLabel("Max Time Taken");
-	max_time_taken_spin_box_ = new QSpinBox(group_box);
-	max_time_taken_spin_box_->setMinimum(1);
-	max_time_taken_spin_box_->setMaximum(100000);
+	max_time_taken_ = new QSpinBox(group_box);
+	max_time_taken_->setMinimum(1);
+	max_time_taken_->setMaximum(100000);
 
 	max_time_layout->addWidget(max_time_taken_label);
-	max_time_layout->addWidget(max_time_taken_spin_box_);
+	max_time_layout->addWidget(max_time_taken_);
 
 	group_box_layout->addLayout(max_time_layout);
 
@@ -1551,7 +1569,7 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	group_box->setLayout(group_box_layout);
 	connect(swarm_reset_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::reset_sim );
-	connect(max_time_taken_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_max_time_taken);
+	connect(max_time_taken_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_max_time_taken);
 	//connect(swarm_viewer_, &SwarmViewer::update_time_step_count, this, &FilteredStructLight::update_time_step_count);
 	//connect(swarm_viewer_, &SwarmViewer::update_sampling, this, &FilteredStructLight::update_sampling);
 	connect(swarm_viewer_, &SwarmViewer::update_sim_results_ui, this, &FilteredStructLight::update_sim_results);
@@ -1630,7 +1648,7 @@ void FilteredStructLight::add_swarm_sim_tab(QTabWidget* tab_widget) {
 }
 
 void FilteredStructLight::connect_widgets_to_swarm_save_settings() {
-	//connect(grid_resolution_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), 
+	//connect(grid_resolution_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), 
 	//	this,
 	//	[&](int value)
 	//{
@@ -1654,7 +1672,7 @@ void FilteredStructLight::connect_widgets_to_swarm_save_settings() {
 	//}
 	//);
 
-	//connect(exploration_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
+	//connect(explore_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
 	//	this,
 	//	[&](double value)
 	//{
