@@ -32,8 +32,8 @@ public:
 	void set_slow_down(int slow_down);
 	void abort();
 	void set_max_time_taken(int max_time_taken);
-	double calculate_coverage();
-	double calculate_occulusion_factor();
+	//double calculate_coverage();
+	//double calculate_occulusion_factor();
 	void finish_work();
 
 
@@ -49,7 +49,8 @@ public slots:
 signals:
 	void update_time_step_count(int count);
 	void update_sampling(double sampling);
-	void update_sim_results(double timesteps, double multi_sampling, double density, double occlusion);
+	void update_sim_results(OptimizationResults results);
+	//void update_sim_results(double timesteps, double simul_sampling, double multi_sampling, double density, double occlusion);
 	void update_coverage(double density);
 	void update_occlusion(double occlusion);
 
@@ -142,6 +143,14 @@ private:
 	GridOverlay* overlay_;
 	SwarmParams swarm_params_;
 
+
+	std::deque<std::pair<OptimizationParams, SwarmParams>> optimizer_work_queue_;
+	std::deque<QThread*> opt_threads_;
+	std::string optimizer_filename_;
+
+	ParallelMCMCOptimizer* optimizer_worker_;
+	QThread* optimizer_thread_;
+
 protected:
 
 	void load_inital_models() override;
@@ -211,18 +220,23 @@ public:
 	//double sensor_range_;
 	//int discovery_range_;
 signals:
-	void update_time_step_count(int count);
 	void update_sampling(double sampling);
 	void physics_thread_pause();
 	void physics_thread_step();
 	void physics_thread_resume();
 	void optimizer_reset_sim();
 	void update_sim_results_to_optimizer(double timesteps, double multi_sampling, double coverage);
-	void update_sim_results_ui(double timesteps, double multi_sampling, double density, double occlusion);
+	//void update_sim_results_ui(double timesteps, double simul_sampling, double multi_sampling, double density, double occlusion);
+	void update_sim_results_ui(OptimizationResults results);
 
 public slots:
 
-void update_sim_results(double timesteps, double multi_sampling, double density, double occlusion);
+	void update_time_step_count(int count);
+	void continue_batch_optimization();
+	//void update_sim_results(double timesteps, double multi_sampling, double density, double occlusion);
+	void update_sim_results(OptimizationResults results);
+
+
 //void update_sim_results(double timesteps, double multi_sampling, double coverage);
 //void set_no_of_robots(int no_of_robots);
 //
@@ -241,7 +255,7 @@ void update_sim_results(double timesteps, double multi_sampling, double density,
 //void set_perimeter_constant(double constant);
 //void set_goto_work_constant(double constant);
 //
-//void set_show_interior(int show);
+void set_show_interior(int show);
 //void set_model_rotation(double x_rotation, double y_rotation, double z_rotation);
 //void set_square_formation_radius(double radius);
 //void set_bounce_function_power(double bounce_function_power);
@@ -271,7 +285,7 @@ void step();
 void resume();
 
 //void run_least_squared_optimization();
-void run_mcmc_optimization();
+void run_mcmc_optimization(OptimizationParams opt_params, SwarmParams swarm_params);
 
 void set_should_render(int render);
 void set_slow_down(int slow_down);
@@ -293,6 +307,6 @@ void reset_sim(SwarmParams& swarm_params);
 //void set_no_of_iterations_for_optimization(int no_of_iterations_for_optimization);
 //void set_culling_nth_iteration_for_optimization(int culling_nth_iteration_for_optimization);
 
-void run_batch_optimization(OptimizationParams opt_params);
-
+void run_batch_optimization(OptimizationParams opt_params, std::vector<SwarmParams> swarm_params);
+	void batch_optimization_cleanup();
 };

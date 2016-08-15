@@ -17,7 +17,7 @@ void update_sim_results(int group_id, int thread_id, int iteration,
 	double seperation_constant, double alignment_constant, double cluster_constant, double explore_constant,
 	double seperation_distance, double simultaneous_sampling, double time_taken, double occlusion, double coverage);
 
-void start_thread(SimulatorThread* thread);
+//void start_thread(SimulatorThread* thread);
 
 signals:
 //void send_sim_results(int group_id, int thread_id, int iteration,
@@ -81,6 +81,8 @@ private:
 	int iteration_;
 	SwarmParams swarm_params_;
 
+	std::unordered_map<int, int> death_map_;
+
 	//BridgeObject* bridge_;
 public:
 
@@ -96,12 +98,12 @@ public:
 	explicit SimulatorThread(int group_id, int thread_id, int iteration, SwarmParams& swarm_params);
 
 	void init();
-	void create_robots();
+	//void create_robots();
 	virtual ~SimulatorThread();
-
-	void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset);
-	void load_interior_model();
-	std::vector<glm::vec3> create_starting_formation(Formation type);
+	void reset_sim();
+	//void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset);
+	//void load_interior_model();
+	//std::vector<glm::vec3> create_starting_formation(Formation type);
 
 	void cleanup();
 	void finish_work();
@@ -109,8 +111,8 @@ public:
 	void abort();
 	//void do_work();
 
-	bool intersect(const cv::Vec3f& n, float d,
-		const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt) const;
+	//bool intersect(const cv::Vec3f& n, float d,
+	//	const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt) const;
 
 
 //void set_no_of_robots(int no_of_robots);
@@ -131,7 +133,7 @@ public:
 //void set_bounce_function_power(double bounce_function_power);
 //void set_bounce_function_multiplier(double bounce_function_multiplier);
 
-void reset_sim();
+void reset_sim(SwarmParams& swarm_params);
 
 //void set_model_filename(QString filename);
 //
@@ -159,9 +161,10 @@ void reset_sim();
 signals:
 
 //void send_sim_results(int group_id, int thread_id, int iteration);
-void send_sim_results(int group_id, int thread_id, int iteration,
-	double seperation_constant, double alignment_constant, double cluster_constant, double explore_constant,
-	double seperation_distance, double simultaneous_sampling, double time_taken, double occlusion, double coverage);
+//void send_sim_results(int group_id, int thread_id, int iteration,
+//	double seperation_constant, double alignment_constant, double cluster_constant, double explore_constant,
+//	double seperation_distance, double simultaneous_sampling, double time_taken, double occlusion, double coverage);
 
+void send_sim_results(int group_id, int thread_id, int iteration, SwarmParams params, OptimizationResults results);
 };
 

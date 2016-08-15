@@ -251,6 +251,7 @@ public:
 	void mark_random_points_in_triangle(glm::vec3 a, glm::vec3 b, glm::vec3 c);
 	void mark_interior_line(glm::vec3 a, glm::vec3 b);
 	bool is_out_of_bounds(const glm::ivec3& position) const;
+	void mark_floor_plan();
 	glm::ivec3 map_to_grid(const glm::vec3& position) const;
 	Swarm3DReconTree(unsigned grid_resolution, int grid_cube_length);
 	void insert(glm::vec3& points, const glm::ivec3& position);

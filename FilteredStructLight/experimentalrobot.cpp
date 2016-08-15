@@ -571,12 +571,14 @@ void ExperimentalRobot::update(int timestamp) {
 	final_timestamp_ = timestamp;
 
 
-	try {
 
 		robot_ids_ = get_other_robots(adjacent_cells_);
 
 		if (timestamp > 0 && ((timestamp % measurement_time_step_) == 0)) {
 			occlusions_per_timestamp_map_[timestamp] = robot_ids_.size();
+			for (auto& interior : interior_cells_) {
+				occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior), timestamp, id_);
+			}
 		}
 
 		glm::vec3 separation_velocity = calculate_separation_velocity();
@@ -619,7 +621,6 @@ void ExperimentalRobot::update(int timestamp) {
 
 		// update grid data structure
 		int explored = id_;
-		try {
 			glm::ivec3 grid_position = occupancy_grid_->map_to_grid(position_);
 			glm::ivec3 previous_grid_position = occupancy_grid_->map_to_grid(previous_position_);
 			collision_grid_->update(id_, previous_grid_position, grid_position);
@@ -650,17 +651,10 @@ void ExperimentalRobot::update(int timestamp) {
 				}
 				reconstruct_points();
 			}
-		}
-		catch (OutOfGridBoundsException& exception) {
-			// ignore
-		}
 
 		previous_nminus2_position_ = previous_position_;
 		previous_position_ = position_;
 		//	accumulator_ -= delta_time;
 		//}
-	} catch (OutOfGridBoundsException& ex) {
-		std::cout << "Out of bounds - id : " << id_ << "\n";
-	}
 }
 

@@ -75,6 +75,25 @@ struct SwarmParams {
 	int max_time_taken_;
 	double death_percentage_;
 	int death_time_taken_;
+	QString config_name_;
+};
+
+struct OptimizationResults {
+	double occlusion;
+	double multi_samping; 
+	double density; 
+	double time_taken;
+	double simul_sampling;
+};
+
+struct MCMCParams {
+	double score;
+	int group_id;
+	int thread_id;
+	int iteration;
+	SwarmParams swarm_params;
+	OptimizationResults results;
+	OptimizationResults scores;
 };
 
 struct VertexBufferData;
@@ -159,9 +178,15 @@ public:
 	static void load_obj(std::string filename, VertexBufferData& vertex_buffer_data);
 	static cv::Mat convert_mat(glm::mat3& input_mat);
 	static std::vector<glm::vec3> create_starting_formation(Formation type, SwarmParams& swarm_params, SwarmOccupancyTree* occupancy_grid_);
-	static void load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data);
+	static void load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data, SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);
 	static void create_robots(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_, SwarmOccupancyTree* occupancy_grid_, SwarmCollisionTree* collision_grid_, Swarm3DReconTree* recon_grid_, UniformLocations& uniform_locations, QGLShaderProgram* shader, bool render, std::vector<Robot*>& robots);
 	static void populate_death_map(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_);
+	static std::string get_optimizer_results_filename(std::string swarm_config_filename, std::string mid_part);
+	static std::string get_swarm_config_results_filename(std::string swarm_config_filename, std::string mid_part);
+	static void print_result_header(std::ostream& stream);
+	static void print_result(const MCMCParams& params, std::ostream& stream);
+	static double calculate_coverage(std::vector<Robot*> robots_);
+	static double calculate_occulusion_factor(std::vector<Robot*> robots_);
 	static bool intersect(const cv::Vec3f& n, float d, const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt);
 	static void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset,
 		SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);

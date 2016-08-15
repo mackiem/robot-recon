@@ -21,10 +21,10 @@ void BridgeObject::update_sim_results(int group_id, int thread_id, int iteration
 	lock_.unlock();
 }
 
-void BridgeObject::start_thread(SimulatorThread* sim_thread) {
-		sim_thread->reset_sim();
-		thread_pool_.start(sim_thread);
-}
+//void BridgeObject::start_thread(SimulatorThread* sim_thread) {
+//		sim_thread->reset_sim();
+//		thread_pool_.start(sim_thread);
+//}
 
 //SimulatorThread::SimulatorThread(BridgeObject* bridge, int group_id, int thread_id, int no_of_robots, unsigned int grid_resolution, float grid_length, 
 //		std::string interior_filename, double interior_scale, glm::vec3 interior_offset, glm::mat4 interior_rotation, 
@@ -56,25 +56,35 @@ SimulatorThread::~SimulatorThread()
 
 
 
-
-
 void SimulatorThread::reset_sim() {
+	reset_sim(swarm_params_);
+
+}
+
+void SimulatorThread::reset_sim(SwarmParams& swarm_params) {
 	cleanup();
 
 	aborted_ = false;
 	time_step_count_ = 0;
 
-	occupancy_grid_ = new SwarmOccupancyTree(grid_length_, grid_resolution_);
-	grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
-	collision_grid_ = new SwarmCollisionTree(grid_resolution_);
-	recon_grid_ = new Swarm3DReconTree(grid_resolution_, grid_length_);
+	occupancy_grid_ = new SwarmOccupancyTree(swarm_params.grid_length_, swarm_params.grid_resolution_);
+	swarm_params.grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
+	collision_grid_ = new SwarmCollisionTree(swarm_params.grid_resolution_);
+	recon_grid_ = new Swarm3DReconTree(swarm_params.grid_resolution_, swarm_params.grid_length_);
 
-	load_interior_model();
+
+	VertexBufferData* vertex_buffer_data;
+	SwarmUtils::load_interior_model(swarm_params, vertex_buffer_data, occupancy_grid_, recon_grid_);
+
 	occupancy_grid_->create_perimeter_list();
 	occupancy_grid_->create_empty_space_list();
 	occupancy_grid_->create_interior_list();
 
-	create_robots();
+	bool render_ = false;
+	QGLShaderProgram* m_shader = nullptr;
+
+	SwarmUtils::create_robots(swarm_params, death_map_, occupancy_grid_, collision_grid_, recon_grid_, uniform_locations_, m_shader, render_, robots_);
+
 	// assumption - global position of other robots are known
 	for (auto& robot : robots_) {
 		robot->update_robots(robots_);
@@ -89,25 +99,27 @@ void SimulatorThread::finish_work() {
 	std::mt19937 mt(rd());
 	//std::normal_distribution<> normal_distribution(0.0, 1.0);
 	std::uniform_real_distribution<> uniform_real_distribution(0, 1);
-	//double simultaneous_sampling = uniform_real_distribution(mt);
-	double simultaneous_sampling = occupancy_grid_->calculate_simultaneous_sampling_factor();
-	double occlusion = 0.0;
-	//double coverage = calculate_coverage();
-	double coverage = 0.0;
-	//bridge_->update_sim_results(group_id_, thread_id_, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
-	//	separation_distance_, simultaneous_sampling, time_step_count_, occlusion, coverage, iteration_);
 
-	//emit send_sim_results(group_id_, thread_id_, iteration_);
-	emit send_sim_results(group_id_, thread_id_, iteration_, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
-		separation_distance_, simultaneous_sampling, time_step_count_, occlusion, coverage);
+	OptimizationResults results;
+
+	results.occlusion = SwarmUtils::calculate_occulusion_factor(robots_);
+	results.multi_samping = recon_grid_->calculate_multi_sampling_factor();
+	results.density = recon_grid_->calculate_density();
+	results.time_taken = time_step_count_;
+	results.simul_sampling = occupancy_grid_->calculate_simultaneous_sampling_factor();
+
+	//emit send_sim_results(group_id_, thread_id_, iteration_, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
+	//	separation_distance_, simultaneous_sampling, time_step_count_, occlusion, coverage);
+	emit send_sim_results(group_id_, thread_id_, iteration_, swarm_params_, results);
 
 	abort();
 }
 	
 
 void SimulatorThread::run() {
+	//finish_work();
 	while (!aborted_) {
-		if (time_step_count_ > max_time_taken_) {
+		if (time_step_count_ > swarm_params_.max_time_taken_) {
 			finish_work();
 		}
 		if (occupancy_grid_->no_of_unexplored_cells() > 0) {
@@ -116,17 +128,17 @@ void SimulatorThread::run() {
 		else {
 			finish_work();
 		}
-		for (auto& robot : robots_) {
-			robot->update(time_step_count_);
-			if (time_step_count_ % 200 == 0 && robot->get_id() == 0) {
-				//std::cout << "Thread id : "  << thread_id_ << " Robot id: "<< robot->get_id() << " " << time_step_count_ << " " << occupancy_grid_->no_of_unexplored_cells() << "\n";
-				//SwarmUtils::print_vector("position", robot->get_position());
+		try {
+			for (auto& robot : robots_) {
+				robot->update(time_step_count_);
 			}
+		} catch (OutOfGridBoundsException& ex) {
+			time_step_count_ = swarm_params_.max_time_taken_;
+			finish_work();
 		}
 		time_step_count_++;
 		//QCoreApplication::processEvents();
 	}
-	//finish_work();
 	std::cout << "Ending : " << group_id_ << " " << thread_id_ << " " << iteration_ << "\n";
 }
 
@@ -135,7 +147,7 @@ void SimulatorThread::abort() {
 }
 
 SimulatorThread::SimulatorThread(int group_id, int thread_id, int iteration, SwarmParams& swarm_params) :
-occupancy_grid_(nullptr), collision_grid_(nullptr), group_id_(group_id), thread_id_(thread_id), iteration_(iteration), swarm_params_(swarm_params)
+occupancy_grid_(nullptr), collision_grid_(nullptr), time_step_count_(0), group_id_(group_id), thread_id_(thread_id), recon_grid_(nullptr), aborted_(false), iteration_(iteration), swarm_params_(swarm_params)
 {
 }
 

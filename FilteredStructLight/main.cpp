@@ -35,6 +35,10 @@ void run_program(int argc, char *argv[]) {
 	qRegisterMetaType<std::vector<cv::Vec3f>>("std::vector<cv::Vec3f>");
 	qRegisterMetaType<cv::Mat>("cv::Mat");
 	qRegisterMetaType<std::vector<std::string>>("std::vector<std::string>");
+	qRegisterMetaType<SwarmParams>("SwarmParams");
+	qRegisterMetaType<OptimizationParams>("OptimizationParams");
+	qRegisterMetaType<OptimizationResults>("OptimizationResults");
+	qRegisterMetaType<MCMCParams>("MCMCParams");
 
 	FilteredStructLight w;
 	w.show();

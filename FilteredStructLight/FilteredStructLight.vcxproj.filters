@@ -167,9 +167,6 @@
     <ClCompile Include="robot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="octree.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="swarmutils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -289,9 +286,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="robot.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="octree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="swarmutils.h">

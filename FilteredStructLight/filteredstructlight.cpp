@@ -143,7 +143,7 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 	swarm_params.sensor_range_ = sensor_range_->value();
 	swarm_params.discovery_range_ = discovery_range_->value();
 
-	swarm_params.no_of_clusters = no_of_clusters_->value();
+	swarm_params.no_of_clusters_ = no_of_clusters_->value();
 	swarm_params.max_time_taken_ = max_time_taken_->value();
 	swarm_params.death_percentage_ = death_percentage_->value();
 	swarm_params.death_time_taken_ = death_time_taken_->value();
@@ -341,7 +341,7 @@ void FilteredStructLight::load_swarm_config_settings() {
 	if (!opt_file.exists()) {
 		opt_filename = default_opt_filename;
 	}
-	optimization_config_filename_->setText(default_opt_filename);
+	optimization_config_filename_->setText(opt_filename);
 }
 
 void FilteredStructLight::save_swarm_config_settings() {
@@ -767,8 +767,6 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	});
 
 
-	connect(model_filename_, &QLineEdit::textChanged, swarm_viewer_, 
-		&SwarmViewer::set_model_filename);
 
 	QHBoxLayout* scale_layout = new QHBoxLayout();
 	scale_spinbox_ = new QDoubleSpinBox(group_box);
@@ -814,31 +812,30 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 
 	group_box->setLayout(group_box_layout);
 
-	connect(x_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
-		[&](int value)
-	{
-		swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
-	}
-	);
-
-	connect(y_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
-		[&](int value)
-	{
-		swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
-	}
-	);
-
-	connect(z_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
-		[&](int value)
-	{
-		swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
-	}
-	);
-
-	connect(scale_spinbox_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_interior_scale);
-
-
 	connect(show_interior_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_interior);
+	//connect(x_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+	//	[&](int value)
+	//{
+	//	swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
+	//}
+	//);
+
+	//connect(y_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+	//	[&](int value)
+	//{
+	//	swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
+	//}
+	//);
+
+	//connect(z_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), this,
+	//	[&](int value)
+	//{
+	//	swarm_viewer_->set_interior_offset(glm::vec3(x_spin_box_->value(), y_spin_box_->value(), z_spin_box_->value()));
+	//}
+	//);
+
+
+
 
 }
 
@@ -857,11 +854,11 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	group_box_layout->addLayout(robots_layout);
 
 	QHBoxLayout* no_of_clusters_layout = new QHBoxLayout();
-	no_of_clusters_spinbox_ = new QSpinBox(group_box);
-	no_of_clusters_spinbox_->setRange(1, 2000);
+	no_of_clusters_ = new QSpinBox(group_box);
+	no_of_clusters_->setRange(1, 2000);
 	QLabel* no_of_clusters_label = new QLabel("# of clusters");
 	no_of_clusters_layout->addWidget(no_of_clusters_label);
-	no_of_clusters_layout->addWidget(no_of_clusters_spinbox_);
+	no_of_clusters_layout->addWidget(no_of_clusters_);
 
 	group_box_layout->addLayout(no_of_clusters_layout);
 
@@ -879,7 +876,6 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	for (int i = 0; i < MAX_FORMATION_NO; ++i) {
 		formation_buttons_[i] = new QArrayRadioButton(formations[i], i, group_box);
 		formation_vbox_layout->addWidget(formation_buttons_[i]);
-		connect(formation_buttons_[i], &QArrayRadioButton::clicked_with_id, swarm_viewer_, &SwarmViewer::set_formation);
 	}
 	
 	formation->setLayout(formation_vbox_layout);
@@ -1015,6 +1011,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	QLabel* separation_range_label = new QLabel("Separation");
 	separation_range_min_ = new QDoubleSpinBox(range_group_box);
 	separation_range_max_ = new QDoubleSpinBox(range_group_box);
+	separation_range_max_->setDecimals(precision);
 	range_grid_layout->addWidget(separation_range_label, 1, 0);	
 	range_grid_layout->addWidget(separation_range_min_, 1, 1);	
 	range_grid_layout->addWidget(separation_range_max_, 1, 2);	
@@ -1075,110 +1072,98 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	group_box->setLayout(group_box_layout);
 
-	connect(robots_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_no_of_robots);
-	connect(no_of_clusters_spinbox_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_no_of_clusters);
-	connect(exploration_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_exploration_constant);
-	connect(separation_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_separation_constant);
-	connect(alignment_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_alignment_constant);
-	connect(cluster_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_cluster_constant);
-	connect(perimeter_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_perimeter_constant);
-	connect(goto_work_constant_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_goto_work_constant);
 
 
-	connect(show_forces_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_forces);
 
-	connect(sensor_range_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_sensor_range);
 
-	connect(discovery_range_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_discovery_range);
 
-	connect(neighborhood_count_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_neighborhood_count);
 
-	connect(separation_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_separation_range(separation_range_min_->value(), separation_range_max_->value());
-	}
-	);
-	connect(separation_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_separation_range(separation_range_min_->value(), separation_range_max_->value());
-	}
-	);
-	connect(alignment_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_alignment_range(alignment_range_min_->value(), alignment_range_max_->value());
-	}
-	);
-	connect(alignment_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_alignment_range(alignment_range_min_->value(), alignment_range_max_->value());
-	}
-	);
-	connect(cluster_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_cluster_range(cluster_range_min_->value(), cluster_range_max_->value());
-	}
-	);
-	connect(cluster_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_cluster_range(cluster_range_min_->value(), cluster_range_max_->value());
-	}
-	);
-	connect(perimeter_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_perimeter_range(perimeter_range_min_->value(), perimeter_range_max_->value());
-	}
-	);
-	connect(perimeter_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_perimeter_range(perimeter_range_min_->value(), perimeter_range_max_->value());
-	}
-	);
-	connect(explore_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_explore_range(explore_range_min_->value(), explore_range_max_->value());
-	}
-	);
-	connect(explore_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_explore_range(explore_range_min_->value(), explore_range_max_->value());
-	}
-	);
+	//connect(separation_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_separation_range(separation_range_min_->value(), separation_range_max_->value());
+	//}
+	//);
+	//connect(separation_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_separation_range(separation_range_min_->value(), separation_range_max_->value());
+	//}
+	//);
+	//connect(alignment_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_alignment_range(alignment_range_min_->value(), alignment_range_max_->value());
+	//}
+	//);
+	//connect(alignment_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_alignment_range(alignment_range_min_->value(), alignment_range_max_->value());
+	//}
+	//);
+	//connect(cluster_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_cluster_range(cluster_range_min_->value(), cluster_range_max_->value());
+	//}
+	//);
+	//connect(cluster_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_cluster_range(cluster_range_min_->value(), cluster_range_max_->value());
+	//}
+	//);
+	//connect(perimeter_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_perimeter_range(perimeter_range_min_->value(), perimeter_range_max_->value());
+	//}
+	//);
+	//connect(perimeter_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_perimeter_range(perimeter_range_min_->value(), perimeter_range_max_->value());
+	//}
+	//);
+	//connect(explore_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_explore_range(explore_range_min_->value(), explore_range_max_->value());
+	//}
+	//);
+	//connect(explore_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_explore_range(explore_range_min_->value(), explore_range_max_->value());
+	//}
+	//);
 
-	connect(obstacle_avoidance_near_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_obstacle_avoidance_near_range(obstacle_avoidance_near_range_min_->value(), obstacle_avoidance_near_range_max_->value());
-	}
-	);
-	connect(obstacle_avoidance_near_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_obstacle_avoidance_near_range(obstacle_avoidance_near_range_min_->value(), obstacle_avoidance_near_range_max_->value());
-	}
-	);
+	//connect(obstacle_avoidance_near_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_obstacle_avoidance_near_range(obstacle_avoidance_near_range_min_->value(), obstacle_avoidance_near_range_max_->value());
+	//}
+	//);
+	//connect(obstacle_avoidance_near_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_obstacle_avoidance_near_range(obstacle_avoidance_near_range_min_->value(), obstacle_avoidance_near_range_max_->value());
+	//}
+	//);
 
-	connect(obstacle_avoidance_far_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_obstacle_avoidance_far_range(obstacle_avoidance_far_range_min_->value(), obstacle_avoidance_far_range_max_->value());
-	}
-	);
-	connect(obstacle_avoidance_far_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
-		[&](double value)
-	{
-		swarm_viewer_->set_obstacle_avoidance_far_range(obstacle_avoidance_far_range_min_->value(), obstacle_avoidance_far_range_max_->value());
-	}
-	);
+	//connect(obstacle_avoidance_far_range_min_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_obstacle_avoidance_far_range(obstacle_avoidance_far_range_min_->value(), obstacle_avoidance_far_range_max_->value());
+	//}
+	//);
+	//connect(obstacle_avoidance_far_range_max_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), this,
+	//	[&](double value)
+	//{
+	//	swarm_viewer_->set_obstacle_avoidance_far_range(obstacle_avoidance_far_range_min_->value(), obstacle_avoidance_far_range_max_->value());
+	//}
+	//);
 
 
 }
@@ -1192,6 +1177,7 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 
 	QLabel* death_time_taken_label = new QLabel("Death Time Taken");
 	death_time_taken_ = new QSpinBox(misc_group_box);
+	death_time_taken_->setRange(0, 100000);
 
 	QLabel* square_radius_label = new QLabel("Square Radius");
 	square_radius_ = new QDoubleSpinBox(misc_group_box);
@@ -1230,11 +1216,6 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 
 	misc_group_box->setLayout(misc_group_box_layout);
 
-	connect(square_radius_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_square_formation_radius);
-	connect(death_percentage_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_death_percentage);
-	connect(death_time_taken_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_death_time_taken);
-	connect(bounce_function_power_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_bounce_function_power);
-	connect(bounce_function_multiplier_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_bounce_function_multiplier);
 	
 	QVBoxLayout* group_box_layout = new QVBoxLayout();
 	group_box_layout->addWidget(misc_group_box);
@@ -1266,8 +1247,6 @@ void FilteredStructLight::add_grid_options(QGroupBox* group_box) {
 
 	group_box->setLayout(group_box_layout);
 
-	connect(grid_resolution_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_grid_resolution);
-	connect(grid_length_spin_box_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_grid_length);
 
 }
 
@@ -1400,13 +1379,21 @@ void FilteredStructLight::add_swarm_optimization_options(QGroupBox* group_box) {
 	//connect(run_least_squared_optimization_button_, &QPushButton::clicked, 
 	//	swarm_viewer_, &SwarmViewer::run_least_squared_optimization);
 
-	connect(run_mcmc_optimization_button_, &QPushButton::clicked, 
-		swarm_viewer_, &SwarmViewer::run_mcmc_optimization);
+	connect(run_mcmc_optimization_button_, &QPushButton::clicked, this, [&] {
+		swarm_viewer_->run_mcmc_optimization(get_opt_params_from_ui(), get_swarm_params_from_ui());
+	});
 
 	connect(batch_optimize_button_, &QPushButton::clicked, this, 
 		[&] {
 		auto op_params = get_opt_params_from_ui();
-		swarm_viewer_->run_batch_optimization(op_params);
+		QStringList configs_list = swarm_configs_list_model_->stringList();
+		std::vector<SwarmParams> swarm_paramses;
+		for (auto& config : configs_list) {
+			auto swarm_params = SwarmUtils::load_swarm_params(config);
+			swarm_params.config_name_ = config;
+			swarm_paramses.push_back(swarm_params);
+		}
+		swarm_viewer_->run_batch_optimization(op_params, swarm_paramses);
 	});
 	
 
@@ -1442,7 +1429,6 @@ void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
 	});
 
 	//connect(swarm_config_filename_, &QLineEdit::textChanged, this, 
-	//	&SwarmViewer::set_model_filename);
 
 	QHBoxLayout* load_save_layout = new QHBoxLayout();
 	load_swarm_config_button_ = new QPushButton("Load Conf.", group_box);
@@ -1464,7 +1450,6 @@ void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
 	load_save_layout->addWidget(load_swarm_config_button_);
 
 	//connect(swarm_config_filename_, &QLineEdit::textChanged, swarm_viewer_, 
-	//	&SwarmViewer::set_swarm_config_filename);
 
 	group_box_layout->addLayout(filename_layout);
 	group_box_layout->addLayout(load_save_layout);
@@ -1490,6 +1475,14 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	sampling_config_layout->addWidget(avg_simultaneous_sampling_label_);
 
 	group_box_layout->addLayout(sampling_config_layout);
+
+	QHBoxLayout* multi_sampling_layout = new QHBoxLayout();
+	QLabel* multi_sampling_label = new QLabel("Multi Sampling", group_box);
+	multi_sampling_label_ = new QLabel("0.0", group_box);
+	multi_sampling_layout->addWidget(multi_sampling_label);
+	multi_sampling_layout->addWidget(multi_sampling_label_);
+
+	group_box_layout->addLayout(multi_sampling_layout);
 
 	QHBoxLayout* coverage_layout = new QHBoxLayout();
 	QLabel* coverage_label = new QLabel("Coverage", group_box);
@@ -1547,8 +1540,6 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	group_box_layout->addLayout(max_time_layout);
 
-	connect(magic_k_spin_box_, static_cast<void (QDoubleSpinBox::*)(double)>(&QDoubleSpinBox::valueChanged), 
-		swarm_viewer_, &SwarmViewer::set_magic_k);
 
 	// should render
 	should_render_check_box_ = new QCheckBox("Should Render?", group_box);
@@ -1563,15 +1554,17 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	//collide with robots
 	collide_with_other_robots_ = new QCheckBox("Collide with other robots?", group_box);
 	group_box_layout->addWidget(collide_with_other_robots_);
-	connect(collide_with_other_robots_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_collide_with_robots);
 
 	//collide with interior
 
 	group_box->setLayout(group_box_layout);
-	connect(swarm_reset_button_, &QPushButton::clicked, swarm_viewer_, &SwarmViewer::reset_sim );
-	connect(max_time_taken_, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), swarm_viewer_, &SwarmViewer::set_max_time_taken);
+
+	connect(swarm_reset_button_, &QPushButton::clicked, this, [&] {
+		SwarmParams swarm_params = get_swarm_params_from_ui();
+		swarm_viewer_->reset_sim(swarm_params);
+	});
 	//connect(swarm_viewer_, &SwarmViewer::update_time_step_count, this, &FilteredStructLight::update_time_step_count);
-	//connect(swarm_viewer_, &SwarmViewer::update_sampling, this, &FilteredStructLight::update_sampling);
+	//connect(swarm_viewer_, &SwarmViewer::update_simul_sampling, this, &FilteredStructLight::update_simul_sampling);
 	connect(swarm_viewer_, &SwarmViewer::update_sim_results_ui, this, &FilteredStructLight::update_sim_results);
 
 
@@ -1972,6 +1965,13 @@ void FilteredStructLight::connect_load_filename_to_save_settings() {
 		save_swarm_config_settings();
 	}
 	);
+	connect(optimization_config_filename_, &QLineEdit::textChanged, 
+		this,
+		[&](const QString & text)
+	{
+		save_swarm_config_settings();
+	}
+	);
 }
 
 
@@ -2001,16 +2001,17 @@ void FilteredStructLight::update_time_step_count(int count) {
 	time_step_count_label_->setText(count_string);
 }
 
-void FilteredStructLight::update_sampling(double sampling) {
+void FilteredStructLight::update_simul_sampling(double sampling) {
 	QString samping_string = QString::number(sampling);
 	avg_simultaneous_sampling_label_->setText(samping_string);
 }
 
-void FilteredStructLight::update_sim_results(double timesteps, double multi_sampling, double density, double occlusion) {
-	update_time_step_count(timesteps);
-	update_sampling(multi_sampling);
-	coverage_label_->setText(QString::number(density));
-	occlusion_label_->setText(QString::number(occlusion));
+void FilteredStructLight::update_sim_results(OptimizationResults results) {
+	update_time_step_count(results.time_taken);
+	update_simul_sampling(results.simul_sampling);
+	multi_sampling_label_->setText(QString::number(results.multi_samping));
+	coverage_label_->setText(QString::number(results.density));
+	occlusion_label_->setText(QString::number(results.occlusion));
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {

@@ -92,6 +92,19 @@ void SwarmOccupancyTree::mark_floor_plan() {
 	}
 }
 
+void Swarm3DReconTree::mark_floor_plan() {
+	int y = 0;
+	int edge = resolution_per_side_ - 1;
+	for (int x = 0; x < resolution_per_side_; ++x) {
+		for (int z = 0; z < resolution_per_side_; ++z) {
+			if (x == 0 || x == edge || z == 0 || z == edge) {
+				glm::vec3 points((x + 0.5) * grid_cube_length_, y, (x + 0.5) * grid_cube_length_);
+				insert(points, glm::ivec3(x, y, z));
+			}
+		}
+	}
+}
+
 
 SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_resolution) :
 Quadtree<int>(grid_resolution, -1), grid_cube_length_(grid_cube_length), grid_resolution_(grid_resolution) {
@@ -297,6 +310,7 @@ Quadtree<std::vector<glm::vec3>*>(grid_resolution, nullptr), grid_cube_length_(g
 			set(x, z, new_vector);
 		}
 	}
+	mark_floor_plan();
 }
 
 void Swarm3DReconTree::insert(glm::vec3& points, const glm::ivec3& position) {

@@ -5,6 +5,7 @@
 #include "swarmtree.h"
 #include <random>
 #include "experimentalrobot.h"
+#include <chrono>
 
 #define PI 3.14159265
 
@@ -106,7 +107,7 @@ SwarmParams SwarmUtils::load_swarm_params(const QString& filename) {
 	
 	SwarmParams swarm_params;
 	swarm_params.no_of_robots_ = (settings.value(ROBOTS_NO_LABEL, "10").toInt());
-	swarm_params.exploration_constant_ = (settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
+	swarm_params.explore_constant_ = (settings.value(EXPLORATION_CONSTANT_LABEL, "1").toDouble());
 	swarm_params.separation_constant_ = (settings.value(SEPARATION_CONSTANT_LABEL, "1").toDouble());
 	swarm_params.alignment_constant_ = (settings.value(ALIGNMENT_CONSTANT_LABEL, "1").toDouble());
 	swarm_params.cluster_constant_ = (settings.value(CLUSTER_CONSTANT_LABEL, "1").toDouble());
@@ -182,7 +183,7 @@ void SwarmUtils::save_swarm_params(const SwarmParams& params, const QString& fil
 
 
 	settings.setValue(ROBOTS_NO_LABEL, params.no_of_robots_);
-	settings.setValue(EXPLORATION_CONSTANT_LABEL, params.exploration_constant_);
+	settings.setValue(EXPLORATION_CONSTANT_LABEL, params.explore_constant_);
 	settings.setValue(SEPARATION_CONSTANT_LABEL, params.separation_constant_);
 	settings.setValue(ALIGNMENT_CONSTANT_LABEL, params.alignment_constant_);
 	settings.setValue(CLUSTER_CONSTANT_LABEL, params.cluster_constant_);
@@ -688,7 +689,9 @@ void SwarmUtils::derive_floor_plan(const VertexBufferData& bufferdata, float sca
 	//occupancy_grid_->remove_inner_interiors();
 }
 
-void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data) {
+void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data,
+	SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_) {
+
 	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
 
 	std::string model_filename = (swarm_params.model_filename_.compare("") == 0) ? DEFAULT_INTERIOR_MODEL_FILENAME
@@ -700,7 +703,8 @@ void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData
 	float scale = swarm_params.scale_spinbox_;
 
 	if (swarm_params.model_filename_.compare("") > 0) {
-		derive_floor_plan(*vertex_buffer_data, scale, glm::vec3(swarm_params.x_spin_box_, swarm_params.y_spin_box_, swarm_params.z_spin_box_));
+		derive_floor_plan(*vertex_buffer_data, scale, glm::vec3(swarm_params.x_spin_box_, swarm_params.y_spin_box_, swarm_params.z_spin_box_),
+			occupancy_grid_, recon_grid_);
 	}
 
 	//delete vertex_buffer_data;
@@ -771,4 +775,84 @@ void SwarmUtils::populate_death_map(SwarmParams& swarm_params, std::unordered_ma
 		}
 	}
 	
+}
+
+std::string SwarmUtils::get_optimizer_results_filename(std::string swarm_config_filename, std::string mid_part) {
+	std::string filename_prefix = "";
+	auto period_pos = swarm_config_filename.rfind(".");
+	if (period_pos != std::string::npos) {
+		filename_prefix = swarm_config_filename.substr(0, period_pos) + std::string("_");
+	} 	
+	auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+	std::string filename = filename_prefix + mid_part + "_" + std::to_string(timestamp) + ".csv";
+	return filename;
+}
+
+std::string SwarmUtils::get_swarm_config_results_filename(std::string swarm_config_filename, std::string mid_part) {
+	std::string filename_prefix = "";
+	auto period_pos = swarm_config_filename.rfind(".");
+	if (period_pos != std::string::npos) {
+		filename_prefix = swarm_config_filename.substr(0, period_pos) + std::string("_");
+	} 	
+	auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+	std::string filename = filename_prefix + mid_part + "_" + std::to_string(timestamp) + ".ini";
+	return filename;
+
+}
+
+void SwarmUtils::print_result_header(std::ostream& stream) {
+	stream << "temperature,thread_id,iteration,model_filename,no_of_robots,"
+		<< "no_of_clusters,separation,alignment,cluster,explore,obstacle_avoidance,separation_distance,"
+		<< "time_taken,simul_sampling,multi_sampling,coverage,occlusion,score"
+		<< "time_taken_score,simul_sampling_score,multi_sampling_score,coverage_score,occlusion_score\n";
+}
+
+void SwarmUtils::print_result(const MCMCParams& params, std::ostream& stream) {
+
+	stream << params.group_id << ","
+		<< params.thread_id << ","
+		<< params.iteration << ","
+		<< params.swarm_params.model_filename_.toStdString() << ","
+		<< params.swarm_params.no_of_robots_ << ","
+		<< params.swarm_params.no_of_clusters_ << ","
+		<< params.swarm_params.separation_constant_ << ","
+		<< params.swarm_params.alignment_constant_ << ","
+		<< params.swarm_params.cluster_constant_ << ","
+		<< params.swarm_params.explore_constant_ << ","
+		<< params.swarm_params.bounce_function_multiplier_ << ","
+		<< params.swarm_params.separation_range_max_ * params.swarm_params.grid_length_ << ","
+		<< params.results.time_taken << ","
+		<< params.results.simul_sampling << ","
+		<< params.results.multi_samping << ","
+		<< params.results.density << ","
+		<< params.results.occlusion << ","
+		<< params.score << ","
+		<< params.scores.time_taken << ","
+		<< params.scores.simul_sampling << ","
+		<< params.scores.multi_samping << ","
+		<< params.scores.density << ","
+		<< params.scores.occlusion
+		<< "\n";
+}
+
+double SwarmUtils::calculate_coverage(std::vector<Robot*> robots_) {
+	double coverage = 0.0;
+	for (auto& robot : robots_) {
+		coverage += robot->calculate_coverage();
+	}
+	if (robots_.size() > 0) {
+		coverage /= robots_.size();
+	}
+	return coverage;
+}
+
+double SwarmUtils::calculate_occulusion_factor(std::vector<Robot*> robots_) {
+	double occlusion = 0.0;
+	for (auto& robot : robots_) {
+		occlusion += dynamic_cast<ExperimentalRobot*>(robot)->calculate_occulsion();
+	}
+	if (robots_.size() > 0) {
+		occlusion /= robots_.size();
+	}
+	return occlusion;
 }

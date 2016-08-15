@@ -234,7 +234,7 @@ private:
 	QStringListModel* swarm_configs_list_model_;
 	QPushButton* remove_swarm_configuration_button_;
 	QPushButton* batch_optimize_button_;
-
+	QLabel* multi_sampling_label_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();
@@ -284,8 +284,8 @@ public slots:
 	void start_reconstruction_sequence();
 	void handle_frame_filenames(std::vector<std::string> image_list);
 	void update_time_step_count(int count);
-	void update_sampling(double sampling);
-	void update_sim_results(double timesteps, double multi_sampling, double density, double occlusion);
+	void update_simul_sampling(double sampling);
+	void update_sim_results(OptimizationResults results);
 };
 
 #endif // FILTEREDSTRUCTLIGHT_H

@@ -119,7 +119,7 @@ void Robot::init() {
 	
 
 	tick_tock_age_ = 0;
-	init_coverage_map();
+	//init_coverage_map();
 
 	cv::Vec4f green(0.f, 1.f, 0.f, 1.f);
 	cv::Vec4f red(1.f, 0.f, 0.f, 1.f);
@@ -131,12 +131,12 @@ void Robot::init() {
 
 
 	if (render_) {
-		init_force_visualization(0, explore_force_, blue);
-		init_force_visualization(1, separation_force_, green);
-		init_force_visualization(2, resultant_force_, black);
-		init_force_visualization(3, perimeter_force_, yellow);
-		init_force_visualization(4, cluster_force_, cyan);
-		init_force_visualization(5, alignment_force_, orange);
+		//init_force_visualization(0, explore_force_, blue);
+		//init_force_visualization(1, separation_force_, green);
+		//init_force_visualization(2, resultant_force_, black);
+		//init_force_visualization(3, perimeter_force_, yellow);
+		//init_force_visualization(4, cluster_force_, cyan);
+		//init_force_visualization(5, alignment_force_, orange);
 	}
 
 	
@@ -326,7 +326,7 @@ void Robot::set_show_forces(bool show) {
 	glm::vec3 zero_force;
 	cv::Vec4f blue(0.f, 0.f, 1.f, 1.f);
 	for (int i = 0; i < 5; ++i) {
-		update_force_visualization(i, zero_force);
+		//update_force_visualization(i, zero_force);
 	}
 }
 
@@ -799,12 +799,12 @@ bool Robot::is_colliding_with_robots(const std::vector<int>& robot_ids) const {
 void Robot::update_visualization_structs() {
 		// update visualization
 		if (show_forces_) {
-			update_force_visualization(0, explore_force_);
-			update_force_visualization(1, separation_force_);
-			update_force_visualization(3, perimeter_force_);
-			update_force_visualization(4, cluster_force_);
-			update_force_visualization(5, alignment_force_);
-			update_force_visualization(2, 100.f * resultant_force_);
+			//update_force_visualization(0, explore_force_);
+			//update_force_visualization(1, separation_force_);
+			//update_force_visualization(3, perimeter_force_);
+			//update_force_visualization(4, cluster_force_);
+			//update_force_visualization(5, alignment_force_);
+			//update_force_visualization(2, 100.f * resultant_force_);
 		}
 		// update rendered mesh
 		for (auto& render_entity : mesh_) {
