@@ -26,6 +26,11 @@ double max_multi_sampling_g;
 SwarmViewer* SwarmOptimizer::swarm_viewer_g;
 double SwarmOptimizer::separation_constant_;
 
+double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 10.0;
+double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 10.0;
+double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = 50.0;
+double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 10.0;
+
 //int
 //SwarmOptimizer::swarm_sim_opt_error_(int *m_ptr, int *n_ptr, double *params, double *error, int *)
 //{
@@ -608,12 +613,12 @@ SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int th
 
 	MCMCParams next_params;
 	next_params.swarm_params = swarm_params_;
-	next_params.swarm_params.separation_constant_ = init_value(0.0, 10.0);
-	next_params.swarm_params.alignment_constant_ = init_value(0.0, 3.0);
-	next_params.swarm_params.cluster_constant_ = init_value(0.0, 5.0);
-	next_params.swarm_params.explore_constant_ = init_value(0.0, 10.0);
-	next_params.swarm_params.bounce_function_multiplier_ = init_value(0.0, 1.0);
-	next_params.swarm_params.separation_range_max_ = init_value(0.0, 5.0);
+	next_params.swarm_params.separation_constant_ = init_value(0.0, MAX_SEPARATION_VALUE);
+	next_params.swarm_params.alignment_constant_ = init_value(0.0, MAX_ALIGNMENT_VALUE);
+	next_params.swarm_params.cluster_constant_ = init_value(0.0, MAX_CLUSTER_VALUE);
+	next_params.swarm_params.explore_constant_ = init_value(0.0, MAX_EXPLORE_VALUE);
+	//next_params.swarm_params.bounce_function_multiplier_ = init_value(0.0, 100.0);
+	//next_params.swarm_params.separation_range_max_ = init_value(0.0, 5.0);
 
 
 	auto simulator_thread = init_mcmc_thread(temperature, thread_id, iteration, next_params);
@@ -628,14 +633,14 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 	double current_score = current_results_map_[temperature][thread_id].score;
 
 
-	if (next_score > best_score) {
+	if (next_score < best_score) {
 		best_results_map_[temperature][thread_id] = next_results_map_[temperature][thread_id];
 		result_progression_map_[temperature][thread_id].push_back(next_results_map_[temperature][thread_id]);
 	}
 
 	double uniform_random_value = init_value(0.0, 1.0);
 
-	if ((next_score >= current_score)
+	if ((next_score <= current_score)
 		|| ((next_score / current_score) >= uniform_random_value)) {
 		current_results_map_[temperature][thread_id] = next_results_map_[temperature][thread_id];
 	}
@@ -649,7 +654,8 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 	int no_of_params_to_perturb;
 	std::random_device rd;
 	std::mt19937 mt(rd());
-	std::uniform_int_distribution<> uniform_int_distribution(0, 5);
+	//std::uniform_int_distribution<> uniform_int_distribution(0, 5);
+	std::uniform_int_distribution<> uniform_int_distribution(0, 3);
 	
 	int param_index = uniform_int_distribution(mt);
 
@@ -666,31 +672,35 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 
 	switch (param_index) {
 	case 0: {
-		next_mcmc_params.swarm_params.separation_constant_ = perturb_value(next_mcmc_params.swarm_params.separation_constant_, temperatures_[temperature], 0.0, 10.0);
+		next_mcmc_params.swarm_params.separation_constant_ = perturb_value(next_mcmc_params.swarm_params.separation_constant_, 
+			temperatures_[temperature], 0.0, MAX_SEPARATION_VALUE);
 		break;
 	}
 	case 1: {
-		next_mcmc_params.swarm_params.alignment_constant_ = perturb_value(next_mcmc_params.swarm_params.alignment_constant_, temperatures_[temperature], 0.0, 3.0);
+		next_mcmc_params.swarm_params.alignment_constant_ = perturb_value(next_mcmc_params.swarm_params.alignment_constant_, 
+			temperatures_[temperature], 0.0, MAX_ALIGNMENT_VALUE);
 		break;
 	}
 	case 2: {
-		next_mcmc_params.swarm_params.cluster_constant_ = perturb_value(next_mcmc_params.swarm_params.cluster_constant_, temperatures_[temperature], 0.0, 5.0);
+		next_mcmc_params.swarm_params.cluster_constant_ = perturb_value(next_mcmc_params.swarm_params.cluster_constant_, 
+			temperatures_[temperature], 0.0, MAX_CLUSTER_VALUE);
 		break;
 	}
 	case 3: {
-		next_mcmc_params.swarm_params.explore_constant_ = perturb_value(next_mcmc_params.swarm_params.explore_constant_, temperatures_[temperature], 0.0, 10.0);
+		next_mcmc_params.swarm_params.explore_constant_ = perturb_value(next_mcmc_params.swarm_params.explore_constant_,
+			temperatures_[temperature], 0.0, MAX_EXPLORE_VALUE);
 		break;
 	}
-	case 4: {
-		next_mcmc_params.swarm_params.bounce_function_multiplier_ = perturb_value(next_mcmc_params.swarm_params.bounce_function_multiplier_,
-			temperatures_[temperature], 0.0, 1.0);
-		break;
-	}
-	case 5: {
-		next_mcmc_params.swarm_params.separation_range_max_ = perturb_value(next_mcmc_params.swarm_params.separation_range_max_,
-			temperatures_[temperature], 0.0, 5.0);
-		break;
-	}
+	//case 4: {
+	//	next_mcmc_params.swarm_params.bounce_function_multiplier_ = perturb_value(next_mcmc_params.swarm_params.bounce_function_multiplier_,
+	//		temperatures_[temperature], 0.0, 100.0);
+	//	break;
+	//}
+	//case 5: {
+	//	next_mcmc_params.swarm_params.separation_range_max_ = perturb_value(next_mcmc_params.swarm_params.separation_range_max_,
+	//		temperatures_[temperature], 0.0, 5.0);
+	//	break;
+	//}
 
 	}
 
@@ -776,12 +786,12 @@ void ParallelMCMCOptimizer::print_results(std::string swarm_config_filename) {
 }
 
 MCMCParams ParallelMCMCOptimizer::get_best_results() {
-	double best_score = 0.0;
+	double best_score = DBL_MAX;
 	MCMCParams best_params;
 	for (auto& group_entry : best_results_map_) {
 		for (auto& thread_entry : group_entry.second) {
 			auto params = thread_entry.second;
-			if (params.score > best_score) {
+			if (params.score < best_score) {
 				best_score = params.score;
 				best_params = params;
 			}
@@ -796,7 +806,9 @@ void ParallelMCMCOptimizer::write_out_best_results() {
 	SwarmUtils::print_result(best_mcmc_results, file);
 
 	auto swarm_config_optimized_filename = SwarmUtils::get_swarm_config_results_filename(best_mcmc_results.swarm_params.config_name_.toStdString(), "optimized");
-	QString filename_qstring(swarm_config_optimized_filename.c_str());
+	//std::string full_optimized_pathname = std::string("swarm-config/" + swarm_config_optimized_filename);
+	std::string full_optimized_pathname = std::string(swarm_config_optimized_filename);
+	QString filename_qstring(full_optimized_pathname.c_str());
 	SwarmUtils::save_swarm_params(best_mcmc_results.swarm_params, filename_qstring);
 
 }
@@ -863,13 +875,16 @@ void ParallelMCMCOptimizer::refill_queue(int temperature, int thread_id, int ite
 
 double ParallelMCMCOptimizer::calculate_score(OptimizationResults results, int case_no, OptimizationResults& scores) {
 	double score = 0.0;
-	double desired_multisampling = swarm_params_.no_of_robots_;
+	double desired_multisampling = 2.0;
+	double robots_in_a_cluster = (double)(swarm_params_.no_of_robots_) / swarm_params_.no_of_clusters_;
 
-	scores.time_taken = (double)((swarm_params_.max_time_taken_ + 100) - results.time_taken) / (double)(swarm_params_.max_time_taken_ + 100);
-	scores.multi_samping = results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_  * swarm_params_.max_time_taken_);
-	scores.simul_sampling = results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_);
-	scores.density = results.density;
-	scores.occlusion = (swarm_params_.no_of_robots_ - results.occlusion) / static_cast<double>(swarm_params_.no_of_robots_);
+	scores.time_taken = 4.0 * std::pow((double)(results.time_taken) / (double)(swarm_params_.max_time_taken_ + 100), 2);
+	scores.simul_sampling =  6.0 * std::pow((results.simul_sampling - robots_in_a_cluster) / (double)(swarm_params_.no_of_robots_), 2.0);
+	scores.multi_samping = 1.5 * std::exp(-std::pow(desired_multisampling - (results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_)), 2) / desired_multisampling);
+	//scores.simul_sampling = 25 * results.simul_sampling / static_cast<double>(swarm_params_.no_of_robots_);
+	scores.density = 392.5 * std::pow(1.0 - results.density, 2);
+	scores.occlusion = 9.0 * std::pow ((results.occlusion) / static_cast<double>(swarm_params_.no_of_robots_), 2);
+	scores.clustering = 10.0 * std::pow ((robots_in_a_cluster - results.clustering) / static_cast<double>(robots_in_a_cluster), 2);
 
 
 
@@ -891,6 +906,15 @@ double ParallelMCMCOptimizer::calculate_score(OptimizationResults results, int c
 		score += scores.time_taken;
 		score += scores.simul_sampling;
 		score += scores.density;
+		break;
+	}
+	case TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE: {
+		score += scores.time_taken;
+		score += scores.simul_sampling;
+		score += scores.density;
+		score += scores.occlusion;
+		score += scores.clustering;
+		//score += scores.multi_samping;
 		break;
 	}
 
@@ -956,7 +980,7 @@ void ParallelMCMCOptimizer::run_optimizer() {
 			simulator_threads_work_queue_.push_back(simulator_thread);
 
 			MCMCParams params;
-			params.score = 0.0;
+			params.score = DBL_MAX;
 			params.group_id = temperature;
 			params.thread_id = thread_id;
 
@@ -1005,7 +1029,7 @@ void ParallelMCMCOptimizer::cull_and_refill_queue(int iteration) {
 	}
 	std::sort(sort_vector.begin(), sort_vector.end(), [](const MCMCParams& a, const MCMCParams &b)
 	{
-		return a.score > b.score;
+		return a.score < b.score;
 	});
 
 	int no_of_entries_to_keep = sort_vector.size() * cull_threshold_;
@@ -1036,6 +1060,7 @@ void ParallelMCMCOptimizer::cull_and_refill_queue(int iteration) {
 				// reinitialize values
 				next_results_map_[temperature][thread_id] = best_params;
 				simulator_thread = get_next_mcmc(temperature, thread_id, next_iteration);
+				//simulator_thread = init_mcmc_thread(temperature, thread_id, next_iteration);
 			}
 
 			simulator_threads_work_queue_.push_back(simulator_thread);
@@ -1079,7 +1104,7 @@ void ParallelMCMCOptimizer::restart_work(int group_id, int thread_id, int iterat
 
 	OptimizationResults scores;
 
-	next_params.score = calculate_score(results, TIME_AND_SIMUL_SAMPLING_AND_COVERAGE, scores);
+	next_params.score = calculate_score(results, TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE, scores);
 	next_params.scores = scores;
 	//next_params.score = calculate_score(next_params, MULTI_SAMPLING_ONLY);
 
@@ -1088,9 +1113,19 @@ void ParallelMCMCOptimizer::restart_work(int group_id, int thread_id, int iterat
 
 	auto best_iteration_result = best_results_per_iteration_map_.find(iteration);
 	if (best_iteration_result == best_results_per_iteration_map_.end()) {
-		best_results_per_iteration_map_[iteration] = next_params;
+		if (iteration > 1) {
+			MCMCParams previous_params = best_results_per_iteration_map_[iteration - 1];
+			double score = previous_params.score;
+			if (score < next_params.score) {
+				best_results_per_iteration_map_[iteration] = previous_params;
+			} else {
+				best_results_per_iteration_map_[iteration] = next_params;
+			}
+		} else {
+			best_results_per_iteration_map_[iteration] = next_params;
+		}
 	} else {
-		if (best_iteration_result->second.score < next_params.score) {
+		if (next_params.score < best_iteration_result->second.score) {
 			best_iteration_result->second = next_params;
 		}
 	}

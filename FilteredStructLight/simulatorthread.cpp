@@ -103,6 +103,7 @@ void SimulatorThread::finish_work() {
 	OptimizationResults results;
 
 	results.occlusion = SwarmUtils::calculate_occulusion_factor(robots_);
+	results.clustering = SwarmUtils::calculate_cluster_factor(robots_);
 	results.multi_samping = recon_grid_->calculate_multi_sampling_factor();
 	results.density = recon_grid_->calculate_density();
 	results.time_taken = time_step_count_;

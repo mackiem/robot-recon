@@ -84,6 +84,7 @@ struct OptimizationResults {
 	double density; 
 	double time_taken;
 	double simul_sampling;
+	double clustering;
 };
 
 struct MCMCParams {
@@ -187,6 +188,7 @@ public:
 	static void print_result(const MCMCParams& params, std::ostream& stream);
 	static double calculate_coverage(std::vector<Robot*> robots_);
 	static double calculate_occulusion_factor(std::vector<Robot*> robots_);
+	static double calculate_cluster_factor(std::vector<Robot*> robots_);
 	static bool intersect(const cv::Vec3f& n, float d, const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt);
 	static void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset,
 		SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);

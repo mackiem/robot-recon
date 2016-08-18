@@ -143,6 +143,7 @@ private:
 		glm::ivec3 grid_cell;
 		int robot_id;
 		long timestamp;
+		int cluster_id;
 	};
 
 	std::vector<Sampling>* sampling_tracker_;
@@ -195,9 +196,9 @@ public:
 		int max_depth) const;
 	void mark_interior_line(glm::vec3 a, glm::vec3 b);
 	void remove_inner_interiors();
-	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id);
+	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id, int cluster_id);
 	double calculate_simultaneous_sampling_factor();
-	void calculate_simultaneous_sampling();
+	void calculate_simultaneous_sampling_per_cluster();
 	static int INTERIOR_MARK;
 	static int SEARCH_VISITED;
 	static int SEARCH_NOT_VISITED;

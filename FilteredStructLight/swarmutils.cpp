@@ -293,16 +293,18 @@ void SwarmUtils::load_obj(std::string filename,  std::vector<cv::Vec3f>& vertice
 			glm::vec3 position(mesh.positions[(no_of_vertices_per_polygon * i) + 0], 
 				mesh.positions[(no_of_vertices_per_polygon * i) + 1], 
 				mesh.positions[(no_of_vertices_per_polygon * i) + 2]);
-			glm::vec3 normal(mesh.normals[(no_of_vertices_per_polygon * i) + 0], 
-				mesh.normals[(no_of_vertices_per_polygon * i) + 1], 
-				mesh.normals[(no_of_vertices_per_polygon * i) + 2]);
+			if (mesh.normals.size() > no_of_vertices_per_polygon * i) {
+				glm::vec3 normal(mesh.normals[(no_of_vertices_per_polygon * i) + 0],
+					mesh.normals[(no_of_vertices_per_polygon * i) + 1],
+					mesh.normals[(no_of_vertices_per_polygon * i) + 2]);
+				glm_normals.push_back(normal);
+			}
 			if (mesh.texcoords.size() > 0 && (mesh.texcoords.size() > 2 * i)) {
 				glm::vec2 texcoord(mesh.texcoords[(2 * i) + 0],
 					mesh.texcoords[(2 * i) + 1]);
 				glm_uvs.push_back(texcoord);
 			}
 			glm_vertices.push_back(position);
-			glm_normals.push_back(normal);
 		}
 
 		int no_of_vertices = mesh.positions.size() / 3;
@@ -689,6 +691,37 @@ void SwarmUtils::derive_floor_plan(const VertexBufferData& bufferdata, float sca
 	//occupancy_grid_->remove_inner_interiors();
 }
 
+void SwarmUtils::load_interior_model_from_matrix() {
+	std::string filename = "l-shape.yml";
+
+	cv::Mat model_matrix;
+	cv::FileStorage fs2(filename, cv::FileStorage::READ);
+	fs2["model"] >> model_matrix;
+	
+}
+
+void SwarmUtils::write_matrix_to_file() {
+	std::string filename = "l-shape.yml";
+	
+	int width = 64;
+
+	cv::Mat model_matrix(width, width, CV_8U);
+
+	for (int x = 0; x < width; ++x) {
+		for (int y = 0; y < width; ++y) {
+			int value = ((x > width / 2) && (y < width / 2))? 0 : 1;
+			model_matrix.at<unsigned char>(x, y) = value;
+		}
+	}
+
+
+	cv::FileStorage file(filename, cv::FileStorage::WRITE);
+	cv::Mat someMatrixOfAnyType;
+
+	// Write to file!
+	file << "model" << someMatrixOfAnyType;
+}
+
 void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data,
 	SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_) {
 
@@ -724,6 +757,7 @@ void SwarmUtils::create_robots(SwarmParams& swarm_params, std::unordered_map<int
 	int no_of_clusters = (swarm_params.no_of_clusters_ > swarm_params.no_of_robots_) ? swarm_params.no_of_robots_ : swarm_params.no_of_clusters_;
 	int robots_in_a_cluster = swarm_params.no_of_robots_ / no_of_clusters;
 		
+	//std::cout << "Debug : " << robots_in_a_cluster << "," << no_of_clusters << ", " << robot_positions.size() << ", " << swarm_params.no_of_robots_ << "\n";
 	for (int i = 0; i < swarm_params.no_of_robots_; ++i) {
 		std::random_device rd;
 		std::mt19937 rng;
@@ -803,8 +837,8 @@ std::string SwarmUtils::get_swarm_config_results_filename(std::string swarm_conf
 void SwarmUtils::print_result_header(std::ostream& stream) {
 	stream << "temperature,thread_id,iteration,model_filename,no_of_robots,"
 		<< "no_of_clusters,separation,alignment,cluster,explore,obstacle_avoidance,separation_distance,"
-		<< "time_taken,simul_sampling,multi_sampling,coverage,occlusion,score"
-		<< "time_taken_score,simul_sampling_score,multi_sampling_score,coverage_score,occlusion_score\n";
+		<< "time_taken,simul_sampling,multi_sampling,coverage,occlusion,clustering,score,"
+		<< "time_taken_score,simul_sampling_score,multi_sampling_score,coverage_score,occlusion_score,clustering_score\n";
 }
 
 void SwarmUtils::print_result(const MCMCParams& params, std::ostream& stream) {
@@ -826,12 +860,14 @@ void SwarmUtils::print_result(const MCMCParams& params, std::ostream& stream) {
 		<< params.results.multi_samping << ","
 		<< params.results.density << ","
 		<< params.results.occlusion << ","
+		<< params.results.clustering << ","
 		<< params.score << ","
 		<< params.scores.time_taken << ","
 		<< params.scores.simul_sampling << ","
 		<< params.scores.multi_samping << ","
 		<< params.scores.density << ","
-		<< params.scores.occlusion
+		<< params.scores.occlusion << ","
+		<< params.scores.clustering
 		<< "\n";
 }
 
@@ -850,6 +886,17 @@ double SwarmUtils::calculate_occulusion_factor(std::vector<Robot*> robots_) {
 	double occlusion = 0.0;
 	for (auto& robot : robots_) {
 		occlusion += dynamic_cast<ExperimentalRobot*>(robot)->calculate_occulsion();
+	}
+	if (robots_.size() > 0) {
+		occlusion /= robots_.size();
+	}
+	return occlusion;
+}
+
+double SwarmUtils::calculate_cluster_factor(std::vector<Robot*> robots_) {
+	double occlusion = 0.0;
+	for (auto& robot : robots_) {
+		occlusion += dynamic_cast<ExperimentalRobot*>(robot)->calculate_clustering();
 	}
 	if (robots_.size() > 0) {
 		occlusion /= robots_.size();

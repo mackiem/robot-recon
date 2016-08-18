@@ -968,7 +968,7 @@ void Robot::update(int timestamp) {
 		} 
 
 		for (auto& interior_cell : interior_cells) {
-			occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior_cell), timestamp, id_);
+			occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior_cell), timestamp, id_, timestamp);
 		}
 
 		// update grid data structure

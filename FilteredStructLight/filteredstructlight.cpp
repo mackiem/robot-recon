@@ -1341,6 +1341,7 @@ void FilteredStructLight::add_swarm_optimization_options(QGroupBox* group_box) {
 
 	QLabel* no_of_threads_label = new QLabel("no_of_threads");
 	no_of_threads_spin_box_ = new QSpinBox(group_box);
+	no_of_threads_spin_box_->setRange(1, 1000);
 
 	QHBoxLayout* no_of_threads_layout = new QHBoxLayout();
 	no_of_threads_layout->addWidget(no_of_threads_label);
@@ -1350,6 +1351,7 @@ void FilteredStructLight::add_swarm_optimization_options(QGroupBox* group_box) {
 
 	QLabel* no_of_iterations_label = new QLabel("no_of_iterations");
 	no_of_iterations_spin_box_ = new QSpinBox(group_box);
+	no_of_iterations_spin_box_->setRange(1, 10000);
 
 	QHBoxLayout* no_of_iterations_layout = new QHBoxLayout();
 	no_of_iterations_layout->addWidget(no_of_iterations_label);
@@ -1359,6 +1361,7 @@ void FilteredStructLight::add_swarm_optimization_options(QGroupBox* group_box) {
 
 	QLabel* culling_nth_iteration_label = new QLabel("culling_nth_iteration");
 	culling_nth_iteration_spin_box_ = new QSpinBox(group_box);
+	culling_nth_iteration_spin_box_->setRange(0, 10000);
 
 	QHBoxLayout* culling_nth_iteration_layout = new QHBoxLayout();
 	culling_nth_iteration_layout->addWidget(culling_nth_iteration_label);
@@ -1499,6 +1502,14 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	occlusion_layout->addWidget(occlusion_label_);
 
 	group_box_layout->addLayout(occlusion_layout);
+
+	QHBoxLayout* clustering_layout = new QHBoxLayout();
+	QLabel* clustering_label = new QLabel("Clustering", group_box);
+	clustering_label_ = new QLabel("0.0", group_box);
+	clustering_layout->addWidget(clustering_label);
+	clustering_layout->addWidget(clustering_label_);
+
+	group_box_layout->addLayout(clustering_layout);
 
 	QHBoxLayout* sim_controls_layout = new QHBoxLayout();
 	swarm_pause_button_ = new QPushButton("Pause", group_box);
@@ -2012,6 +2023,7 @@ void FilteredStructLight::update_sim_results(OptimizationResults results) {
 	multi_sampling_label_->setText(QString::number(results.multi_samping));
 	coverage_label_->setText(QString::number(results.density));
 	occlusion_label_->setText(QString::number(results.occlusion));
+	clustering_label_->setText(QString::number(results.clustering));
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {

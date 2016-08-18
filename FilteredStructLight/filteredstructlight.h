@@ -235,6 +235,7 @@ private:
 	QPushButton* remove_swarm_configuration_button_;
 	QPushButton* batch_optimize_button_;
 	QLabel* multi_sampling_label_;
+	QLabel* clustering_label_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();

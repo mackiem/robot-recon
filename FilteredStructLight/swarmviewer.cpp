@@ -81,6 +81,7 @@ void RobotWorker::finish_work() {
 		results.density = recon_grid_->calculate_density();
 		results.time_taken = time_step_count_;
 		results.simul_sampling = occupancy_grid_->calculate_simultaneous_sampling_factor();
+		results.clustering = SwarmUtils::calculate_cluster_factor(robots_);
 
 		emit update_sim_results(results);
 		sampling_updated_ = true;
@@ -132,7 +133,8 @@ void RobotWorker::do_work() {
 				//accumulator_ -= delta_time;
 				time_step_count_++;
 			} catch (OutOfGridBoundsException& ex) {
-				//ignore
+				std::cout << "Out of bounds...\n";
+				finish_work();
 			}
 			//}
 		}
@@ -677,6 +679,7 @@ void SwarmViewer::update_time_step_count(int count) {
 	results.multi_samping = 0;
 	results.density = 0;
 	results.simul_sampling = 0;
+	results.clustering = 0;
 	emit update_sim_results_ui(results);
 }
 
@@ -975,14 +978,16 @@ void SwarmViewer::run_batch_optimization(OptimizationParams opt_params, std::vec
 }
 
 void SwarmViewer::batch_optimization_cleanup() {
-		if (optimizer_thread_) {
-			optimizer_thread_->quit();
-			optimizer_thread_->wait(100);
-			delete optimizer_thread_;
-		}
-		if (optimizer_worker_) {
-			delete optimizer_worker_;
-		}
+		//if (optimizer_thread_) {
+		//	optimizer_thread_->quit();
+		//	optimizer_thread_->wait();
+		//	delete optimizer_thread_;
+		//	optimizer_thread_ = nullptr;
+		//}
+		//if (optimizer_worker_) {
+		//	delete optimizer_worker_;
+		//	optimizer_worker_ = nullptr;
+		//}
 	
 }
 
@@ -994,16 +999,18 @@ void SwarmViewer::continue_batch_optimization() {
 		batch_optimization_cleanup();
 
 		optimizer_worker_ = new ParallelMCMCOptimizer(opt_struct.second, opt_struct.first, optimizer_filename_);
-		optimizer_thread_ = new QThread();
-		connect(optimizer_thread_, SIGNAL(started()), optimizer_worker_, SLOT(run_optimizer()));
+		//optimizer_thread_ = new QThread();
+		//connect(optimizer_thread_, SIGNAL(started()), optimizer_worker_, SLOT(run_optimizer()));
 		connect(optimizer_worker_, SIGNAL(finished()), this, SLOT(continue_batch_optimization()));
+		connect(optimizer_worker_, SIGNAL(finished()), optimizer_worker_, SLOT(deleteLater()));
+		optimizer_worker_->run_optimizer();
 
 		//opt_threads_.push_back(optimizer_thread_);
 		//connect(optimizer_thread, SIGNAL(finished()), optimizer_thread, SLOT(deleteLater()));
 
 		optimizer_work_queue_.pop_front();
-		optimizer_worker_->moveToThread(optimizer_thread_);
-		optimizer_thread_->start();
+		//optimizer_worker_->moveToThread(optimizer_thread_);
+		//optimizer_thread_->start();
 	} else {
 		batch_optimization_cleanup();
 		//for (auto& opt_thread : opt_threads_) {
@@ -1507,7 +1514,7 @@ void SwarmViewer::upload_robots_to_gpu() {
 	//populate_death_map();
 
 		
-	for (int i = 0; i < swarm_params_.no_of_robots_; ++i) {
+	for (int i = 0; i < robots_.size(); ++i) {
 
 		RenderMesh unique_mesh_for_each_robot;
 		upload_robot_model(unique_mesh_for_each_robot, bufferdata);

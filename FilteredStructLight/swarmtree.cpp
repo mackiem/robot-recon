@@ -8,6 +8,7 @@
 #include <functional>
 #include <chrono>
 #include <random>
+#include <glm/detail/type_mat.hpp>
 
 //#include <vld.h>
 
@@ -713,7 +714,7 @@ void SwarmOccupancyTree::remove_inner_interiors() {
 }
 
 
-void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id) {
+void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id, int cluster_id) {
 	//auto entry = sampling_tracker_->find(grid_cell);
 	//if (entry != sampling_tracker_->end()) {
 		//entry->second[timestep][robot_id] = 1;
@@ -723,6 +724,7 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 	sample.grid_cell = grid_cell;
 	sample.timestamp = timestep;
 	sample.robot_id = robot_id;
+	sample.cluster_id = cluster_id;
 	sampling_tracker_->push_back(sample);
 
 	if (sampling_tracker_->size() % 1000000 == 0) {
@@ -733,7 +735,7 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 
 	if (update_multisampling_) {
 		if (timestep != last_multisample_timestep_) {
-			calculate_simultaneous_sampling();
+			calculate_simultaneous_sampling_per_cluster();
 			sampling_tracker_->clear();
 			update_multisampling_ = false;
 		}
@@ -741,7 +743,7 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 }
 
 double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
-		//sampling_avg_storage_.push_back(calculate_simultaneous_sampling());
+		//sampling_avg_storage_.push_back(calculate_simultaneous_sampling_per_cluster());
 
 		//int no_of_timesteps = 0;
 
@@ -753,7 +755,7 @@ double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
 		//if (interior_list_.size() > 0) {
 		//	sampling_factor /= interior_list_.size();
 		//}
-	calculate_simultaneous_sampling();
+	calculate_simultaneous_sampling_per_cluster();
 
 	double sampling_factor = 0.0;
 
@@ -768,7 +770,7 @@ double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
 	return sampling_factor;
 }
 
-void SwarmOccupancyTree::calculate_simultaneous_sampling() {
+void SwarmOccupancyTree::calculate_simultaneous_sampling_per_cluster() {
 
 
 	double sampling_factor = 0.0;
@@ -805,17 +807,41 @@ void SwarmOccupancyTree::calculate_simultaneous_sampling() {
 		}
 	}
 
-	//for (auto& sample_per_timestep : no_of_simul_samples_per_timestep_per_gridcell) {
-	//	sampling_factor += (double)sample_per_timestep.second / no_of_sampled_timesteps_per_gridcell[sample_per_timestep.first];
+	//// no of samples per gridcell per cluster per timestamp
+	//double sampling_factor = 0.0;
+
+	//long long last_timestamp = -1;
+	//std::unordered_map<glm::ivec3, std::unordered_map<int, int>, IVec3Hasher, IVec3Equals> simultaneous_samples_per_timestamp;
+
+	//int no_of_timesteps = 0;
+
+	//for (auto& sampling_tracker_entry : *sampling_tracker_) {
+
+	//	// the tracker will be ordered by timestamp
+	//	if (sampling_tracker_entry.timestamp != last_timestamp) {
+	//		for (auto& simultaneous_samples : simultaneous_samples_per_timestamp) {
+	//			glm::ivec3 grid_cell = simultaneous_samples.first;
+	//			if (no_of_simul_samples_per_timestep_per_gridcell.find(grid_cell) != no_of_simul_samples_per_timestep_per_gridcell.end()) {
+	//				no_of_simul_samples_per_timestep_per_gridcell[grid_cell] += simultaneous_samples.second;
+	//				no_of_sampled_timesteps_per_gridcell[grid_cell]++;
+	//			} else {
+	//				no_of_simul_samples_per_timestep_per_gridcell[grid_cell] = simultaneous_samples.second;
+	//				no_of_sampled_timesteps_per_gridcell[grid_cell] = 1;
+	//			}
+	//		}
+	//		last_timestamp = sampling_tracker_entry.timestamp;
+	//		simultaneous_samples_per_timestamp.clear();
+	//		no_of_timesteps++;
+	//	}
+	//	if (interior_list_.find(sampling_tracker_entry.grid_cell) != interior_list_.end()) {
+	//		if (simultaneous_samples_per_timestamp.find(sampling_tracker_entry.grid_cell) == simultaneous_samples_per_timestamp.end()) {
+	//			simultaneous_samples_per_timestamp[sampling_tracker_entry.grid_cell] = 1;
+	//		} else {
+	//			simultaneous_samples_per_timestamp[sampling_tracker_entry.grid_cell] += 1;
+	//		}
+	//	}
 	//}
 
-	//if (no_of_sampled_timesteps_per_gridcell.size() > 0) {
-	//	sampling_factor /= interior_list_.size();
-	//}
-	
-	//std::cout << "sampling factor : " << sampling_factor << "\n";
-
-	//return std::pair<double, int>(sampling_factor, no_of_timesteps);
 }
 
 void SwarmOccupancyTree::create_perimeter_list() {

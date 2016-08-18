@@ -64,7 +64,8 @@ class ParallelMCMCOptimizer : public QObject {
 		TIME_ONLY = 0,
 		MULTI_SAMPLING_ONLY = 1,
 		TIME_AND_SIMUL_SAMPLING = 2,
-		TIME_AND_SIMUL_SAMPLING_AND_COVERAGE = 3
+		TIME_AND_SIMUL_SAMPLING_AND_COVERAGE = 3,
+		TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE = 4
 	};
 
 	//SwarmViewer* swarm_viewer_;
@@ -80,7 +81,7 @@ class ParallelMCMCOptimizer : public QObject {
 	std::unordered_map<int, std::unordered_map<int, MCMCParams>> current_results_map_;
 	std::unordered_map<int, std::unordered_map<int, MCMCParams>> next_results_map_;
 	std::unordered_map<int, std::unordered_map<int, std::vector<MCMCParams>>> result_progression_map_;
-	std::unordered_map<int, MCMCParams> best_results_per_iteration_map_;
+	std::map<int, MCMCParams> best_results_per_iteration_map_;
 
 	float cull_threshold_;
 	std::vector<float> temperatures_;
@@ -91,6 +92,10 @@ class ParallelMCMCOptimizer : public QObject {
 	SwarmParams swarm_params_;
 	OptimizationParams optimization_params_;
 	std::string optimizer_filename_;
+	static double MAX_SEPARATION_VALUE;
+	static double MAX_ALIGNMENT_VALUE;
+	static double MAX_CLUSTER_VALUE;
+	static double MAX_EXPLORE_VALUE;
 public:
 	ParallelMCMCOptimizer(const SwarmParams& swarm_params, const OptimizationParams& optimization_params, std::string& optimizer_filename);
 

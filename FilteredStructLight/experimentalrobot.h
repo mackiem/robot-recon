@@ -20,9 +20,10 @@ private:
 	bool dead_color_changed_;
 	std::set<glm::ivec3, IVec3Comparator> past_reconstructed_positions_;
 	std::unordered_map<int, int> occlusions_per_timestamp_map_;
+	std::unordered_map<int, int> clustered_neighbors_per_timestamp_map_;
 	int max_time_;
 	int measurement_time_step_;
-	int final_timestamp_;
+	int current_timestamp_;
 public:
 	//ExperimentalRobot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree,
 	//	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
@@ -39,6 +40,7 @@ public:
 		double square_radius, double bounce_function_power, double bounce_function_multiplier, int max_time,
 		bool collide_with_robots, bool render, QGLShaderProgram* shader);
 	void populate_occlusion_map();
+	void populate_clustering_map();
 	virtual void update_visualization_structs() override;
 	void change_color(cv::Vec4f& color);
 	void set_colors_buffer(std::vector<cv::Vec4f>& colors);
@@ -62,5 +64,6 @@ public:
 	glm::vec3 calculate_bounce_explore_velocity(const glm::vec3& interior_cell) const;
 	std::vector<glm::vec3> get_corners(const glm::vec3& interior_cell) const;
 	double calculate_occulsion();
+	double calculate_clustering();
 };
 

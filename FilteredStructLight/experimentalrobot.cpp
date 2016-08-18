@@ -52,6 +52,7 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	dead_color_changed_ = false;
 	cluster_id_ = cluster_id;
 	populate_occlusion_map();
+	populate_clustering_map();
 }
 
 void ExperimentalRobot::populate_occlusion_map() {
@@ -60,6 +61,15 @@ void ExperimentalRobot::populate_occlusion_map() {
 
 	for (int i = 0; i < no_of_divisions; ++i) {
 		occlusions_per_timestamp_map_[i * measurement_time_step_] = 0;
+	}
+}
+
+void ExperimentalRobot::populate_clustering_map() {
+	measurement_time_step_ = 100;
+	int no_of_divisions = max_time_ / measurement_time_step_;
+
+	for (int i = 0; i < no_of_divisions; ++i) {
+		clustered_neighbors_per_timestamp_map_[i * measurement_time_step_] = 0;
 	}
 }
 
@@ -123,7 +133,7 @@ glm::vec3 ExperimentalRobot::calculate_separation_velocity() {
 				//	move_away_vector.z * move_away_vector.z);
 				auto inverse_normalized_dist = (max_distance - distance_apart) / max_distance;
 				float normalize_constant = std::pow(inverse_normalized_dist, 2);
-				c -= normalize_constant * move_away_vector;
+				c -= normalize_constant * move_away_vector * separation_constant_;
 			}
 		}
 	}
@@ -240,6 +250,10 @@ glm::vec3 ExperimentalRobot::calculate_clustering_velocity() {
 		pc = position_;
 	}
 
+	if (current_timestamp_ > 0 && ((current_timestamp_ % measurement_time_step_) == 0)) {
+		clustered_neighbors_per_timestamp_map_[current_timestamp_] = count;
+	}
+
 	float normalizing_constant = std::pow(glm::length(pc - position_) / (sensor_range_ * 1.414 * occupancy_grid_->get_grid_cube_length()), 2);
 	//glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) / 10.f;
 	glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) * cluster_constant_;
@@ -281,7 +295,6 @@ glm::vec3 ExperimentalRobot::calculate_explore_velocity() {
 
 
 
-	try {
 		auto current_cell = occupancy_grid_->map_to_grid(previous_position_);
 		auto previous_cell = occupancy_grid_->map_to_grid(previous_nminus2_position_);
 
@@ -308,9 +321,6 @@ glm::vec3 ExperimentalRobot::calculate_explore_velocity() {
 			//	SwarmUtils::print_vector("explore", explore_cell);
 			//}
 		}
-	} catch (OutOfGridBoundsException& ex) {
-		// ignore
-	}
 	
 	previous_no_of_explored_cells_ = explored_cells;
 
@@ -320,7 +330,7 @@ glm::vec3 ExperimentalRobot::calculate_explore_velocity() {
 		float x_max, y_max, z_max;
 		float x_min, y_min, z_min;
 
-		float outer_boundary = 2.0f;
+		float outer_boundary = sensor_range_;
 
 		x_min = interior_center.x - (occupancy_grid_->get_grid_cube_length() * outer_boundary);
 		z_min = interior_center.z - (occupancy_grid_->get_grid_cube_length() * outer_boundary);
@@ -439,7 +449,9 @@ void ExperimentalRobot::reconstruct_points() {
 				past_reconstructed_positions_.insert(adjacent);
 			}
 		}
-		recon_tree_->update_multi_sampling_map(adjacent);
+	}
+	for (auto& interior : interior_cells_) {
+		recon_tree_->update_multi_sampling_map(recon_tree_->map_to_grid(interior));
 	}
 }
 
@@ -482,7 +494,7 @@ double ExperimentalRobot::calculate_occulsion() {
 	double entry_count = 0;
 
 	for (auto& occlusion_per_timestamp: occlusions_per_timestamp_map_) {
-		if (occlusion_per_timestamp.first <= final_timestamp_) {
+		if (occlusion_per_timestamp.first <= current_timestamp_) {
 			occlusion += occlusion_per_timestamp.second;
 			entry_count++;
 		}
@@ -491,6 +503,23 @@ double ExperimentalRobot::calculate_occulsion() {
 		occlusion /= entry_count;
 	}
 	return occlusion;
+	
+}
+
+double ExperimentalRobot::calculate_clustering() {
+	double clustering = 0.0;
+	double entry_count = 0;
+
+	for (auto& clustering_per_timestamp: clustered_neighbors_per_timestamp_map_) {
+		if (clustering_per_timestamp.first <= current_timestamp_) {
+			clustering += clustering_per_timestamp.second;
+			entry_count++;
+		}
+	}
+	if (entry_count > 0) {
+		clustering /= entry_count;
+	}
+	return clustering;
 	
 }
 
@@ -558,6 +587,12 @@ void ExperimentalRobot::update(int timestamp) {
 	//	last_updated_time_ = current_timestamp.count();
 	//	return;
 	//}
+	auto current_grid_position = occupancy_grid_->map_to_grid(position_);
+	if (occupancy_grid_->is_out_of_bounds(current_grid_position)
+		|| occupancy_grid_->is_interior(current_grid_position)) {
+		throw OutOfGridBoundsException("Out of bounds");
+	}
+
 	if (dead_) {
 		return;
 	}
@@ -568,7 +603,7 @@ void ExperimentalRobot::update(int timestamp) {
 		dead_ = true;
 	}
 
-	final_timestamp_ = timestamp;
+	current_timestamp_ = timestamp;
 
 
 
@@ -577,7 +612,7 @@ void ExperimentalRobot::update(int timestamp) {
 		if (timestamp > 0 && ((timestamp % measurement_time_step_) == 0)) {
 			occlusions_per_timestamp_map_[timestamp] = robot_ids_.size();
 			for (auto& interior : interior_cells_) {
-				occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior), timestamp, id_);
+				occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior), timestamp, id_, timestamp);
 			}
 		}
 
@@ -634,7 +669,8 @@ void ExperimentalRobot::update(int timestamp) {
 				for (auto sensored_cell : adjacent_cells_) {
 					float distance = glm::length(glm::vec3(grid_position - sensored_cell));
 
-					if (distance <= discovery_range_) {
+					// discovery range is not needed
+					//if (distance <= discovery_range_) {
 
 						if (!occupancy_grid_->is_interior(sensored_cell)) {
 							if (render_) {
@@ -647,7 +683,7 @@ void ExperimentalRobot::update(int timestamp) {
 						}
 						else {
 						}
-					}
+					//}
 				}
 				reconstruct_points();
 			}
