@@ -236,6 +236,11 @@ private:
 	QPushButton* batch_optimize_button_;
 	QLabel* multi_sampling_label_;
 	QLabel* clustering_label_;
+	QLabel* opt_score_label_;
+
+	QLineEdit* model_matrix_filename_;
+	QPushButton* model_matrix_filename_browse_;
+	QPushButton* create_model_matrix_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();

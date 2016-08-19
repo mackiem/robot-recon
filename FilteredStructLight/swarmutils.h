@@ -76,6 +76,7 @@ struct SwarmParams {
 	double death_percentage_;
 	int death_time_taken_;
 	QString config_name_;
+	QString model_matrix_filename_;
 };
 
 struct OptimizationResults {
@@ -105,6 +106,14 @@ enum Formation {
 	SQUARE = 2,
 	SQUARE_CLOSE_TO_EDGE = 3,
 	CIRCLE = 4
+};
+
+enum OPTIMIZE_CASE {
+	TIME_ONLY = 0,
+	MULTI_SAMPLING_ONLY = 1,
+	TIME_AND_SIMUL_SAMPLING = 2,
+	TIME_AND_SIMUL_SAMPLING_AND_COVERAGE = 3,
+	TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE = 4
 };
 
 class SwarmUtils
@@ -153,6 +162,7 @@ class SwarmUtils
 	static const char* BUILDING_OFFSET_Z_LABEL;
 	static const char* SHOW_BUILDING_LABEL;
 	static const char* INTERIOR_MODEL_FILENAME;
+	static const char* INTERIOR_MODEL_MATRIX_FILENAME;
 	static const char* SQUARE_RADIUS;
 	static const char* BOUNCE_FUNCTION_POWER;
 	static const char* BOUNCE_FUNCTION_MULTIPLIER;
@@ -179,6 +189,7 @@ public:
 	static void load_obj(std::string filename, VertexBufferData& vertex_buffer_data);
 	static cv::Mat convert_mat(glm::mat3& input_mat);
 	static std::vector<glm::vec3> create_starting_formation(Formation type, SwarmParams& swarm_params, SwarmOccupancyTree* occupancy_grid_);
+	static void write_matrix_to_file();
 	static void load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data, SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);
 	static void create_robots(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_, SwarmOccupancyTree* occupancy_grid_, SwarmCollisionTree* collision_grid_, Swarm3DReconTree* recon_grid_, UniformLocations& uniform_locations, QGLShaderProgram* shader, bool render, std::vector<Robot*>& robots);
 	static void populate_death_map(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_);
@@ -189,8 +200,10 @@ public:
 	static double calculate_coverage(std::vector<Robot*> robots_);
 	static double calculate_occulusion_factor(std::vector<Robot*> robots_);
 	static double calculate_cluster_factor(std::vector<Robot*> robots_);
+	static double calculate_score(SwarmParams swarm_params_, OptimizationResults results, int case_no, OptimizationResults& scores);
 	static bool intersect(const cv::Vec3f& n, float d, const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt);
 	static void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset,
 		SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);
+	static void load_interior_model_from_matrix(const SwarmParams& swarm_params, Swarm3DReconTree* recon_grid, SwarmOccupancyTree* occupancy_grid);
 };
 

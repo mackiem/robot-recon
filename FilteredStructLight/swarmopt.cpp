@@ -873,57 +873,6 @@ void ParallelMCMCOptimizer::refill_queue(int temperature, int thread_id, int ite
 	}
 }
 
-double ParallelMCMCOptimizer::calculate_score(OptimizationResults results, int case_no, OptimizationResults& scores) {
-	double score = 0.0;
-	double desired_multisampling = 2.0;
-	double robots_in_a_cluster = (double)(swarm_params_.no_of_robots_) / swarm_params_.no_of_clusters_;
-
-	scores.time_taken = 4.0 * std::pow((double)(results.time_taken) / (double)(swarm_params_.max_time_taken_ + 100), 2);
-	scores.simul_sampling =  6.0 * std::pow((results.simul_sampling - robots_in_a_cluster) / (double)(swarm_params_.no_of_robots_), 2.0);
-	scores.multi_samping = 1.5 * std::exp(-std::pow(desired_multisampling - (results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_)), 2) / desired_multisampling);
-	//scores.simul_sampling = 25 * results.simul_sampling / static_cast<double>(swarm_params_.no_of_robots_);
-	scores.density = 392.5 * std::pow(1.0 - results.density, 2);
-	scores.occlusion = 9.0 * std::pow ((results.occlusion) / static_cast<double>(swarm_params_.no_of_robots_), 2);
-	scores.clustering = 10.0 * std::pow ((robots_in_a_cluster - results.clustering) / static_cast<double>(robots_in_a_cluster), 2);
-
-
-
-	switch (case_no) {
-	case TIME_ONLY: {
-		score += scores.time_taken;
-		break;
-	}
-	case MULTI_SAMPLING_ONLY: {
-		score += scores.multi_samping;
-		break;
-	}
-	case TIME_AND_SIMUL_SAMPLING: {
-		score += scores.time_taken;
-		score += scores.simul_sampling;
-		break;
-	}
-	case TIME_AND_SIMUL_SAMPLING_AND_COVERAGE: {
-		score += scores.time_taken;
-		score += scores.simul_sampling;
-		score += scores.density;
-		break;
-	}
-	case TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE: {
-		score += scores.time_taken;
-		score += scores.simul_sampling;
-		score += scores.density;
-		score += scores.occlusion;
-		score += scores.clustering;
-		//score += scores.multi_samping;
-		break;
-	}
-
-	default: break;
-	}
-	//score += std::pow(current_coverage - max_coverage_, 2);
-	return score;
-
-}
 
 //void ParallelMCMCOptimizer::set_viewer(SwarmViewer* swarm_viewer) {
 //	swarm_viewer_ = swarm_viewer;
@@ -1104,7 +1053,7 @@ void ParallelMCMCOptimizer::restart_work(int group_id, int thread_id, int iterat
 
 	OptimizationResults scores;
 
-	next_params.score = calculate_score(results, TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE, scores);
+	next_params.score = SwarmUtils::calculate_score(params, results, TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE, scores);
 	next_params.scores = scores;
 	//next_params.score = calculate_score(next_params, MULTI_SAMPLING_ONLY);
 

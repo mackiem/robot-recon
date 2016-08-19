@@ -769,7 +769,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 
 	swarm_params_ = swarm_params;
 
-	VertexBufferData* vertex_buffer_data;
+	VertexBufferData* vertex_buffer_data = nullptr;
 	SwarmUtils::load_interior_model(swarm_params, vertex_buffer_data, occupancy_grid_, recon_grid_);
 
 	occupancy_grid_->create_perimeter_list();
@@ -791,7 +791,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	// graphics setup
 	change_to_top_down_view();
 	if (render_) {
-		upload_interior_model_data_to_gpu(vertex_buffer_data);
+		//upload_interior_model_data_to_gpu(vertex_buffer_data);
 		upload_robots_to_gpu();
 		create_occupancy_grid(swarm_params.grid_resolution_per_side_, swarm_params.grid_length_);
 		robot_color_map_[occupancy_grid_->get_interior_mark()] = cv::Vec4f(1.f, 1.f, 1.f, 1.f);
@@ -812,7 +812,9 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 		}
 	}
 
-	delete vertex_buffer_data;
+	if (vertex_buffer_data) {
+		delete vertex_buffer_data;
+	}
 
 	robot_worker_ = new RobotWorker();
 	robot_worker_->moveToThread(&robot_update_thread_);

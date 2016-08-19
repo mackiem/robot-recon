@@ -330,7 +330,8 @@ glm::vec3 ExperimentalRobot::calculate_explore_velocity() {
 		float x_max, y_max, z_max;
 		float x_min, y_min, z_min;
 
-		float outer_boundary = sensor_range_;
+		//float outer_boundary = sensor_range_;
+		float outer_boundary = 2.5f;
 
 		x_min = interior_center.x - (occupancy_grid_->get_grid_cube_length() * outer_boundary);
 		z_min = interior_center.z - (occupancy_grid_->get_grid_cube_length() * outer_boundary);

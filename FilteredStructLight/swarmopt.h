@@ -60,13 +60,6 @@ public slots:
 class ParallelMCMCOptimizer : public QObject {
 	Q_OBJECT
 
-	enum OPTIMIZE_CASE {
-		TIME_ONLY = 0,
-		MULTI_SAMPLING_ONLY = 1,
-		TIME_AND_SIMUL_SAMPLING = 2,
-		TIME_AND_SIMUL_SAMPLING_AND_COVERAGE = 3,
-		TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE = 4
-	};
 
 	//SwarmViewer* swarm_viewer_;
 	QMutex work_queue_lock_;
@@ -111,7 +104,6 @@ public:
 	void print_progression_results(std::string swarm_config_filename);
 	void print_progression_results_2(std::string swarm_config_filename);
 	void refill_queue(int temperature, int thread_id, int iteration);
-	double calculate_score(OptimizationResults results, int case_no, OptimizationResults& scores);
 
 	//void set_viewer(SwarmViewer* swarm_viewer);
 	virtual ~ParallelMCMCOptimizer();

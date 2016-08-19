@@ -56,6 +56,7 @@ const char* SwarmUtils::BUILDING_OFFSET_Y_LABEL = "interior_offset_y";
 const char* SwarmUtils::BUILDING_OFFSET_Z_LABEL = "interior_offset_z";
 const char* SwarmUtils::SHOW_BUILDING_LABEL = "show_interior";
 const char* SwarmUtils::INTERIOR_MODEL_FILENAME = "interior_model_filename";
+const char* SwarmUtils::INTERIOR_MODEL_MATRIX_FILENAME = "interior_model_matrix_filename";
 
 
 const char* SwarmUtils::SQUARE_RADIUS = "square_radius";
@@ -150,6 +151,7 @@ SwarmParams SwarmUtils::load_swarm_params(const QString& filename) {
 
 
 	swarm_params.model_filename_ = (settings.value(INTERIOR_MODEL_FILENAME, "interior/house interior.obj").toString());
+	swarm_params.model_matrix_filename_ = (settings.value(INTERIOR_MODEL_MATRIX_FILENAME, "interior/l-shape-plan.yml").toString());
 
 
 	swarm_params.scale_spinbox_ = (settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toDouble());
@@ -232,6 +234,7 @@ void SwarmUtils::save_swarm_params(const SwarmParams& params, const QString& fil
 	settings.setValue(BUILDING_OFFSET_Z_LABEL, params.z_spin_box_);
 	settings.setValue(SHOW_BUILDING_LABEL, params.show_interior_);
 	settings.setValue(INTERIOR_MODEL_FILENAME, params.model_filename_);
+	settings.setValue(INTERIOR_MODEL_MATRIX_FILENAME, params.model_matrix_filename_);
 
 	settings.setValue(SHOW_FORCES_LABEL, params.show_forces_);
 
@@ -691,17 +694,39 @@ void SwarmUtils::derive_floor_plan(const VertexBufferData& bufferdata, float sca
 	//occupancy_grid_->remove_inner_interiors();
 }
 
-void SwarmUtils::load_interior_model_from_matrix() {
-	std::string filename = "l-shape.yml";
+void SwarmUtils::load_interior_model_from_matrix(const SwarmParams& swarm_params, Swarm3DReconTree* recon_grid, 
+	SwarmOccupancyTree* occupancy_grid) {
+
 
 	cv::Mat model_matrix;
-	cv::FileStorage fs2(filename, cv::FileStorage::READ);
+	cv::FileStorage fs2(swarm_params.model_matrix_filename_.toStdString(), cv::FileStorage::READ);
 	fs2["model"] >> model_matrix;
+
+	if (occupancy_grid->get_grid_resolution_per_side() != model_matrix.rows) {
+		std::cout << "grid resolution : " << occupancy_grid->get_grid_resolution_per_side() << " and matrix rows : "
+			<< model_matrix.rows << " not matching\n";
+	}
+
+	int grid_cube_length = occupancy_grid->get_grid_cube_length();
+	int mark = occupancy_grid->get_interior_mark();
+
+	int y = 0;
+	for (int x = 0; x < model_matrix.rows; ++x) {
+		for (int z = 0; z < model_matrix.rows; ++z) {
+			int value = model_matrix.at<unsigned char>(z, x);
+			if (value) {
+				glm::vec3 points((x + 0.5) * grid_cube_length, y, (x + 0.5) * grid_cube_length);
+				recon_grid->insert(points, glm::ivec3(x, y, z));
+				occupancy_grid->set(x, z, mark);
+			}
+		}
+	}
+
 	
 }
 
 void SwarmUtils::write_matrix_to_file() {
-	std::string filename = "l-shape.yml";
+	std::string filename = "interior/l-shape.yml";
 	
 	int width = 64;
 
@@ -709,36 +734,37 @@ void SwarmUtils::write_matrix_to_file() {
 
 	for (int x = 0; x < width; ++x) {
 		for (int y = 0; y < width; ++y) {
-			int value = ((x > width / 2) && (y < width / 2))? 0 : 1;
-			model_matrix.at<unsigned char>(x, y) = value;
+			int value = ((x > width / 2) && (y > width / 2))? 1 : 0;
+			model_matrix.at<unsigned char>(y, x) = value;
 		}
 	}
 
 
 	cv::FileStorage file(filename, cv::FileStorage::WRITE);
-	cv::Mat someMatrixOfAnyType;
 
 	// Write to file!
-	file << "model" << someMatrixOfAnyType;
+	file << "model" << model_matrix;
 }
 
 void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data,
 	SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_) {
 
-	cv::Mat unit_matrix = cv::Mat::eye(4, 4, CV_64F);
 
-	std::string model_filename = (swarm_params.model_filename_.compare("") == 0) ? DEFAULT_INTERIOR_MODEL_FILENAME
-		: swarm_params.model_filename_.toStdString();
+	load_interior_model_from_matrix(swarm_params, recon_grid_, occupancy_grid_);
 
-	vertex_buffer_data = new VertexBufferData();
-	load_obj(model_filename,  *vertex_buffer_data);
+	//std::string model_filename = (swarm_params.model_filename_.compare("") == 0) ? DEFAULT_INTERIOR_MODEL_FILENAME
+	//	: swarm_params.model_filename_.toStdString();
 
-	float scale = swarm_params.scale_spinbox_;
+	//vertex_buffer_data = new VertexBufferData();
+	//load_obj(model_filename,  *vertex_buffer_data);
 
-	if (swarm_params.model_filename_.compare("") > 0) {
-		derive_floor_plan(*vertex_buffer_data, scale, glm::vec3(swarm_params.x_spin_box_, swarm_params.y_spin_box_, swarm_params.z_spin_box_),
-			occupancy_grid_, recon_grid_);
-	}
+	//float scale = swarm_params.scale_spinbox_;
+
+	//if (swarm_params.model_filename_.compare("") > 0) {
+	//	derive_floor_plan(*vertex_buffer_data, scale, glm::vec3(swarm_params.x_spin_box_, swarm_params.y_spin_box_, swarm_params.z_spin_box_),
+	//		occupancy_grid_, recon_grid_);
+	//}
+
 
 	//delete vertex_buffer_data;
 }
@@ -902,4 +928,55 @@ double SwarmUtils::calculate_cluster_factor(std::vector<Robot*> robots_) {
 		occlusion /= robots_.size();
 	}
 	return occlusion;
+}
+
+double SwarmUtils::calculate_score(SwarmParams swarm_params_, OptimizationResults results, int case_no, OptimizationResults& scores) {
+	double score = 0.0;
+	double desired_multisampling = 2.0;
+	double robots_in_a_cluster = (double)(swarm_params_.no_of_robots_) / swarm_params_.no_of_clusters_;
+
+	scores.time_taken = 4.0 * std::pow((double)(results.time_taken) / (double)(swarm_params_.max_time_taken_ + 100), 2);
+	scores.simul_sampling =  6.0 * std::pow((results.simul_sampling - robots_in_a_cluster) / (double)(swarm_params_.no_of_robots_), 2.0);
+	scores.multi_samping = 1.5 * std::exp(-std::pow(desired_multisampling - (results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_)), 2) / desired_multisampling);
+	//scores.simul_sampling = 25 * results.simul_sampling / static_cast<double>(swarm_params_.no_of_robots_);
+	scores.density = 392.5 * std::pow(1.0 - results.density, 2);
+	scores.occlusion = 9.0 * std::pow ((results.occlusion) / static_cast<double>(swarm_params_.no_of_robots_), 2);
+	scores.clustering = 10.0 * std::pow ((robots_in_a_cluster - results.clustering) / static_cast<double>(robots_in_a_cluster), 2);
+
+
+
+	switch (case_no) {
+	case TIME_ONLY: {
+		score += scores.time_taken;
+		break;
+	}
+	case MULTI_SAMPLING_ONLY: {
+		score += scores.multi_samping;
+		break;
+	}
+	case TIME_AND_SIMUL_SAMPLING: {
+		score += scores.time_taken;
+		score += scores.simul_sampling;
+		break;
+	}
+	case TIME_AND_SIMUL_SAMPLING_AND_COVERAGE: {
+		score += scores.time_taken;
+		score += scores.simul_sampling;
+		score += scores.density;
+		break;
+	}
+	case TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE: {
+		score += scores.time_taken;
+		score += scores.simul_sampling;
+		score += scores.density;
+		score += scores.occlusion;
+		score += scores.clustering;
+		//score += scores.multi_samping;
+		break;
+	}
+
+	default: break;
+	}
+	return score;
+
 }

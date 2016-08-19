@@ -135,6 +135,7 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 	swarm_params.z_spin_box_ = z_spin_box_->value();
 	swarm_params.show_interior_ = show_interior_->isChecked();
 	swarm_params.model_filename_ = model_filename_->text();
+	swarm_params.model_matrix_filename_ = model_matrix_filename_->text();
 	swarm_params.show_forces_ = show_forces_->isChecked();
 	swarm_params.collide_with_other_robots_ = collide_with_other_robots_->isChecked();
 	swarm_params.square_radius_ = square_radius_->value();
@@ -226,6 +227,8 @@ void FilteredStructLight::set_swarm_params_to_ui(const SwarmParams& swarm_params
 	model_filename_->setText(swarm_params.model_filename_);
 	emit model_filename_->textChanged(model_filename_->text());
 
+	model_matrix_filename_->setText(swarm_params.model_matrix_filename_);
+	emit model_matrix_filename_->textChanged(model_matrix_filename_->text());
 
 	scale_spinbox_->setValue(swarm_params.scale_spinbox_);
 	x_spin_box_->setValue(swarm_params.x_spin_box_);
@@ -766,6 +769,27 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 		model_filename_->setText(selected_filename);
 	});
 
+	model_matrix_filename_ = new QLineEdit(group_box);
+	model_matrix_filename_browse_ = new QPushButton("...", group_box);
+	model_matrix_filename_browse_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Preferred);
+	model_matrix_filename_browse_->setMaximumSize(30, 30);
+
+	QHBoxLayout* filename_matrix_layout = new QHBoxLayout();
+	filename_matrix_layout->addWidget(model_matrix_filename_);
+	filename_matrix_layout->addWidget(model_matrix_filename_browse_);
+
+	connect(model_matrix_filename_browse_, &QPushButton::clicked, this, 
+		[&] {
+		QString selected_filename = QFileDialog::getOpenFileName(this, QString("Open Model"), "interior",
+			"Matrix Files(*.yml)");
+		model_matrix_filename_->setText(selected_filename);
+	});
+
+	create_model_matrix_ = new QPushButton("Create Model", group_box);
+	connect(create_model_matrix_, &QPushButton::clicked, this, 
+		[&] {
+		SwarmUtils::write_matrix_to_file();
+	});
 
 
 	QHBoxLayout* scale_layout = new QHBoxLayout();
@@ -806,6 +830,8 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	show_interior_ = new QCheckBox("Show Interior", group_box);
 
 	group_box_layout->addLayout(filename_layout);
+	group_box_layout->addLayout(filename_matrix_layout);
+	group_box_layout->addWidget(create_model_matrix_);
 	group_box_layout->addLayout(scale_layout);
 	group_box_layout->addWidget(offset_group_box);
 	group_box_layout->addWidget(show_interior_);
@@ -1511,6 +1537,14 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	group_box_layout->addLayout(clustering_layout);
 
+	QHBoxLayout* opt_score_layout = new QHBoxLayout();
+	QLabel* opt_score_label = new QLabel("Score", group_box);
+	opt_score_label_ = new QLabel("0.0", group_box);
+	opt_score_layout->addWidget(opt_score_label);
+	opt_score_layout->addWidget(opt_score_label_);
+
+	group_box_layout->addLayout(opt_score_layout);
+
 	QHBoxLayout* sim_controls_layout = new QHBoxLayout();
 	swarm_pause_button_ = new QPushButton("Pause", group_box);
 	swarm_step_button_ = new QPushButton("Step", group_box);
@@ -2024,6 +2058,11 @@ void FilteredStructLight::update_sim_results(OptimizationResults results) {
 	coverage_label_->setText(QString::number(results.density));
 	occlusion_label_->setText(QString::number(results.occlusion));
 	clustering_label_->setText(QString::number(results.clustering));
+
+	auto swarm_params = get_swarm_params_from_ui();
+	OptimizationResults scores;
+	double score = SwarmUtils::calculate_score(swarm_params, results, TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE, scores);
+	opt_score_label_->setText(QString::number(score));
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {
