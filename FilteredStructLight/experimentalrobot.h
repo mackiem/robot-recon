@@ -19,11 +19,17 @@ private:
 	int death_time_;
 	bool dead_color_changed_;
 	std::set<glm::ivec3, IVec3Comparator> past_reconstructed_positions_;
-	std::unordered_map<int, int> occlusions_per_timestamp_map_;
+	std::unordered_map<int, double> occlusions_per_timestamp_map_;
 	std::unordered_map<int, int> clustered_neighbors_per_timestamp_map_;
 	int max_time_;
 	int measurement_time_step_;
 	int current_timestamp_;
+	float random_constant_;
+	glm::ivec3 previous_local_explore_cell;
+	unsigned char* local_map_;
+	int local_no_of_unexplored_cells_;
+	int previous_no_of_local_explored_cells_;
+	cv::Vec4f color_;
 public:
 	//ExperimentalRobot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree,
 	//	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
@@ -65,5 +71,14 @@ public:
 	std::vector<glm::vec3> get_corners(const glm::vec3& interior_cell) const;
 	double calculate_occulsion();
 	double calculate_clustering();
+	glm::vec3 get_random_velocity();
+	bool not_locally_visited(const glm::ivec3& grid_position);
+	bool local_explore_search(glm::ivec3& explore_cell_position);
+	glm::vec3 calculate_local_explore_velocity();
+	
+	void mark_locally_covered(const glm::ivec3& grid_position);
+	void mark_othere_robots_ranges();
+	glm::vec3 calculate_obstacle_avoidance_velocity();
+	bool  local_perimeter_search(glm::ivec3& explore_cell_position);
 };
 

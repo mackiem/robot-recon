@@ -7,6 +7,15 @@
 #include "robot.h"
 #include <boost/detail/container_fwd.hpp>
 
+struct OptimizationResults {
+	double occlusion;
+	double multi_samping; 
+	double density; 
+	double time_taken;
+	double simul_sampling;
+	double clustering;
+};
+
 struct OptimizationParams {
 	// optimization
 	//QPushButton* add_swarm_configuration_button_;
@@ -26,6 +35,7 @@ struct OptimizationParams {
 	int no_of_iterations;
 	int culling_nth_iteration;
 	QStringList swarm_configs;
+	OptimizationResults coefficients;
 	
 };
 
@@ -79,14 +89,6 @@ struct SwarmParams {
 	QString model_matrix_filename_;
 };
 
-struct OptimizationResults {
-	double occlusion;
-	double multi_samping; 
-	double density; 
-	double time_taken;
-	double simul_sampling;
-	double clustering;
-};
 
 struct MCMCParams {
 	double score;
@@ -96,6 +98,7 @@ struct MCMCParams {
 	SwarmParams swarm_params;
 	OptimizationResults results;
 	OptimizationResults scores;
+	OptimizationResults coeffs;
 };
 
 struct VertexBufferData;
@@ -122,7 +125,12 @@ class SwarmUtils
 	static const char* OPT_NO_OF_THREADS;
 	static const char* OPT_NO_OF_ITERATIONS;
 	static const char* OPT_CULLING_NTH_ITERATION;
-
+	static const char* OPT_COEFF_TIME_TAKEN;
+	static const char* OPT_COEFF_COVERAGE;
+	static const char* OPT_COEFF_SIMUL_SAMPLING;
+	static const char* OPT_COEFF_MULTI_SAMPLING;
+	static const char* OPT_COEFF_CLUSTERING;
+	static const char* OPT_COEFF_OCCLUSION;
 	static const char* ROBOTS_NO_LABEL;
 	static const char* EXPLORATION_CONSTANT_LABEL;
 	static const char* SEPARATION_CONSTANT_LABEL;
@@ -199,8 +207,9 @@ public:
 	static void print_result(const MCMCParams& params, std::ostream& stream);
 	static double calculate_coverage(std::vector<Robot*> robots_);
 	static double calculate_occulusion_factor(std::vector<Robot*> robots_);
-	static double calculate_cluster_factor(std::vector<Robot*> robots_);
-	static double calculate_score(SwarmParams swarm_params_, OptimizationResults results, int case_no, OptimizationResults& scores);
+	static double calculate_cluster_factor(std::vector<Robot*> robots_, SwarmParams& swarm_params);
+	static void calculate_sim_results(SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_, std::vector<Robot*> robots_, int time_step_count_, SwarmParams& swarm_params, OptimizationResults& results);
+	static double calculate_score(SwarmParams swarm_params_, OptimizationResults results, OptimizationResults coeffs, int case_no, OptimizationResults& scores);
 	static bool intersect(const cv::Vec3f& n, float d, const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt);
 	static void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset,
 		SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);

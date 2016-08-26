@@ -770,6 +770,19 @@ double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
 	return sampling_factor;
 }
 
+bool SwarmOccupancyTree::is_interior_interior(const glm::ivec3& position) {
+	std::vector<glm::ivec3> cells;
+	get_adjacent_cells(position, cells, 1);
+	bool is_interior_of_interior = true;
+	for (auto& cell : cells) {
+		if (!is_interior(cell)) {
+			is_interior_of_interior = false;
+			break;
+		}
+	}
+	return is_interior_of_interior;
+}
+
 void SwarmOccupancyTree::calculate_simultaneous_sampling_per_cluster() {
 
 
@@ -799,10 +812,13 @@ void SwarmOccupancyTree::calculate_simultaneous_sampling_per_cluster() {
 			no_of_timesteps++;
 		}
 		if (interior_list_.find(sampling_tracker_entry.grid_cell) != interior_list_.end()) {
-			if (simultaneous_samples_per_timestamp.find(sampling_tracker_entry.grid_cell) == simultaneous_samples_per_timestamp.end()) {
-				simultaneous_samples_per_timestamp[sampling_tracker_entry.grid_cell] = 1;
-			} else {
-				simultaneous_samples_per_timestamp[sampling_tracker_entry.grid_cell] += 1;
+			if (!is_interior_interior(sampling_tracker_entry.grid_cell)) {
+				if (simultaneous_samples_per_timestamp.find(sampling_tracker_entry.grid_cell) == simultaneous_samples_per_timestamp.end()) {
+					simultaneous_samples_per_timestamp[sampling_tracker_entry.grid_cell] = 1;
+				}
+				else {
+					simultaneous_samples_per_timestamp[sampling_tracker_entry.grid_cell] += 1;
+				}
 			}
 		}
 	}
@@ -842,6 +858,17 @@ void SwarmOccupancyTree::calculate_simultaneous_sampling_per_cluster() {
 	//	}
 	//}
 
+}
+
+double SwarmOccupancyTree::calculate_coverage() {
+	double coverage = 0.0;
+
+	if (static_perimeter_list_.size() > 0) {
+		coverage = 1.0 - (no_of_unexplored_cells() / (double)(static_perimeter_list_.size()));
+	}
+
+	
+	return coverage;
 }
 
 void SwarmOccupancyTree::create_perimeter_list() {
@@ -1035,7 +1062,6 @@ bool SwarmOccupancyTree::find_closest_position_from_list(const std::set<glm::ive
 		//heap_pool_.resize(pool_size_);
 		std::fill(heap_pool_.begin(), heap_pool_.end(), sample_vector);
 	}
-
 
 	std::vector<PerimeterPos> perimeter_vector = heap_pool_[current_pool_count_++];
 

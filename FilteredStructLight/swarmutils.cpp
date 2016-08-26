@@ -14,6 +14,13 @@ const char* SwarmUtils::OPT_NO_OF_THREADS = "OPT_NO_OF_THREADS";
 const char* SwarmUtils::OPT_NO_OF_ITERATIONS = "OPT_NO_OF_ITERATIONS";
 const char* SwarmUtils::OPT_CULLING_NTH_ITERATION = "OPT_CULLING_NTH_ITERATION";
 
+const char* SwarmUtils::OPT_COEFF_TIME_TAKEN = "OPT_COEFF_TIME_TAKEN";
+const char* SwarmUtils::OPT_COEFF_COVERAGE = "OPT_COEFF_COVERAGE";
+const char* SwarmUtils::OPT_COEFF_SIMUL_SAMPLING = "OPT_COEFF_SIMUL_SAMPLING";
+const char* SwarmUtils::OPT_COEFF_MULTI_SAMPLING = "OPT_COEFF_MULTI_SAMPLING";
+const char* SwarmUtils::OPT_COEFF_CLUSTERING = "OPT_COEFF_CLUSTERING";
+const char* SwarmUtils::OPT_COEFF_OCCLUSION = "OPT_COEFF_OCCLUSION";
+
 const char* SwarmUtils::ROBOTS_NO_LABEL = "robots_no";
 const char* SwarmUtils::EXPLORATION_CONSTANT_LABEL = "exploration_constant";
 const char* SwarmUtils::SEPARATION_CONSTANT_LABEL = "separation_constant";
@@ -90,6 +97,21 @@ OptimizationParams SwarmUtils::load_optimization_params(const QString& filename)
 	optimization_params.no_of_iterations = settings.value(OPT_NO_OF_ITERATIONS, "10").toInt();
 	optimization_params.no_of_threads = settings.value(OPT_NO_OF_THREADS, "10").toInt();
 	optimization_params.culling_nth_iteration = settings.value(OPT_CULLING_NTH_ITERATION, "5").toInt();
+	
+	//scores.time_taken = 4.0 * std::pow((double)(results.time_taken) / (double)(swarm_params_.max_time_taken_ + 100), 2);
+	//scores.simul_sampling =  6.0 * std::pow((results.simul_sampling - robots_in_a_cluster) / (double)(swarm_params_.no_of_robots_), 2.0);
+	//scores.multi_samping = 1.5 * std::exp(-std::pow(desired_multisampling - (results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_)), 2) / desired_multisampling);
+	////scores.simul_sampling = 25 * results.simul_sampling / static_cast<double>(swarm_params_.no_of_robots_);
+	//scores.density = 392.5 * std::pow(1.0 - results.density, 2);
+	//scores.occlusion = 9.0 * std::pow ((results.occlusion) / static_cast<double>(swarm_params_.no_of_robots_), 2);
+	//scores.clustering = 10.0 * std::pow ((robots_in_a_cluster - results.clustering) / static_cast<double>(robots_in_a_cluster), 2);
+
+	optimization_params.coefficients.occlusion = settings.value(OPT_COEFF_OCCLUSION, "9.0").toDouble();
+	optimization_params.coefficients.clustering = settings.value(OPT_COEFF_CLUSTERING, "10.0").toDouble();
+	optimization_params.coefficients.density = settings.value(OPT_COEFF_COVERAGE, "392.5").toDouble();
+	optimization_params.coefficients.multi_samping = settings.value(OPT_COEFF_MULTI_SAMPLING, "1.5").toDouble();
+	optimization_params.coefficients.simul_sampling = settings.value(OPT_COEFF_SIMUL_SAMPLING, "6.0").toDouble();
+	optimization_params.coefficients.time_taken = settings.value(OPT_COEFF_TIME_TAKEN, "4.0").toDouble();
 
 	return optimization_params;
 }
@@ -101,6 +123,13 @@ void SwarmUtils::save_optimization_params(const OptimizationParams& params, cons
 	settings.setValue(OPT_NO_OF_THREADS, params.no_of_threads);
 	settings.setValue(OPT_NO_OF_ITERATIONS, params.no_of_iterations);
 	settings.setValue(OPT_CULLING_NTH_ITERATION, params.culling_nth_iteration);
+
+	settings.setValue(OPT_COEFF_TIME_TAKEN, params.coefficients.time_taken);
+	settings.setValue(OPT_COEFF_COVERAGE, params.coefficients.density);
+	settings.setValue(OPT_COEFF_SIMUL_SAMPLING, params.coefficients.simul_sampling);
+	settings.setValue(OPT_COEFF_MULTI_SAMPLING, params.coefficients.multi_samping);
+	settings.setValue(OPT_COEFF_OCCLUSION, params.coefficients.occlusion);
+	settings.setValue(OPT_COEFF_CLUSTERING, params.coefficients.clustering);
 }
 
 SwarmParams SwarmUtils::load_swarm_params(const QString& filename) {
@@ -151,7 +180,7 @@ SwarmParams SwarmUtils::load_swarm_params(const QString& filename) {
 
 
 	swarm_params.model_filename_ = (settings.value(INTERIOR_MODEL_FILENAME, "interior/house interior.obj").toString());
-	swarm_params.model_matrix_filename_ = (settings.value(INTERIOR_MODEL_MATRIX_FILENAME, "interior/l-shape-plan.yml").toString());
+	swarm_params.model_matrix_filename_ = (settings.value(INTERIOR_MODEL_MATRIX_FILENAME, "interior/l-shape-floor-plan.bmp").toString());
 
 
 	swarm_params.scale_spinbox_ = (settings.value(BUILDING_INTERIOR_SCALE_LABEL, "2").toDouble());
@@ -505,8 +534,8 @@ std::vector<glm::vec3> SwarmUtils::create_starting_formation(Formation type, Swa
 	case GRID: {
 		int robots_per_side = std::sqrt(swarm_params.no_of_robots_);
 		glm::ivec3 robots_mid_point((robots_per_side / 2) - 1, 0, (robots_per_side / 2) - 1);
-		glm::ivec3 mid_point((swarm_params.grid_resolution_per_side_ / 2) - 1, 0, (swarm_params.grid_resolution_per_side_ / 2) - 1);
-		glm::ivec3 offset = mid_point - robots_mid_point;
+		glm::ivec3 offset(swarm_params.x_spin_box_, 0, swarm_params.z_spin_box_);
+		//glm::ivec3 offset = mid_point - robots_mid_point;
 		
 		for (int x = 0; x < robots_per_side; ++x) {
 			for (int z = 0; z < robots_per_side; z++) {
@@ -520,19 +549,26 @@ std::vector<glm::vec3> SwarmUtils::create_starting_formation(Formation type, Swa
 			}
 		}
 
+		//int z = robots_per_side;
+		//int x = 0;
+			//std::cout << "Unable to fill all positions. Robots left : " << swarm_params.no_of_robots_ - robot_positions.size() << std::endl;
+		int x = robots_per_side;
 		int z = robots_per_side;
-		int x = 0;
+		int robots_left = swarm_params.no_of_robots_ - robot_positions.size();
 
+		int max_iterations = 10;
+		int iterations = 0;
+		while (robot_positions.size() < swarm_params.no_of_robots_
+				&& iterations < (robots_left + max_iterations)) {
+			glm::ivec3 robot_grid_position = glm::ivec3(x++, 0, z) + offset;
+			occupancy_grid_->map_to_position(robot_grid_position);
+			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
+				&& !occupancy_grid_->is_interior(robot_grid_position)) {
+				robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
+			}
+			iterations++;
+		}
 		swarm_params.no_of_robots_ = robot_positions.size();
-		//while (robot_positions.size() < swarm_params.no_of_robots_) {
-		//	std::cout << "Unable to fill all positions. Robots left : " << swarm_params.no_of_robots_ - robot_positions.size() << std::endl;
-		//	glm::ivec3 robot_grid_position = glm::ivec3(x++, 0, z) + offset;
-		//	occupancy_grid_->map_to_position(robot_grid_position);
-		//	if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
-		//		&& !occupancy_grid_->is_interior(robot_grid_position)) {
-		//		robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
-		//	}
-		//}
 		break;
 
 	}
@@ -698,13 +734,29 @@ void SwarmUtils::load_interior_model_from_matrix(const SwarmParams& swarm_params
 	SwarmOccupancyTree* occupancy_grid) {
 
 
+
 	cv::Mat model_matrix;
-	cv::FileStorage fs2(swarm_params.model_matrix_filename_.toStdString(), cv::FileStorage::READ);
-	fs2["model"] >> model_matrix;
+	std::string model_filename = swarm_params.model_matrix_filename_.toStdString();
+	int last_period_pos = model_filename.find_last_of('.');
+	std::string file_ext = model_filename.substr(last_period_pos, model_filename.length() - last_period_pos);
+
+	if (file_ext == ".yml") {
+		cv::FileStorage fs2(model_filename, cv::FileStorage::READ);
+		fs2["model"] >> model_matrix;
+	} else if (file_ext == ".bmp" || file_ext == ".jpg") {
+		model_matrix = cv::imread(model_filename, CV_LOAD_IMAGE_GRAYSCALE);
+	} else {
+		std::cout << "Unknown file type :  " << file_ext << "\n";
+	}
 
 	if (occupancy_grid->get_grid_resolution_per_side() != model_matrix.rows) {
-		std::cout << "grid resolution : " << occupancy_grid->get_grid_resolution_per_side() << " and matrix rows : "
-			<< model_matrix.rows << " not matching\n";
+		//std::cout << "grid resolution : " << occupancy_grid->get_grid_resolution_per_side() << " and matrix rows : "
+		//	<< model_matrix.rows << " not matching\n";
+		cv::Mat resized_matrix;
+		cv::Size d_size(occupancy_grid->get_grid_resolution_per_side(), occupancy_grid->get_grid_resolution_per_side());
+		cv::resize(model_matrix, resized_matrix, d_size);
+		
+		model_matrix = resized_matrix;
 	}
 
 	int grid_cube_length = occupancy_grid->get_grid_cube_length();
@@ -714,7 +766,7 @@ void SwarmUtils::load_interior_model_from_matrix(const SwarmParams& swarm_params
 	for (int x = 0; x < model_matrix.rows; ++x) {
 		for (int z = 0; z < model_matrix.rows; ++z) {
 			int value = model_matrix.at<unsigned char>(z, x);
-			if (value) {
+			if (value < 220) {
 				glm::vec3 points((x + 0.5) * grid_cube_length, y, (x + 0.5) * grid_cube_length);
 				recon_grid->insert(points, glm::ivec3(x, y, z));
 				occupancy_grid->set(x, z, mark);
@@ -726,24 +778,28 @@ void SwarmUtils::load_interior_model_from_matrix(const SwarmParams& swarm_params
 }
 
 void SwarmUtils::write_matrix_to_file() {
-	std::string filename = "interior/l-shape.yml";
-	
-	int width = 64;
 
-	cv::Mat model_matrix(width, width, CV_8U);
-
-	for (int x = 0; x < width; ++x) {
-		for (int y = 0; y < width; ++y) {
-			int value = ((x > width / 2) && (y > width / 2))? 1 : 0;
-			model_matrix.at<unsigned char>(y, x) = value;
-		}
-	}
+	QStringList model_files_list;
 
 
-	cv::FileStorage file(filename, cv::FileStorage::WRITE);
+	//std::string filename = "interior/l-shape.yml";
+	//
+	//int width = 64;
 
-	// Write to file!
-	file << "model" << model_matrix;
+	//cv::Mat model_matrix(width, width, CV_8U);
+
+	//for (int x = 0; x < width; ++x) {
+	//	for (int y = 0; y < width; ++y) {
+	//		int value = ((x > width / 2) && (y > width / 2))? 1 : 0;
+	//		model_matrix.at<unsigned char>(y, x) = value;
+	//	}
+	//}
+
+
+	//cv::FileStorage file(filename, cv::FileStorage::WRITE);
+
+	//// Write to file!
+	//file << "model" << model_matrix;
 }
 
 void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data,
@@ -789,8 +845,9 @@ void SwarmUtils::create_robots(SwarmParams& swarm_params, std::unordered_map<int
 		std::mt19937 rng;
 		rng.seed(rd());
 		auto separation_distance = swarm_params.separation_range_max_ * swarm_params.grid_length_;
+		int cluster_id = (i / robots_in_a_cluster) > (no_of_clusters - 1) ? 0 : i / robots_in_a_cluster;
 		ExperimentalRobot* robot = new ExperimentalRobot(uniform_locations, 
-			i, occupancy_grid_, collision_grid_, recon_grid_, i / robots_in_a_cluster, 
+			i, occupancy_grid_, collision_grid_, recon_grid_, cluster_id, 
 			swarm_params.separation_constant_, swarm_params.alignment_constant_,swarm_params. cluster_constant_, swarm_params.explore_constant_,
 			swarm_params.sensor_range_, swarm_params.discovery_range_, 
 			separation_distance, robot_positions[i], swarm_params.square_radius_, swarm_params.bounce_function_power_,
@@ -864,7 +921,9 @@ void SwarmUtils::print_result_header(std::ostream& stream) {
 	stream << "temperature,thread_id,iteration,model_filename,no_of_robots,"
 		<< "no_of_clusters,separation,alignment,cluster,explore,obstacle_avoidance,separation_distance,"
 		<< "time_taken,simul_sampling,multi_sampling,coverage,occlusion,clustering,score,"
-		<< "time_taken_score,simul_sampling_score,multi_sampling_score,coverage_score,occlusion_score,clustering_score\n";
+		<< "time_taken_score,simul_sampling_score,multi_sampling_score,coverage_score,occlusion_score,clustering_score,"
+		<< "time_taken_coeff,simul_sampling_coeff,multi_sampling_coeff,coverage_coeff,occlusion_coeff,clustering_coeff"
+		<< "\n";
 }
 
 void SwarmUtils::print_result(const MCMCParams& params, std::ostream& stream) {
@@ -893,7 +952,13 @@ void SwarmUtils::print_result(const MCMCParams& params, std::ostream& stream) {
 		<< params.scores.multi_samping << ","
 		<< params.scores.density << ","
 		<< params.scores.occlusion << ","
-		<< params.scores.clustering
+		<< params.scores.clustering << ","
+		<< params.coeffs.time_taken << ","
+		<< params.coeffs.simul_sampling << ","
+		<< params.coeffs.multi_samping << ","
+		<< params.coeffs.density << ","
+		<< params.coeffs.occlusion << ","
+		<< params.coeffs.clustering
 		<< "\n";
 }
 
@@ -919,29 +984,43 @@ double SwarmUtils::calculate_occulusion_factor(std::vector<Robot*> robots_) {
 	return occlusion;
 }
 
-double SwarmUtils::calculate_cluster_factor(std::vector<Robot*> robots_) {
-	double occlusion = 0.0;
+double SwarmUtils::calculate_cluster_factor(std::vector<Robot*> robots_, SwarmParams& swarm_params) {
+	double clustering = 0.0;
+	//int no_of_clusters = (swarm_params.no_of_clusters_ > swarm_params.no_of_robots_) ? swarm_params.no_of_robots_ : swarm_params.no_of_clusters_;
+	//int robots_in_a_cluster = swarm_params.no_of_robots_ / no_of_clusters;
 	for (auto& robot : robots_) {
-		occlusion += dynamic_cast<ExperimentalRobot*>(robot)->calculate_clustering();
+		clustering += dynamic_cast<ExperimentalRobot*>(robot)->calculate_clustering();
 	}
 	if (robots_.size() > 0) {
-		occlusion /= robots_.size();
+		clustering /= robots_.size();
 	}
-	return occlusion;
+	return clustering;
 }
 
-double SwarmUtils::calculate_score(SwarmParams swarm_params_, OptimizationResults results, int case_no, OptimizationResults& scores) {
+void SwarmUtils::calculate_sim_results(SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_,
+	std::vector<Robot*> robots_, int time_step_count_, SwarmParams& swarm_params, OptimizationResults& results) {
+
+		results.occlusion = SwarmUtils::calculate_occulusion_factor(robots_);
+		results.multi_samping = recon_grid_->calculate_multi_sampling_factor();
+		//results.density = recon_grid_->calculate_density();
+		results.density = occupancy_grid_->calculate_coverage();
+		results.time_taken = time_step_count_;
+		results.simul_sampling = occupancy_grid_->calculate_simultaneous_sampling_factor();
+		results.clustering = SwarmUtils::calculate_cluster_factor(robots_, swarm_params);
+}
+
+double SwarmUtils::calculate_score(SwarmParams swarm_params_, OptimizationResults results, OptimizationResults coeffs, int case_no, OptimizationResults& scores) {
 	double score = 0.0;
 	double desired_multisampling = 2.0;
 	double robots_in_a_cluster = (double)(swarm_params_.no_of_robots_) / swarm_params_.no_of_clusters_;
 
-	scores.time_taken = 4.0 * std::pow((double)(results.time_taken) / (double)(swarm_params_.max_time_taken_ + 100), 2);
-	scores.simul_sampling =  6.0 * std::pow((results.simul_sampling - robots_in_a_cluster) / (double)(swarm_params_.no_of_robots_), 2.0);
-	scores.multi_samping = 1.5 * std::exp(-std::pow(desired_multisampling - (results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_)), 2) / desired_multisampling);
+	scores.time_taken = coeffs.time_taken * std::pow((double)(results.time_taken) / (double)(swarm_params_.max_time_taken_ + 100), 2);
+	scores.simul_sampling =  coeffs.simul_sampling * std::pow((results.simul_sampling - robots_in_a_cluster) / (double)(swarm_params_.no_of_robots_), 2.0);
+	scores.multi_samping = coeffs.multi_samping * std::exp(-std::pow(desired_multisampling - (results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_)), 2) / desired_multisampling);
 	//scores.simul_sampling = 25 * results.simul_sampling / static_cast<double>(swarm_params_.no_of_robots_);
-	scores.density = 392.5 * std::pow(1.0 - results.density, 2);
-	scores.occlusion = 9.0 * std::pow ((results.occlusion) / static_cast<double>(swarm_params_.no_of_robots_), 2);
-	scores.clustering = 10.0 * std::pow ((robots_in_a_cluster - results.clustering) / static_cast<double>(robots_in_a_cluster), 2);
+	scores.density = coeffs.density * std::pow(1.0 - results.density, 2);
+	scores.occlusion = coeffs.occlusion * std::pow ((results.occlusion), 2);
+	scores.clustering = coeffs.clustering * std::pow ((robots_in_a_cluster - results.clustering) / static_cast<double>(robots_in_a_cluster), 2);
 
 
 

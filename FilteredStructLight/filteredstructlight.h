@@ -241,6 +241,19 @@ private:
 	QLineEdit* model_matrix_filename_;
 	QPushButton* model_matrix_filename_browse_;
 	QPushButton* create_model_matrix_;
+	QLabel* time_step_count_score_label_;
+	QDoubleSpinBox* time_step_count_score_textbox_;
+	QLabel* avg_simultaneous_sampling_score_label_;
+	QDoubleSpinBox* simultaneous_sampling_score_textbox_;
+	QLabel* multi_sampling_score_label_;
+	QDoubleSpinBox* multi_sampling_score_textbox_;
+	QLabel* coverage_score_label_;
+	QDoubleSpinBox* coverage_score_textbox_;
+	QLabel* occlusion_score_label_;
+	QDoubleSpinBox* occlusion_score_textbox_;
+	QLabel* clustering_score_label_;
+	QDoubleSpinBox* clustering_score_textbox_;
+
 	void load_recon_settings();
 
 	void shutdown_cam_thread();

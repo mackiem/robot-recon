@@ -89,6 +89,10 @@ class ParallelMCMCOptimizer : public QObject {
 	static double MAX_ALIGNMENT_VALUE;
 	static double MAX_CLUSTER_VALUE;
 	static double MAX_EXPLORE_VALUE;
+	static double MIN_SEPARATION_VALUE;
+	static double MIN_ALIGNMENT_VALUE;
+	static double MIN_CLUSTER_VALUE;
+	static double MIN_EXPLORE_VALUE;
 public:
 	ParallelMCMCOptimizer(const SwarmParams& swarm_params, const OptimizationParams& optimization_params, std::string& optimizer_filename);
 

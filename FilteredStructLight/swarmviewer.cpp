@@ -70,18 +70,17 @@ void RobotWorker::set_max_time_taken(int max_time_taken) {
 	max_time_taken_ = max_time_taken;
 }
 
+void RobotWorker::set_swarm_params(SwarmParams swarm_params) {
+	swarm_params_ = swarm_params;
+}
+
 
 void RobotWorker::finish_work() {
 	if (!sampling_updated_) {
 
 		OptimizationResults results;
 
-		results.occlusion = SwarmUtils::calculate_occulusion_factor(robots_);
-		results.multi_samping = recon_grid_->calculate_multi_sampling_factor();
-		results.density = recon_grid_->calculate_density();
-		results.time_taken = time_step_count_;
-		results.simul_sampling = occupancy_grid_->calculate_simultaneous_sampling_factor();
-		results.clustering = SwarmUtils::calculate_cluster_factor(robots_);
+		SwarmUtils::calculate_sim_results(occupancy_grid_, recon_grid_, robots_, time_step_count_, swarm_params_, results);
 
 		emit update_sim_results(results);
 		sampling_updated_ = true;
@@ -97,7 +96,7 @@ void RobotWorker::do_work() {
 		}
 		if (!paused_) {
 			if (slow_down_) {
-				QThread::currentThread()->msleep(1);
+				QThread::currentThread()->msleep(100);
 			}
 			step_count_--;
 			if (time_step_count_ > max_time_taken_) {
@@ -827,6 +826,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	connect(robot_worker_, &RobotWorker::update_sampling, this, &SwarmViewer::update_sampling);
 	connect(&robot_update_thread_, &QThread::started, robot_worker_, &RobotWorker::do_work);
 
+	robot_worker_->set_swarm_params(swarm_params);
 	robot_worker_->set_robots(robots_);
 	robot_worker_->set_occupancy_tree(occupancy_grid_);
 	robot_worker_->set_recon_tree(recon_grid_);
@@ -1459,7 +1459,8 @@ void SwarmViewer::populate_color_map() {
 
 	for (int i = 0; i < swarm_params_.no_of_robots_; ++i) {
 		if (no_of_clusters > 0) {
-			robot_color_map_[i] = robot_colors[i / robots_in_a_cluster];
+			int cluster_id = (i / robots_in_a_cluster) > (no_of_clusters - 1) ? 0 : i / robots_in_a_cluster;
+			robot_color_map_[i] = robot_colors[cluster_id];
 		} else {
 			robot_color_map_[i] = robot_colors[0];
 		}

@@ -146,6 +146,8 @@ private:
 		int cluster_id;
 	};
 
+	bool is_interior_interior(const glm::ivec3& position);
+
 	std::vector<Sampling>* sampling_tracker_;
 
 	std::vector<std::pair<double, int>> sampling_avg_storage_;
@@ -199,6 +201,7 @@ public:
 	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id, int cluster_id);
 	double calculate_simultaneous_sampling_factor();
 	void calculate_simultaneous_sampling_per_cluster();
+	double calculate_coverage();
 	static int INTERIOR_MARK;
 	static int SEARCH_VISITED;
 	static int SEARCH_NOT_VISITED;

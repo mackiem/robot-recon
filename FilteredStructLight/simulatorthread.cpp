@@ -101,13 +101,7 @@ void SimulatorThread::finish_work() {
 	std::uniform_real_distribution<> uniform_real_distribution(0, 1);
 
 	OptimizationResults results;
-
-	results.occlusion = SwarmUtils::calculate_occulusion_factor(robots_);
-	results.clustering = SwarmUtils::calculate_cluster_factor(robots_);
-	results.multi_samping = recon_grid_->calculate_multi_sampling_factor();
-	results.density = recon_grid_->calculate_density();
-	results.time_taken = time_step_count_;
-	results.simul_sampling = occupancy_grid_->calculate_simultaneous_sampling_factor();
+	SwarmUtils::calculate_sim_results(occupancy_grid_, recon_grid_, robots_, time_step_count_, swarm_params_, results);
 
 	//emit send_sim_results(group_id_, thread_id_, iteration_, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
 	//	separation_distance_, simultaneous_sampling, time_step_count_, occlusion, coverage);

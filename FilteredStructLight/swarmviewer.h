@@ -24,6 +24,7 @@ class RobotWorker : public QObject {
 	double accumulator_;
 	double max_time_taken_;
 	Swarm3DReconTree* recon_grid_;
+	SwarmParams swarm_params_;
 public:
 	RobotWorker();
 	void set_robots(std::vector<Robot*> robots);
@@ -32,6 +33,7 @@ public:
 	void set_slow_down(int slow_down);
 	void abort();
 	void set_max_time_taken(int max_time_taken);
+	void set_swarm_params(SwarmParams swarm_params);
 	//double calculate_coverage();
 	//double calculate_occulusion_factor();
 	void finish_work();

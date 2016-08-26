@@ -302,6 +302,13 @@ OptimizationParams FilteredStructLight::get_opt_params_from_ui() {
 	opt_params.no_of_threads = no_of_threads_spin_box_->value();
 	opt_params.culling_nth_iteration = culling_nth_iteration_spin_box_->value();
 
+	opt_params.coefficients.time_taken = time_step_count_score_textbox_->value();
+	opt_params.coefficients.density = coverage_score_textbox_->value();
+	opt_params.coefficients.simul_sampling = simultaneous_sampling_score_textbox_->value();
+	opt_params.coefficients.multi_samping = multi_sampling_score_textbox_->value();
+	opt_params.coefficients.occlusion = occlusion_score_textbox_->value();
+	opt_params.coefficients.clustering = clustering_score_textbox_->value();
+
 	return opt_params;
 }
 
@@ -320,6 +327,13 @@ void FilteredStructLight::set_opt_params_to_ui(const OptimizationParams& opt_par
 	emit no_of_threads_spin_box_->valueChanged(opt_params.no_of_threads);
 	emit culling_nth_iteration_spin_box_->valueChanged(opt_params.culling_nth_iteration);
 	
+	
+	time_step_count_score_textbox_->setValue(opt_params.coefficients.time_taken);
+	coverage_score_textbox_->setValue(opt_params.coefficients.density);
+	simultaneous_sampling_score_textbox_->setValue(opt_params.coefficients.simul_sampling);
+	multi_sampling_score_textbox_->setValue(opt_params.coefficients.multi_samping);
+	occlusion_score_textbox_->setValue(opt_params.coefficients.occlusion);
+	clustering_score_textbox_->setValue(opt_params.coefficients.clustering);
 }
 
 
@@ -781,7 +795,7 @@ void FilteredStructLight::add_interior_options(QGroupBox* group_box) {
 	connect(model_matrix_filename_browse_, &QPushButton::clicked, this, 
 		[&] {
 		QString selected_filename = QFileDialog::getOpenFileName(this, QString("Open Model"), "interior",
-			"Matrix Files(*.yml)");
+			"Model Files(*bmp *.jpg *.yml)");
 		model_matrix_filename_->setText(selected_filename);
 	});
 
@@ -1409,13 +1423,16 @@ void FilteredStructLight::add_swarm_optimization_options(QGroupBox* group_box) {
 	//	swarm_viewer_, &SwarmViewer::run_least_squared_optimization);
 
 	connect(run_mcmc_optimization_button_, &QPushButton::clicked, this, [&] {
-		swarm_viewer_->run_mcmc_optimization(get_opt_params_from_ui(), get_swarm_params_from_ui());
+		auto swarm_params = get_swarm_params_from_ui();
+		swarm_params.config_name_ = swarm_config_filename_->text();
+		swarm_viewer_->run_mcmc_optimization(get_opt_params_from_ui(), swarm_params);
 	});
 
 	connect(batch_optimize_button_, &QPushButton::clicked, this, 
 		[&] {
 		auto op_params = get_opt_params_from_ui();
 		QStringList configs_list = swarm_configs_list_model_->stringList();
+		std::cout << "Batch Optimizing " << configs_list.size() << " configs \n";
 		std::vector<SwarmParams> swarm_paramses;
 		for (auto& config : configs_list) {
 			auto swarm_params = SwarmUtils::load_swarm_params(config);
@@ -1446,7 +1463,7 @@ void FilteredStructLight::add_swarm_config_save_options(QGroupBox* group_box) {
 
 	connect(swarm_config_filename_browse_, &QPushButton::clicked, this, 
 		[&] {
-		QString filename = QFileDialog::getOpenFileName(this, QString("Open Swarm Config"), "swarm-config",
+		QString filename = QFileDialog::getOpenFileName(this, QString("Open Swarm Config"), "to-optimize",
 			"Ini Files(*.ini)");
 		QFile file(filename);
 		if (file.exists()) {
@@ -1493,7 +1510,12 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	QLabel* time_taken_label = new QLabel("Time taken (time steps)", group_box);
 	time_step_count_label_ = new QLabel("000", group_box);
 	timing_config_layout->addWidget(time_taken_label);
+	time_step_count_score_label_ = new QLabel("000", group_box);
+	timing_config_layout->addWidget(time_step_count_score_label_);
+	time_step_count_score_textbox_ = new QDoubleSpinBox(group_box);
+	time_step_count_score_textbox_->setRange(0, 10000);
 	timing_config_layout->addWidget(time_step_count_label_);
+	timing_config_layout->addWidget(time_step_count_score_textbox_);
 
 	group_box_layout->addLayout(timing_config_layout);
 
@@ -1501,7 +1523,12 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	QLabel* simultaneous_sampling_label = new QLabel("Simultaneous Sampling", group_box);
 	avg_simultaneous_sampling_label_ = new QLabel("0.0", group_box);
 	sampling_config_layout->addWidget(simultaneous_sampling_label);
+	avg_simultaneous_sampling_score_label_ = new QLabel("0.0", group_box);
+	simultaneous_sampling_score_textbox_ = new QDoubleSpinBox(group_box);
+	simultaneous_sampling_score_textbox_->setRange(0, 10000);
+	sampling_config_layout->addWidget(avg_simultaneous_sampling_score_label_);
 	sampling_config_layout->addWidget(avg_simultaneous_sampling_label_);
+	sampling_config_layout->addWidget(simultaneous_sampling_score_textbox_);
 
 	group_box_layout->addLayout(sampling_config_layout);
 
@@ -1509,7 +1536,12 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	QLabel* multi_sampling_label = new QLabel("Multi Sampling", group_box);
 	multi_sampling_label_ = new QLabel("0.0", group_box);
 	multi_sampling_layout->addWidget(multi_sampling_label);
+	multi_sampling_score_label_ = new QLabel("0.0", group_box);
+	multi_sampling_layout->addWidget(multi_sampling_score_label_);
 	multi_sampling_layout->addWidget(multi_sampling_label_);
+	multi_sampling_score_textbox_ = new QDoubleSpinBox(group_box);
+	multi_sampling_score_textbox_->setRange(0, 10000);
+	multi_sampling_layout->addWidget(multi_sampling_score_textbox_);
 
 	group_box_layout->addLayout(multi_sampling_layout);
 
@@ -1517,7 +1549,12 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	QLabel* coverage_label = new QLabel("Coverage", group_box);
 	coverage_label_ = new QLabel("0.0", group_box);
 	coverage_layout->addWidget(coverage_label);
+	coverage_score_label_ = new QLabel("0.0", group_box);
+	coverage_layout->addWidget(coverage_score_label_);
+	coverage_score_textbox_ = new QDoubleSpinBox(group_box);
+	coverage_score_textbox_->setRange(0, 10000);
 	coverage_layout->addWidget(coverage_label_);
+	coverage_layout->addWidget(coverage_score_textbox_);
 
 	group_box_layout->addLayout(coverage_layout);
 
@@ -1525,7 +1562,12 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	QLabel* occlusion_label = new QLabel("Occlusion", group_box);
 	occlusion_label_ = new QLabel("0.0", group_box);
 	occlusion_layout->addWidget(occlusion_label);
+	occlusion_score_label_ = new QLabel("0.0", group_box);
+	occlusion_layout->addWidget(occlusion_score_label_);
+	occlusion_score_textbox_ = new QDoubleSpinBox(group_box);
+	occlusion_score_textbox_->setRange(0, 10000);
 	occlusion_layout->addWidget(occlusion_label_);
+	occlusion_layout->addWidget(occlusion_score_textbox_);
 
 	group_box_layout->addLayout(occlusion_layout);
 
@@ -1533,7 +1575,12 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	QLabel* clustering_label = new QLabel("Clustering", group_box);
 	clustering_label_ = new QLabel("0.0", group_box);
 	clustering_layout->addWidget(clustering_label);
+	clustering_score_label_ = new QLabel("0.0", group_box);
+	clustering_score_textbox_ = new QDoubleSpinBox(group_box);
+	clustering_score_textbox_->setRange(0, 10000);
+	clustering_layout->addWidget(clustering_score_label_);
 	clustering_layout->addWidget(clustering_label_);
+	clustering_layout->addWidget(clustering_score_textbox_);
 
 	group_box_layout->addLayout(clustering_layout);
 
@@ -2060,9 +2107,17 @@ void FilteredStructLight::update_sim_results(OptimizationResults results) {
 	clustering_label_->setText(QString::number(results.clustering));
 
 	auto swarm_params = get_swarm_params_from_ui();
+	auto opt_params = get_opt_params_from_ui();
 	OptimizationResults scores;
-	double score = SwarmUtils::calculate_score(swarm_params, results, TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE, scores);
+	double score = SwarmUtils::calculate_score(swarm_params, results, opt_params.coefficients, TIME_AND_SIMUL_SAMPLING_AND_MULTI_SAMPLING_COVERAGE, scores);
 	opt_score_label_->setText(QString::number(score));
+
+	time_step_count_score_label_->setText(QString::number(scores.time_taken));
+	avg_simultaneous_sampling_score_label_->setText(QString::number(scores.simul_sampling));
+	occlusion_score_label_->setText(QString::number(scores.occlusion));
+	coverage_score_label_->setText(QString::number(scores.density));
+	multi_sampling_score_label_->setText(QString::number(scores.multi_samping));
+	clustering_score_label_->setText(QString::number(scores.clustering));
 }
 
 void FilteredStructLight::add_camera_calibration_tab(QTabWidget* tab_widget) {

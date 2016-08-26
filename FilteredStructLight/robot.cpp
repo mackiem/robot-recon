@@ -89,7 +89,7 @@ void Robot::get_adjacent_cells(const glm::vec3& position, std::vector<glm::ivec3
 }
 
 void Robot::update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position) {
-	if (current_position == previous_position) {
+	if (current_position == previous_position && adjacent_cells_.size() > 0) {
 		interior_updated_ = false;
 		return;
 	}
@@ -131,12 +131,12 @@ void Robot::init() {
 
 
 	if (render_) {
-		//init_force_visualization(0, explore_force_, blue);
-		//init_force_visualization(1, separation_force_, green);
-		//init_force_visualization(2, resultant_force_, black);
-		//init_force_visualization(3, perimeter_force_, yellow);
-		//init_force_visualization(4, cluster_force_, cyan);
-		//init_force_visualization(5, alignment_force_, orange);
+		init_force_visualization(0, explore_force_, blue);
+		init_force_visualization(1, separation_force_, green);
+		init_force_visualization(2, resultant_force_, black);
+		init_force_visualization(3, perimeter_force_, yellow);
+		init_force_visualization(4, cluster_force_, cyan);
+		init_force_visualization(5, alignment_force_, orange);
 	}
 
 	
@@ -326,7 +326,7 @@ void Robot::set_show_forces(bool show) {
 	glm::vec3 zero_force;
 	cv::Vec4f blue(0.f, 0.f, 1.f, 1.f);
 	for (int i = 0; i < 5; ++i) {
-		//update_force_visualization(i, zero_force);
+		update_force_visualization(i, zero_force);
 	}
 }
 
@@ -797,27 +797,27 @@ bool Robot::is_colliding_with_robots(const std::vector<int>& robot_ids) const {
 }
 
 void Robot::update_visualization_structs() {
-		// update visualization
-		if (show_forces_) {
-			//update_force_visualization(0, explore_force_);
-			//update_force_visualization(1, separation_force_);
-			//update_force_visualization(3, perimeter_force_);
-			//update_force_visualization(4, cluster_force_);
-			//update_force_visualization(5, alignment_force_);
-			//update_force_visualization(2, 100.f * resultant_force_);
-		}
-		// update rendered mesh
-		for (auto& render_entity : mesh_) {
-			glm::mat4 translate_model = glm::translate(glm::mat4(1.f), position_);
-			render_entity.set_model(translate_model * render_entity.get_initial_model());
-		}
+		//// update visualization
+		//if (show_forces_) {
+		//	update_force_visualization(0, explore_force_);
+		//	update_force_visualization(1, separation_force_);
+		//	update_force_visualization(3, perimeter_force_);
+		//	update_force_visualization(4, cluster_force_);
+		//	update_force_visualization(5, alignment_force_);
+		//	update_force_visualization(2, 100.f * resultant_force_);
+		//}
+		//// update rendered mesh
+		//for (auto& render_entity : mesh_) {
+		//	glm::mat4 translate_model = glm::translate(glm::mat4(1.f), position_);
+		//	render_entity.set_model(translate_model * render_entity.get_initial_model());
+		//}
 	
-		explored_mutex_.lock();
-		for (auto& adjacent_sensor_cell : explored_cells_) {
-			overlay_->update_grid_position(adjacent_sensor_cell);
-		}
-		explored_cells_.clear();
-		explored_mutex_.unlock();
+		//explored_mutex_.lock();
+		//for (auto& adjacent_sensor_cell : explored_cells_) {
+		//	overlay_->update_grid_position(adjacent_sensor_cell, colors_);
+		//}
+		//explored_cells_.clear();
+		//explored_mutex_.unlock();
 }
 
 void Robot::calculate_sampling_factor() {
