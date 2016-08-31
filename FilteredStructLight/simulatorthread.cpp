@@ -67,14 +67,9 @@ void SimulatorThread::reset_sim(SwarmParams& swarm_params) {
 	aborted_ = false;
 	time_step_count_ = 0;
 
-	occupancy_grid_ = new SwarmOccupancyTree(swarm_params.grid_length_, swarm_params.grid_resolution_);
-	swarm_params.grid_resolution_per_side_ = occupancy_grid_->get_grid_resolution_per_side();
-	collision_grid_ = new SwarmCollisionTree(swarm_params.grid_resolution_);
-	recon_grid_ = new Swarm3DReconTree(swarm_params.grid_resolution_, swarm_params.grid_length_);
-
 
 	VertexBufferData* vertex_buffer_data;
-	SwarmUtils::load_interior_model(swarm_params, vertex_buffer_data, occupancy_grid_, recon_grid_);
+	SwarmUtils::load_interior_model_from_matrix(swarm_params, &occupancy_grid_, &recon_grid_, &collision_grid_);
 
 	occupancy_grid_->create_perimeter_list();
 	occupancy_grid_->create_empty_space_list();

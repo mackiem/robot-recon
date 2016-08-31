@@ -26,10 +26,11 @@ private:
 	int current_timestamp_;
 	float random_constant_;
 	glm::ivec3 previous_local_explore_cell;
-	unsigned char* local_map_;
+	mm::Quadtree<char> local_map_;
 	int local_no_of_unexplored_cells_;
 	int previous_no_of_local_explored_cells_;
 	cv::Vec4f color_;
+	float diagonal_grid_length_;
 public:
 	//ExperimentalRobot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree,
 	//	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
@@ -60,7 +61,7 @@ public:
 	glm::vec3 calculate_alignment_velocity();
 	glm::vec3 calculate_clustering_velocity();
 	void update(int timestamp);
-	glm::vec3 bounce_off_corners_velocity();
+	//glm::vec3 bounce_off_corners_velocity();
 	glm::vec3 calculate_random_direction();
 	glm::vec3 calculate_explore_velocity();
 	void reconstruct_points();

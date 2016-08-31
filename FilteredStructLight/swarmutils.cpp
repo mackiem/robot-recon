@@ -384,8 +384,8 @@ std::vector<glm::vec3> SwarmUtils::create_starting_formation(Formation type, Swa
 		double distance_between_robots = side_length * 4.0 / (double)swarm_params.no_of_robots_;
 
 		glm::vec3 robots_mid_point(side_length / 2.f, 0.f, side_length / 2.f);
-		glm::vec3 grid_mid_point(swarm_params.grid_resolution_per_side_ / 2.0 * swarm_params.grid_length_, 0.f, 
-			swarm_params.grid_resolution_per_side_ / 2.0 * swarm_params.grid_length_);
+		glm::vec3 grid_mid_point(swarm_params.grid_width_/ 2.0 * swarm_params.grid_length_, 0.f, 
+			swarm_params.grid_height_/ 2.0 * swarm_params.grid_length_);
 		glm::vec3 offset = grid_mid_point - robots_mid_point;
 
 		for (int i = 0; i < swarm_params.no_of_robots_; ++i) {
@@ -505,12 +505,12 @@ std::vector<glm::vec3> SwarmUtils::create_starting_formation(Formation type, Swa
 
 		int distance_from_edge = 5;
 		
-		for (int x = 0; x < swarm_params.grid_resolution_per_side_ - 1; ++x) {
-			for (int z = 0; z < swarm_params.grid_resolution_per_side_ - 1; z++) {
-				if (((x - distance_from_edge == 0) || (swarm_params.grid_resolution_per_side_ - 1 - x - distance_from_edge == 0)) && 
-					((z - distance_from_edge >= 0) && (swarm_params.grid_resolution_per_side_ - 1 - z - distance_from_edge >= 0)) ||
-					(((z - distance_from_edge == 0) || (swarm_params.grid_resolution_per_side_ - 1 - z - distance_from_edge == 0)) && 
-					((x - distance_from_edge >= 0) && (swarm_params.grid_resolution_per_side_ - 1 - x - distance_from_edge >= 0)))) {
+		for (int x = 0; x < swarm_params.grid_width_- 1; ++x) {
+			for (int z = 0; z < swarm_params.grid_height_- 1; z++) {
+				if (((x - distance_from_edge == 0) || (swarm_params.grid_width_- 1 - x - distance_from_edge == 0)) && 
+					((z - distance_from_edge >= 0) && (swarm_params.grid_height_- 1 - z - distance_from_edge >= 0)) ||
+					(((z - distance_from_edge == 0) || (swarm_params.grid_height_- 1 - z - distance_from_edge == 0)) && 
+					((x - distance_from_edge >= 0) && (swarm_params.grid_width_ - 1 - x - distance_from_edge >= 0)))) {
 
 					glm::ivec3 robot_grid_position = glm::ivec3(x, 0, z); // +offset;
 					if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
@@ -576,11 +576,12 @@ std::vector<glm::vec3> SwarmUtils::create_starting_formation(Formation type, Swa
 		std::random_device rd;
 		std::mt19937 rng;
 		rng.seed(rd());
-		std::uniform_int_distribution<int> position_generator(0, swarm_params.grid_resolution_per_side_ - 1);
+		std::uniform_int_distribution<int> position_generator_x(0, swarm_params.grid_width_- 1);
+		std::uniform_int_distribution<int> position_generator_z(0, swarm_params.grid_height_ - 1);
 		int robot_count = 0;
 		int iterations = 0;
 		while ((swarm_params.no_of_robots_ != robot_count) && ((swarm_params.no_of_robots_ + 100) > iterations)) {
-			glm::ivec3 robot_grid_position(position_generator(rng), 0, position_generator(rng));
+			glm::ivec3 robot_grid_position(position_generator_x(rng), 0, position_generator_z(rng));
 			if (!occupancy_grid_->is_out_of_bounds(robot_grid_position)
 				&& !occupancy_grid_->is_interior(robot_grid_position)) {
 				robot_positions.push_back(occupancy_grid_->map_to_position(robot_grid_position));
@@ -593,7 +594,8 @@ std::vector<glm::vec3> SwarmUtils::create_starting_formation(Formation type, Swa
 	case CIRCLE: {
 		float perimeter_length = 2 * swarm_params.grid_length_ * swarm_params.no_of_robots_;
 		float radius = perimeter_length / (2 * PI);
-		glm::vec3 real_mid_point(swarm_params.grid_resolution_per_side_ * swarm_params.grid_length_ / 2.f, 0, swarm_params.grid_resolution_per_side_ * swarm_params.grid_length_ / 2.f);
+		glm::vec3 real_mid_point(swarm_params.grid_width_ * swarm_params.grid_length_ / 2.f,
+			0, swarm_params.grid_height_ * swarm_params.grid_length_ / 2.f);
 		glm::vec3 center = real_mid_point;
 
 		for (int i = 0; i < swarm_params.no_of_robots_; ++i) {
@@ -730,8 +732,8 @@ void SwarmUtils::derive_floor_plan(const VertexBufferData& bufferdata, float sca
 	//occupancy_grid_->remove_inner_interiors();
 }
 
-void SwarmUtils::load_interior_model_from_matrix(const SwarmParams& swarm_params, Swarm3DReconTree* recon_grid, 
-	SwarmOccupancyTree* occupancy_grid) {
+void SwarmUtils::load_interior_model_from_matrix(SwarmParams& swarm_params, SwarmOccupancyTree** occupancy_grid, 
+	Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid) {
 
 
 
@@ -749,18 +751,27 @@ void SwarmUtils::load_interior_model_from_matrix(const SwarmParams& swarm_params
 		std::cout << "Unknown file type :  " << file_ext << "\n";
 	}
 
-	if (occupancy_grid->get_grid_resolution_per_side() != model_matrix.rows) {
+	//if (occupancy_grid->get_grid_resolution_per_side() != model_matrix.rows) {
+	swarm_params.grid_width_ = std::pow(2, swarm_params.grid_resolution_);
+	float aspect_ratio = model_matrix.cols / (float)(model_matrix.rows);
+	swarm_params.grid_height_ = swarm_params.grid_width_ / aspect_ratio;
+
+	if (swarm_params.grid_width_ != model_matrix.cols) {
 		//std::cout << "grid resolution : " << occupancy_grid->get_grid_resolution_per_side() << " and matrix rows : "
 		//	<< model_matrix.rows << " not matching\n";
 		cv::Mat resized_matrix;
-		cv::Size d_size(occupancy_grid->get_grid_resolution_per_side(), occupancy_grid->get_grid_resolution_per_side());
+		cv::Size d_size(swarm_params.grid_width_, swarm_params.grid_height_);
 		cv::resize(model_matrix, resized_matrix, d_size);
 		
 		model_matrix = resized_matrix;
 	}
 
-	int grid_cube_length = occupancy_grid->get_grid_cube_length();
-	int mark = occupancy_grid->get_interior_mark();
+	*occupancy_grid = new SwarmOccupancyTree(swarm_params.grid_length_, swarm_params.grid_width_, swarm_params.grid_height_, 0);
+	*collision_grid = new SwarmCollisionTree(swarm_params.grid_width_, swarm_params.grid_height_);
+	*recon_grid = new Swarm3DReconTree(swarm_params.grid_length_, swarm_params.grid_width_, swarm_params.grid_height_);
+
+	int grid_cube_length = swarm_params.grid_length_;
+	int mark = (*occupancy_grid)->get_interior_mark();
 
 	int y = 0;
 	for (int x = 0; x < model_matrix.rows; ++x) {
@@ -768,13 +779,15 @@ void SwarmUtils::load_interior_model_from_matrix(const SwarmParams& swarm_params
 			int value = model_matrix.at<unsigned char>(z, x);
 			if (value < 220) {
 				glm::vec3 points((x + 0.5) * grid_cube_length, y, (x + 0.5) * grid_cube_length);
-				recon_grid->insert(points, glm::ivec3(x, y, z));
-				occupancy_grid->set(x, z, mark);
+				(*recon_grid)->insert(points, glm::ivec3(x, y, z));
+				(*occupancy_grid)->set(x, z, mark);
 			}
 		}
 	}
-
 	
+}
+
+void SwarmUtils::create_grids(SwarmOccupancyTree** occupancy_grid, Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid) {
 }
 
 void SwarmUtils::write_matrix_to_file() {
@@ -802,11 +815,11 @@ void SwarmUtils::write_matrix_to_file() {
 	//file << "model" << model_matrix;
 }
 
-void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data,
-	SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_) {
+//void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data,
+//	SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_) {
 
 
-	load_interior_model_from_matrix(swarm_params, recon_grid_, occupancy_grid_);
+	//load_interior_model_from_matrix(swarm_params, recon_grid_, occupancy_grid_);
 
 	//std::string model_filename = (swarm_params.model_filename_.compare("") == 0) ? DEFAULT_INTERIOR_MODEL_FILENAME
 	//	: swarm_params.model_filename_.toStdString();
@@ -823,7 +836,7 @@ void SwarmUtils::load_interior_model(SwarmParams& swarm_params, VertexBufferData
 
 
 	//delete vertex_buffer_data;
-}
+//}
 
 void SwarmUtils::create_robots(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_,
 	SwarmOccupancyTree* occupancy_grid_, SwarmCollisionTree* collision_grid_, Swarm3DReconTree* recon_grid_, UniformLocations& uniform_locations,

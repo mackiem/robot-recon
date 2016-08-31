@@ -190,7 +190,7 @@ public:
 	void upload_robots_to_gpu();
 	//void create_robots();
 	//void create_occupancy_grid_overlay(int grid_resolution, int grid_size, bool initialize = false);
-	void create_occupancy_grid(int grid_resolution, int grid_size);
+	void create_occupancy_grid(int grid_width, int grid_height, int grid_size);
 	void get_sim_results(double& timesteps, double& multi_sampling, double& coverage, double& occlusion);
 
 	//unsigned int grid_resolution_;

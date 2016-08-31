@@ -6,10 +6,10 @@
 #include <functional>
 
 #define GRID_MAX 100000
-class OutOfGridBoundsException : public std::exception {
-public:
-OutOfGridBoundsException(const char* message) : std::exception(message) {};
-};
+//class OutOfGridBoundsException : public std::exception {
+//public:
+//OutOfGridBoundsException(const char* message) : std::exception(message) {};
+//};
 
 struct IVec3Hasher {
 	std::size_t operator()(const glm::ivec3& k) const {
@@ -92,7 +92,7 @@ struct PerimeterPos {
 	}
 };
 
-class SwarmOccupancyTree : public mm::Quadtree< int > {
+class SwarmOccupancyTree : public mm::Quadtree<int> {
 
 private:
 	struct BFSNode {
@@ -115,9 +115,10 @@ private:
 
 	};
 
-	int grid_cube_length_;
-	int grid_resolution_per_side_;
-	int grid_resolution_;
+	//int grid_cube_length_;
+	//int grid_resolution_width_;
+	//int grid_resolution_height_;
+	//int grid_resolution_;
 	glm::ivec3 offset_;
 
 	//std::shared_ptr<std::unordered_map<glm::ivec3, std::unordered_map<int, std::unordered_map<int, int>>
@@ -155,7 +156,7 @@ private:
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_simul_samples_per_timestep_per_gridcell;
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_sampled_timesteps_per_gridcell;
 public:
-	bool going_through_interior_test(const glm::vec3& robot_position, const glm::vec3& point_to_test) const;
+	bool going_through_interior_test(const glm::ivec3& robot_position, const glm::ivec3& point_to_test) const;
 	bool find_closest_perimeter(const glm::ivec3& robot_grid_position,
 		glm::ivec3& perimeter_position);
 	bool find_closest_empty_space(const glm::ivec3& robot_grid_position,
@@ -183,8 +184,9 @@ public:
 	void create_interior_list();
 	int get_interior_mark();
 	void mark_floor_plan();
-	SwarmOccupancyTree(int grid_cube_length, int grid_resolution);
-	SwarmOccupancyTree(int grid_cube_length, int grid_resolution, int empty_value);
+	//SwarmOccupancyTree(int grid_cube_length, int grid_resolution);
+	//SwarmOccupancyTree::SwarmOccupancyTree(float grid_square_length, int grid_height, int grid_width);
+	SwarmOccupancyTree(int grid_cube_length, int grid_width, int grid_height, char empty_value);
 	void get_adjacent_cells(const glm::ivec3& position, std::vector<glm::ivec3>& cells, int sensor_range) const;
 	bool visited(std::set<BFSNode>* visited_nodes, const BFSNode& bfs_node) const;
 	bool visited(const SwarmOccupancyTree& visited_nodes, const BFSNode& bfs_node) const;
@@ -214,8 +216,8 @@ public:
 	bool is_interior(const glm::ivec3& position) const;
 	std::vector<glm::vec3> find_adjacent_interiors(const std::vector<glm::ivec3>& adjacent_cells) const;
 
-	int get_grid_resolution_per_side();
-	int get_grid_cube_length();
+	//int get_grid_resolution_per_side();
+	//int get_grid_cube_length();
 	void create_perimeter_list();
 	void create_empty_space_list();
 	bool next_cell_to_explore(const glm::ivec3& robot_grid_position,
@@ -235,7 +237,7 @@ class SwarmCollisionTree : public mm::Quadtree<std::set<int>*> {
 public:
 	std::vector<int> find_adjacent_robots(int robot_id, const std::vector<glm::ivec3>& adjacent_cells) const;
 	std::vector<int> find_adjacent_robots(int robot_id, const glm::ivec3& position) const;
-	SwarmCollisionTree(unsigned resolution);
+	SwarmCollisionTree(unsigned width, unsigned height);
 	void insert(int robot_id, const glm::ivec3& position);
 	void update(int robot_id, const glm::ivec3& previous_position, const glm::ivec3& current_position);
 	virtual ~SwarmCollisionTree() override;
@@ -254,10 +256,10 @@ public:
 
 	void mark_random_points_in_triangle(glm::vec3 a, glm::vec3 b, glm::vec3 c);
 	void mark_interior_line(glm::vec3 a, glm::vec3 b);
-	bool is_out_of_bounds(const glm::ivec3& position) const;
+	//bool is_out_of_bounds(const glm::ivec3& position) const;
 	void mark_floor_plan();
-	glm::ivec3 map_to_grid(const glm::vec3& position) const;
-	Swarm3DReconTree(unsigned grid_resolution, int grid_cube_length);
+	//glm::ivec3 map_to_grid(const glm::vec3& position) const;
+	Swarm3DReconTree(float grid_cube_length, int grid_width, int grid_height);
 	void insert(glm::vec3& points, const glm::ivec3& position);
 	std::vector<glm::vec3>* get_3d_points(const glm::ivec3& position);
 	virtual ~Swarm3DReconTree() override;

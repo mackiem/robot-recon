@@ -26,13 +26,14 @@ struct Recon3DPoints : public VisObject {
 
 struct GridOverlay : public VisObject {
 	SwarmOccupancyTree* occupany_grid_;
-	unsigned int grid_resolution_per_side_;
+	unsigned int grid_width_;
+	unsigned int grid_height_;
 	float grid_length_;
 	QGLShaderProgram* shader_;
 	std::map<int, cv::Vec4f> robot_color_map_;
 	std::vector<cv::Vec4f> fill_color_;
-	GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree, unsigned int grid_resolution, 
-		float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
+	GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree,  
+		int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
 
 	void update_grid_position(const glm::ivec3& position, const cv::Vec4f& color);
 	void update_grid_position(const glm::ivec3& position);

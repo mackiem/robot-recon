@@ -132,9 +132,9 @@ void Robot::init() {
 
 	if (render_) {
 		init_force_visualization(0, explore_force_, blue);
-		init_force_visualization(1, separation_force_, green);
+		init_force_visualization(1, separation_force_, yellow);
 		init_force_visualization(2, resultant_force_, black);
-		init_force_visualization(3, perimeter_force_, yellow);
+		init_force_visualization(3, perimeter_force_, green);
 		init_force_visualization(4, cluster_force_, cyan);
 		init_force_visualization(5, alignment_force_, orange);
 	}
@@ -174,7 +174,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	//perimeter_range_ = Range(1, 4);
 	//explore_range_ = Range(4, 10); // extends to infininty
 
-	magic_k_ = occupancy_grid_->get_grid_cube_length() * magic_k;
+	//magic_k_ = occupancy_grid_->get_grid_cube_length() * magic_k;
 
 	attraction_distance_threshold_ = separation_distance_ + 10;
 
@@ -198,8 +198,8 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 
 	// naive theoretical baseline
 	auto no_of_perimeter_cells = occupancy_grid_->no_of_unexplored_cells();
-	auto total_distance_of_perimeter_cells = no_of_perimeter_cells * occupancy_grid_->get_grid_cube_length();
-	auto half_diagonal_length = 0.5 * 1.414 * occupancy_grid_->get_grid_resolution_per_side() * occupancy_grid_->get_grid_cube_length();
+	//auto total_distance_of_perimeter_cells = no_of_perimeter_cells * occupancy_grid_->get_grid_cube_length();
+	//auto half_diagonal_length = 0.5 * 1.414 * occupancy_grid_->get_grid_resolution_per_side() * occupancy_grid_->get_grid_cube_length();
 	
 	std::vector<int> theroetical_no_of_robots;
 	theroetical_no_of_robots.push_back(1);
@@ -209,7 +209,7 @@ Robot::Robot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* o
 	theroetical_no_of_robots.push_back(100);
 
 	for (auto& no_of_robots : theroetical_no_of_robots) {
-		auto no_of_time_steps = total_distance_of_perimeter_cells / magic_k_ / no_of_robots;
+		//auto no_of_time_steps = total_distance_of_perimeter_cells / magic_k_ / no_of_robots;
 		//no_of_time_steps += half_diagonal_length / magic_k_;
 		//std::cout << "theoretical baseline - no of robots " << no_of_robots << " no of steps : " << no_of_time_steps << std::endl;
 	}
@@ -374,12 +374,12 @@ void Robot::calculate_separation_force(const std::vector<int>& other_robots, con
 			auto separation_vector = position_ - robots_[other_robot_id]->position_;
 			auto separation_length = glm::length(separation_vector);
 			if (separation_length > 1e-6) {
-				float length = separation_length / static_cast<float>(occupancy_grid_->get_grid_cube_length());
-				if (separation_range_.within_range(length)) {
-					float inverse_length = (separation_range_.max_ - length) * static_cast<float>(occupancy_grid_->get_grid_cube_length());
-					auto inverse_separation_vector = inverse_length * glm::normalize(separation_vector);
-					separation_force_ += calculate_direction(position_ + inverse_separation_vector, separation_constant_);
-				}
+				//float length = separation_length / static_cast<float>(occupancy_grid_->get_grid_cube_length());
+				//if (separation_range_.within_range(length)) {
+				//	float inverse_length = (separation_range_.max_ - length) * static_cast<float>(occupancy_grid_->get_grid_cube_length());
+				//	auto inverse_separation_vector = inverse_length * glm::normalize(separation_vector);
+				//	separation_force_ += calculate_direction(position_ + inverse_separation_vector, separation_constant_);
+				//}
 			}
 		}
 	}
@@ -780,9 +780,9 @@ bool Robot::is_colliding(const glm::vec3& other_object_position, float radius) c
 
 bool Robot::is_colliding_with_interior(const std::vector<glm::vec3>& interior_positions) const {
 	for (auto& interior : interior_positions) {
-		if (is_colliding(interior, (occupancy_grid_->get_grid_cube_length() / 2.f))) {
-			return true;
-		}
+		//if (is_colliding(interior, (occupancy_grid_->get_grid_cube_length() / 2.f))) {
+		//	return true;
+		//}
 	}
 	return false;
 }

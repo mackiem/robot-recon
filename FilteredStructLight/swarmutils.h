@@ -80,7 +80,10 @@ struct SwarmParams {
 	double bounce_function_multiplier_;
 	double sensor_range_;
 	double discovery_range_;
-	int grid_resolution_per_side_;
+	//int grid_resolution_per_side_;
+	int grid_width_;
+	int grid_height_;
+
 	int no_of_clusters_;
 	int max_time_taken_;
 	double death_percentage_;
@@ -198,7 +201,7 @@ public:
 	static cv::Mat convert_mat(glm::mat3& input_mat);
 	static std::vector<glm::vec3> create_starting_formation(Formation type, SwarmParams& swarm_params, SwarmOccupancyTree* occupancy_grid_);
 	static void write_matrix_to_file();
-	static void load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data, SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);
+	//static void load_interior_model(SwarmParams& swarm_params, VertexBufferData*& vertex_buffer_data, SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);
 	static void create_robots(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_, SwarmOccupancyTree* occupancy_grid_, SwarmCollisionTree* collision_grid_, Swarm3DReconTree* recon_grid_, UniformLocations& uniform_locations, QGLShaderProgram* shader, bool render, std::vector<Robot*>& robots);
 	static void populate_death_map(SwarmParams& swarm_params, std::unordered_map<int, int>& death_map_);
 	static std::string get_optimizer_results_filename(std::string swarm_config_filename, std::string mid_part);
@@ -213,6 +216,9 @@ public:
 	static bool intersect(const cv::Vec3f& n, float d, const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt);
 	static void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset,
 		SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);
-	static void load_interior_model_from_matrix(const SwarmParams& swarm_params, Swarm3DReconTree* recon_grid, SwarmOccupancyTree* occupancy_grid);
+	static void load_interior_model_from_matrix(SwarmParams& swarm_params, 
+		SwarmOccupancyTree** occupancy_grid, 
+		Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
+	static void create_grids(SwarmOccupancyTree** occupancy_grid, Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
 };
 

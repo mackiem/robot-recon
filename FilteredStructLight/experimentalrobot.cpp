@@ -41,13 +41,13 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	: Robot(locations, id, octree, collision_tree,  separation_constant,
 	alignment_constant, cluster_constant, explore_constant,sensor_range, discovery_range, separation_distance, position, render, shader),  
 	square_radius_(square_radius), bounce_function_power_(bounce_function_power), 
-	bounce_function_multiplier_(bounce_function_multiplier), recon_tree_(recon_tree), max_time_(max_time)
+	bounce_function_multiplier_(bounce_function_multiplier), recon_tree_(recon_tree), max_time_(max_time), 
+	local_map_(mm::Quadtree<char>(occupancy_grid_->get_grid_width(), occupancy_grid_->get_grid_height(), occupancy_grid_->get_grid_square_length(), 0))
 {
 	random_direction_ = glm::vec3(1.f, 0.f, 0.f);
 	max_velocity_ = 4.f;
 	robot_radius_ = 11.85f;
 	previous_no_of_explored_cells_ = -1;
-	explore_range_ = Range(0, occupancy_grid_->get_grid_resolution_per_side() * 1.414);
 	death_time_ = -1;
 	dead_ = false;
 	dead_color_changed_ = false;
@@ -56,9 +56,15 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	populate_clustering_map();
 	random_constant_ = 10.f;
 
-	local_map_ = new unsigned char[occupancy_grid_->get_grid_resolution_per_side() * occupancy_grid_->get_grid_resolution_per_side()];
-	local_no_of_unexplored_cells_ = occupancy_grid_->get_grid_resolution_per_side() * occupancy_grid_->get_grid_resolution_per_side();
-	std::fill(local_map_, local_map_ + local_no_of_unexplored_cells_, 0);
+	diagonal_grid_length_ = std::sqrt(std::pow(occupancy_grid_->get_grid_height(), 2.f) + std::pow(occupancy_grid_->get_grid_width(), 2.f));
+
+	explore_range_ = Range(0, diagonal_grid_length_);
+
+	//local_map_ = new unsigned char[occupancy_grid_->get_grid_resolution_per_side() * occupancy_grid_->get_grid_resolution_per_side()];
+	//local_no_of_unexplored_cells_ = occupancy_grid_->get_grid_resolution_per_side() * occupancy_grid_->get_grid_resolution_per_side();
+	//std::fill(local_map_, local_map_ + local_no_of_unexplored_cells_, 0);
+
+	local_no_of_unexplored_cells_ = occupancy_grid_->get_grid_width() * occupancy_grid_->get_grid_height();
 
 	previous_no_of_local_explored_cells_ = 0;
 }
@@ -100,7 +106,7 @@ void ExperimentalRobot::update_visualization_structs() {
 
 	explored_mutex_.lock();
 	for (auto& adjacent_sensor_cell : explored_cells_) {
-		overlay_->update_grid_position(adjacent_sensor_cell, color_);
+		overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
 	}
 	explored_cells_.clear();
 	explored_mutex_.unlock();
@@ -148,7 +154,7 @@ void ExperimentalRobot::set_cluster_id(int cluster_id) {
 
 ExperimentalRobot::~ExperimentalRobot()
 {
-	delete local_map_;
+	//delete local_map_;
 }
 
 glm::vec3 ExperimentalRobot::calculate_separation_velocity() {
@@ -191,74 +197,74 @@ glm::vec3 ExperimentalRobot::calculate_alignment_velocity() {
 	return (v - velocity_) * alignment_constant_;
 }
 
-glm::vec3 ExperimentalRobot::bounce_off_corners_velocity() {
-	float x_max, y_max, z_max;
-	float x_min, y_min, z_min;
-	float outer_boundary = 3.5f;
-	x_min = y_min = z_min = occupancy_grid_->get_grid_cube_length() * outer_boundary;
-	x_max = y_max = z_max = occupancy_grid_->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - outer_boundary);
-
-	float x_wall_max, y_wall_max, z_wall_max;
-	float x_wall_min, y_wall_min, z_wall_min;
-
-	float inner_boundary = 1.5f;
-	x_wall_min = y_wall_min = z_wall_min = occupancy_grid_->get_grid_cube_length() * inner_boundary;
-	x_wall_max = y_wall_max = z_wall_max = occupancy_grid_->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - inner_boundary);
-	
-	const float opposite_vel = max_velocity_;
-	const float power = 2.f;
-	glm::vec3 v;
-
-	float bounce_off_normalizing_constant = 0.001f;
-
-	if (position_.x > x_max
-		&& position_.z > z_max) {
-			float normalizing_constant = 1.f / std::pow(position_.x - x_wall_max, power);
-			v.x = bounce_off_normalizing_constant * -opposite_vel;
-			v.z = normalizing_constant * -opposite_vel;
-
-	} else if (position_.x < x_min
-		&& position_.z < z_min) {
-			float normalizing_constant = 1.f / std::pow(position_.z - z_wall_min, power);
-			v.z = bounce_off_normalizing_constant * opposite_vel;
-			v.x = normalizing_constant * opposite_vel;
-		
-	}
-	else {
-
-
-		if (position_.x < x_min) {
-			float normalizing_constant = 1.f / std::pow(position_.x - x_wall_min, power);
-			v.x = bounce_off_normalizing_constant * opposite_vel;
-			// send in the normal direction
-			v.z = normalizing_constant * opposite_vel;
-		}
-		else if (position_.x > x_max) {
-			float normalizing_constant = 1.f / std::pow(position_.x - x_wall_max, power);
-			// send in the normal direction
-			v.x = bounce_off_normalizing_constant * -opposite_vel;
-			v.z = normalizing_constant * -opposite_vel;
-		}
-
-		//if (position_.y < y_min) {
-		//	v.y = opposite_vel;
-		//} else if (position_.y > y_may) {
-		//	v.y = -opposite_vel;
-		//}
-
-		if (position_.z < z_min) {
-			float normalizing_constant = 1.f / std::pow(position_.z - z_wall_min, power);
-			v.z = bounce_off_normalizing_constant * opposite_vel;
-			v.x = normalizing_constant * -opposite_vel;
-		}
-		else if (position_.z > z_max) {
-			float normalizing_constant = 1.f / std::pow(position_.z - z_wall_max, power);
-			v.z = bounce_off_normalizing_constant * -opposite_vel;
-			v.x = normalizing_constant * opposite_vel;
-		}
-	}
-	return v;
-}
+//glm::vec3 ExperimentalRobot::bounce_off_corners_velocity() {
+//	float x_max, y_max, z_max;
+//	float x_min, y_min, z_min;
+//	float outer_boundary = 3.5f;
+//	x_min = y_min = z_min = occupancy_grid_->get_grid_square_length() * outer_boundary;
+//	x_max = y_max = z_max = occupancy_grid_->get_grid_square_length() * (occupancy_grid_->get_grid_resolution_per_side() - outer_boundary);
+//
+//	float x_wall_max, y_wall_max, z_wall_max;
+//	float x_wall_min, y_wall_min, z_wall_min;
+//
+//	float inner_boundary = 1.5f;
+//	x_wall_min = y_wall_min = z_wall_min = occupancy_grid_->get_grid_square_length() * inner_boundary;
+//	x_wall_max = y_wall_max = z_wall_max = occupancy_grid_->get_grid_square_length() * (occupancy_grid_->get_grid_resolution_per_side() - inner_boundary);
+//	
+//	const float opposite_vel = max_velocity_;
+//	const float power = 2.f;
+//	glm::vec3 v;
+//
+//	float bounce_off_normalizing_constant = 0.001f;
+//
+//	if (position_.x > x_max
+//		&& position_.z > z_max) {
+//			float normalizing_constant = 1.f / std::pow(position_.x - x_wall_max, power);
+//			v.x = bounce_off_normalizing_constant * -opposite_vel;
+//			v.z = normalizing_constant * -opposite_vel;
+//
+//	} else if (position_.x < x_min
+//		&& position_.z < z_min) {
+//			float normalizing_constant = 1.f / std::pow(position_.z - z_wall_min, power);
+//			v.z = bounce_off_normalizing_constant * opposite_vel;
+//			v.x = normalizing_constant * opposite_vel;
+//		
+//	}
+//	else {
+//
+//
+//		if (position_.x < x_min) {
+//			float normalizing_constant = 1.f / std::pow(position_.x - x_wall_min, power);
+//			v.x = bounce_off_normalizing_constant * opposite_vel;
+//			// send in the normal direction
+//			v.z = normalizing_constant * opposite_vel;
+//		}
+//		else if (position_.x > x_max) {
+//			float normalizing_constant = 1.f / std::pow(position_.x - x_wall_max, power);
+//			// send in the normal direction
+//			v.x = bounce_off_normalizing_constant * -opposite_vel;
+//			v.z = normalizing_constant * -opposite_vel;
+//		}
+//
+//		//if (position_.y < y_min) {
+//		//	v.y = opposite_vel;
+//		//} else if (position_.y > y_may) {
+//		//	v.y = -opposite_vel;
+//		//}
+//
+//		if (position_.z < z_min) {
+//			float normalizing_constant = 1.f / std::pow(position_.z - z_wall_min, power);
+//			v.z = bounce_off_normalizing_constant * opposite_vel;
+//			v.x = normalizing_constant * -opposite_vel;
+//		}
+//		else if (position_.z > z_max) {
+//			float normalizing_constant = 1.f / std::pow(position_.z - z_wall_max, power);
+//			v.z = bounce_off_normalizing_constant * -opposite_vel;
+//			v.x = normalizing_constant * opposite_vel;
+//		}
+//	}
+//	return v;
+//}
 
 glm::vec3 ExperimentalRobot::calculate_clustering_velocity() {
 	glm::vec3 pc;
@@ -284,7 +290,8 @@ glm::vec3 ExperimentalRobot::calculate_clustering_velocity() {
 		clustered_neighbors_per_timestamp_map_[current_timestamp_] = count ;
 	}
 
-	float normalizing_constant = std::pow(glm::length(pc - position_) / (sensor_range_ * 1.414 * occupancy_grid_->get_grid_cube_length()), 2);
+
+	float normalizing_constant = std::pow(glm::length(pc - position_) / (sensor_range_ * 1.414 * occupancy_grid_->get_grid_square_length()), 2);
 	//glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) / 10.f;
 	glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) * cluster_constant_;
 	return cluster_velocity;
@@ -347,13 +354,16 @@ bool ExperimentalRobot::local_explore_search(glm::ivec3& explore_cell_position) 
 						&& !occupancy_grid_->is_out_of_bounds(cell_position)) {
 						// get adjacent cells
 						int free_adjacent_cells = 0;
-						for (int z_interior = -sensor_level; z_interior <= sensor_level; ++z_interior) {
-							for (int x_interior = -sensor_level; x_interior <= sensor_level; ++x_interior) {
+						int sensor_level_interior = 1;
+						for (int z_interior = -sensor_level_interior; z_interior <= sensor_level_interior; ++z_interior) {
+							for (int x_interior = -sensor_level_interior; x_interior <= sensor_level_interior; ++x_interior) {
 								if (!(x_interior == 0 && z_interior == 0)) {
 									glm::ivec3 adjacent_cell = cell_position + glm::ivec3(x_interior, 0.f, z_interior);
 									if (!occupancy_grid_->is_interior(adjacent_cell)
 										&& !occupancy_grid_->is_out_of_bounds(adjacent_cell)
-										&& not_locally_visited(adjacent_cell)) {
+										&& not_locally_visited(adjacent_cell)
+										&& !occupancy_grid_->going_through_interior_test(grid_position, adjacent_cell))
+									{
 										free_adjacent_cells++;
 										cell_found = true;
 										explore_cell_position = adjacent_cell;
@@ -382,7 +392,7 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 	glm::ivec3 grid_position = occupancy_grid_->map_to_grid(position_);
 	bool cell_found = false;
 
-	for (int sensor_level = 1; sensor_level <= occupancy_grid_->get_grid_resolution_per_side(); ++sensor_level) {
+	for (int sensor_level = sensor_range_ + 1; sensor_level <= diagonal_grid_length_; ++sensor_level) {
 		int no_of_iter = 0;
 		int out_of_bounds = 0;
 		for (int z = -sensor_level; z <= sensor_level; ++z) {
@@ -394,27 +404,35 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 					if (occupancy_grid_->is_out_of_bounds(cell_position)) {
 						out_of_bounds++;
 					}
-					if (!not_locally_visited(cell_position)
-						&& !occupancy_grid_->is_out_of_bounds(cell_position)) {
-						// get adjacent cells
-						int free_adjacent_cells = 0;
-						for (int z_interior = -sensor_level; z_interior <= sensor_level; ++z_interior) {
-							for (int x_interior = -sensor_level; x_interior <= sensor_level; ++x_interior) {
-								if (!(x_interior == 0 && z_interior == 0)) {
-									glm::ivec3 adjacent_cell = cell_position + glm::ivec3(x_interior, 0.f, z_interior);
 
-									if (!occupancy_grid_->is_interior(adjacent_cell)
-										&& !occupancy_grid_->is_out_of_bounds(adjacent_cell)
-										&& not_locally_visited(adjacent_cell)) {
+					if (
+						!occupancy_grid_->is_out_of_bounds(cell_position)
+						&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
+						&& not_locally_visited(cell_position)) {
 
-										free_adjacent_cells++;
-										cell_found = true;
-										explore_cell_position = adjacent_cell;
-										return true;
-									}
-								}
-							}
-						}
+						cell_found = true;
+						explore_cell_position = cell_position;
+						return true;
+
+						//// get adjacent cells
+						//int free_adjacent_cells = 0;
+						//for (int z_interior = -sensor_level; z_interior <= sensor_level; ++z_interior) {
+						//	for (int x_interior = -sensor_level; x_interior <= sensor_level; ++x_interior) {
+						//		if (!(x_interior == 0 && z_interior == 0)) {
+						//			glm::ivec3 adjacent_cell = cell_position + glm::ivec3(x_interior, 0.f, z_interior);
+
+						//			if (!occupancy_grid_->is_interior(adjacent_cell)
+						//				&& !occupancy_grid_->is_out_of_bounds(adjacent_cell)
+						//				&& !occupancy_grid_->going_through_interior_test(grid_position, adjacent_cell))
+						//			{
+						//				free_adjacent_cells++;
+						//				cell_found = true;
+						//				explore_cell_position = adjacent_cell;
+						//				return true;
+						//			}
+						//		}
+						//	}
+						//}
 					}
 				}
 			}
@@ -440,7 +458,8 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 
 	bool something_to_explore = false;
 	glm::ivec3 explore_cell;
-	if ((previous_no_of_local_explored_cells_ == explored_cells)) {
+	//if ((previous_no_of_explored_cells_ == explored_cells) && (previous_cell == current_cell)) {
+	if ((previous_no_of_explored_cells_ == explored_cells)) {
 		something_to_explore = true;
 		explore_cell = previous_local_explore_cell;
 	}
@@ -463,7 +482,7 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 	if (something_to_explore) {
 		previous_local_explore_cell = explore_cell;
 		auto move_to_position = occupancy_grid_->map_to_position(explore_cell);
-		float max_distance = occupancy_grid_->get_grid_resolution_per_side() * 1.414 * occupancy_grid_->get_grid_cube_length();
+		float max_distance = diagonal_grid_length_ * occupancy_grid_->get_grid_square_length();
 		float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
 		explore_velocity = normalizing_constant * (move_to_position - position_) * explore_constant_;
 	}
@@ -497,7 +516,7 @@ glm::vec3 ExperimentalRobot::calculate_explore_velocity() {
 		if (something_to_explore) {
 			previous_explore_cell = explore_cell;
 			auto move_to_position = occupancy_grid_->map_to_position(explore_cell);
-			float max_distance = occupancy_grid_->get_grid_resolution_per_side() * 1.414 * occupancy_grid_->get_grid_cube_length();
+			float max_distance = diagonal_grid_length_ * occupancy_grid_->get_grid_square_length();
 			float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
 			//explore_velocity = normalizing_constant * (move_to_position - position_) / 2.5f;
 			explore_velocity = normalizing_constant * (move_to_position - position_) * explore_constant_;
@@ -517,21 +536,21 @@ glm::vec3 ExperimentalRobot::calculate_explore_velocity() {
 	//float x_max, y_max, z_max;
 	//float x_min, y_min, z_min;
 	//float outer_boundary = 2.5f;
-	//x_min = y_min = z_min = occupancy_grid_->get_grid_cube_length() * outer_boundary;
-	//x_max = y_max = z_max = occupancy_grid_->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - outer_boundary);
+	//x_min = y_min = z_min = occupancy_grid_->get_grid_square_length() * outer_boundary;
+	//x_max = y_max = z_max = occupancy_grid_->get_grid_square_length() * (occupancy_grid_->get_grid_resolution_per_side() - outer_boundary);
 
 	//float x_wall_max, y_wall_max, z_wall_max;
 	//float x_wall_min, y_wall_min, z_wall_min;
 
 	//float inner_boundary = 1.5f;
-	//x_wall_min = y_wall_min = z_wall_min = occupancy_grid_->get_grid_cube_length() * inner_boundary;
-	//x_wall_max = y_wall_max = z_wall_max = occupancy_grid_->get_grid_cube_length() * (occupancy_grid_->get_grid_resolution_per_side() - inner_boundary);
+	//x_wall_min = y_wall_min = z_wall_min = occupancy_grid_->get_grid_square_length() * inner_boundary;
+	//x_wall_max = y_wall_max = z_wall_max = occupancy_grid_->get_grid_square_length() * (occupancy_grid_->get_grid_resolution_per_side() - inner_boundary);
 	//
 
 	//glm::vec3 v;
 	////float power = 3.0f;
 
-	//float normalizingConstant = (outer_boundary - inner_boundary) * occupancy_grid_->get_grid_cube_length();
+	//float normalizingConstant = (outer_boundary - inner_boundary) * occupancy_grid_->get_grid_square_length();
 	//if (position_.x <= x_min) {
 	//	float dist = 1.0 - std::abs(position_.x - x_wall_min) / normalizingConstant;  // ranges 0 to 1
 	//	dist = pow(dist, bounce_function_power_);
@@ -581,14 +600,14 @@ void ExperimentalRobot::reconstruct_points() {
 		}
 	}
 	for (auto& interior : interior_cells_) {
-		recon_tree_->update_multi_sampling_map(recon_tree_->map_to_grid(interior));
+		recon_tree_->update_multi_sampling_map(occupancy_grid_->map_to_grid(interior));
 	}
 }
 
 std::vector<glm::vec3> ExperimentalRobot::get_corners(const glm::vec3& interior_cell) const {
 	// 4 corners
 	std::vector<glm::vec3> corners(4);
-	float half_distance = occupancy_grid_->get_grid_cube_length() / 2.f;
+	float half_distance = occupancy_grid_->get_grid_square_length() / 2.f;
 
 	//int iter = 0;
 	//for (int x = -1; x < 1; ++x) {
@@ -718,28 +737,28 @@ glm::vec3 ExperimentalRobot::calculate_obstacle_avoidance_velocity() {
 		//float outer_boundary = sensor_range_;
 		float outer_boundary = 2.5f;
 
-		x_min = interior_center.x - (occupancy_grid_->get_grid_cube_length() * outer_boundary);
-		z_min = interior_center.z - (occupancy_grid_->get_grid_cube_length() * outer_boundary);
+		x_min = interior_center.x - (occupancy_grid_->get_grid_square_length() * outer_boundary);
+		z_min = interior_center.z - (occupancy_grid_->get_grid_square_length() * outer_boundary);
 
-		x_max = interior_center.x + (occupancy_grid_->get_grid_cube_length() * outer_boundary);
-		z_max = interior_center.z + (occupancy_grid_->get_grid_cube_length() * outer_boundary);
+		x_max = interior_center.x + (occupancy_grid_->get_grid_square_length() * outer_boundary);
+		z_max = interior_center.z + (occupancy_grid_->get_grid_square_length() * outer_boundary);
 			
 		float x_wall_max, y_wall_max, z_wall_max;
 		float x_wall_min, y_wall_min, z_wall_min;
 
 		float inner_boundary = 1.0f;
-		x_wall_min = interior_center.x - (occupancy_grid_->get_grid_cube_length() * inner_boundary);
-		z_wall_min = interior_center.z - (occupancy_grid_->get_grid_cube_length() * inner_boundary);
+		x_wall_min = interior_center.x - (occupancy_grid_->get_grid_square_length() * inner_boundary);
+		z_wall_min = interior_center.z - (occupancy_grid_->get_grid_square_length() * inner_boundary);
 
-		x_wall_max = interior_center.x + (occupancy_grid_->get_grid_cube_length() * inner_boundary);
-		z_wall_max = interior_center.z + (occupancy_grid_->get_grid_cube_length() * inner_boundary);
+		x_wall_max = interior_center.x + (occupancy_grid_->get_grid_square_length() * inner_boundary);
+		z_wall_max = interior_center.z + (occupancy_grid_->get_grid_square_length() * inner_boundary);
 
 		glm::vec3 v;
 		//float power = 3.0f;
 
-		float epsilon = 2.f * occupancy_grid_->get_grid_cube_length();
+		float epsilon = 2.f * occupancy_grid_->get_grid_square_length();
 
-		float normalizingConstant = (outer_boundary - inner_boundary) * occupancy_grid_->get_grid_cube_length();
+		float normalizingConstant = (outer_boundary - inner_boundary) * occupancy_grid_->get_grid_square_length();
 
 		if (std::abs(position_.z - interior_center.z) < epsilon) {
 			if (position_.x >= x_min && position_.x <= interior_center.x) {
@@ -790,17 +809,18 @@ glm::vec3 ExperimentalRobot::get_random_velocity() {
 }
 
 bool ExperimentalRobot::not_locally_visited(const glm::ivec3& grid_position) {
-	int map_position = grid_position.x * occupancy_grid_->get_grid_resolution_per_side() + grid_position.z;
-	if (local_map_[map_position] == 0) {
+	//int map_position = grid_position.x * occupancy_grid_->get_grid_resolution_per_side() + grid_position.z;
+	if (local_map_.at(grid_position.x, grid_position.z) == 0) {
 		return true;
 	}
 	return  false;
 }
 
 void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position) {
-	int map_position = grid_position.x * occupancy_grid_->get_grid_resolution_per_side() + grid_position.z;
-	if (local_map_[map_position] == 0) {
-		local_map_[map_position] = 1;
+	//int map_position = grid_position.x * occupancy_grid_->get_grid_resolution_per_side() + grid_position.z;
+	if (local_map_.at(grid_position.x, grid_position.z) == 0) {
+		char val = 1;
+		local_map_.set(grid_position.x, grid_position.z, val);
 		local_no_of_unexplored_cells_--;
 	}
 }
@@ -825,8 +845,8 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 								no_of_iter++;
 								if (!occupancy_grid_->is_out_of_bounds(cell_position)
 									&& not_locally_visited(cell_position)) {
+									mark_locally_covered(cell_position);
 									if (!occupancy_grid_->is_interior(cell_position)) {
-										mark_locally_covered(cell_position);
 										if (render_) {
 											explored_mutex_.lock();
 											explored_cells_.push_back(cell_position);
@@ -934,7 +954,12 @@ void ExperimentalRobot::update(int timestamp) {
 	position_ += velocity_ * delta_time / 1000.f / 10.f;
 
 #ifdef LOCAL
-				mark_othere_robots_ranges();
+	auto current_cell = occupancy_grid_->map_to_grid(previous_position_);
+	auto previous_cell = occupancy_grid_->map_to_grid(previous_nminus2_position_);
+
+	if (current_cell != previous_cell) {
+		mark_othere_robots_ranges();
+	}
 #endif
 	//bool is_colliding = false;
 	//is_colliding |= is_colliding_precisely(interior_cells_);
@@ -966,6 +991,10 @@ void ExperimentalRobot::update(int timestamp) {
 			// discovery range is not needed
 			//if (distance <= discovery_range_) {
 
+#ifdef LOCAL
+			// interior or not we need to mark as covered
+				mark_locally_covered(sensored_cell);
+#endif
 			if (!occupancy_grid_->is_interior(sensored_cell)) {
 				if (render_) {
 					explored_mutex_.lock();
@@ -974,9 +1003,6 @@ void ExperimentalRobot::update(int timestamp) {
 				}
 				occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
 				occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
-#ifdef LOCAL
-				mark_locally_covered(sensored_cell);
-#endif
 			}
 			else {
 			}
