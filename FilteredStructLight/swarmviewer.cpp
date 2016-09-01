@@ -274,7 +274,10 @@ void GridOverlay::create_mesh(bool initialize) {
 		VertexBufferData bufferdata;
 
 		cv::Vec4f explored_color(1.f, 1.f, 1.f, 1.f);
-		cv::Vec4f unexplored_color(.86f, 0.08f, .24f, 1.f);
+		//cv::Vec4f unexplored_color(.86f, 0.08f, .24f, 1.f);
+		cv::Vec4f unexplored_color(.1f, .1f, .1f, 1.f);
+		cv::Vec4f interior_color(121.f, 96.f, 76.f, 255.f);
+		interior_color /= 255.f;
 
 		cv::Vec3f normal(0.f, 1.f, 0.f);
 
@@ -305,11 +308,15 @@ void GridOverlay::create_mesh(bool initialize) {
 				//glm::ivec3 current_position(x + grid_length_per_side, 0, z + grid_length_per_side);
 				glm::ivec3 current_position(x, 0, z);
 				cv::Vec4f color = unexplored_color;
-				int explored_robot = occupany_grid_->explored_by(current_position);
-
-				if (explored_robot >= 0) {
-					color = robot_color_map_[explored_robot];
+				
+				if (occupany_grid_->is_interior(current_position)) {
+					color = interior_color;
 				}
+				//int explored_robot = occupany_grid_->explored_by(current_position);
+
+				//if (explored_robot >= 0) {
+				//	color = robot_color_map_[explored_robot];
+				//}
 
 				for (auto i = 0u; i < 6; ++i) {
 					bufferdata.colors.push_back(color);
@@ -537,7 +544,8 @@ void SwarmViewer::quad_tree_test() {
 void SwarmViewer::upload_interior_model_data_to_gpu(VertexBufferData* vertex_buffer_data) {
 	if (render_) {
 	GLenum error = glGetError();
-		cv::Vec4f color(0.8f, 0.5f, 0.5f, 1.f);
+		//cv::Vec4f color(0.8f, 0.5f, 0.5f, 1.f);
+		cv::Vec4f color(0.1f, 0.1f, 0.1f, 1.f);
 		vertex_buffer_data->colors = std::vector<cv::Vec4f>(vertex_buffer_data->positions.size(), color);
 
 		RenderEntity interior_model(GL_TRIANGLES, &m_shader);
@@ -1650,10 +1658,10 @@ void SwarmViewer::create_occupancy_grid(int grid_width, int grid_height, int gri
 	RenderMesh mesh;
 	mesh.push_back(occupancy_grid);
 
-	VisObject* grid =  new VisObject(uniform_locations_);
-	grid->mesh_ = mesh;
+	//VisObject* grid =  new VisObject(uniform_locations_);
+	//grid->mesh_ = mesh;
 
-	reset_vis_objects_.push_back(grid);
+	//reset_vis_objects_.push_back(grid);
 }
 
 //void SwarmViewer::set_no_of_robots(int no_of_robots) {
