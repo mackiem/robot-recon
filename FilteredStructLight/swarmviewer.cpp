@@ -264,6 +264,9 @@ GridOverlay::GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree
 		fill_color_[i] /= 255.f;
 	}
 	create_mesh(true);
+	glPointSize(5.f);
+
+	//poo_grid_ = mm::QuadTree<std::set<int>*>();
 }
 
 void GridOverlay::create_mesh(bool initialize) {
@@ -275,7 +278,7 @@ void GridOverlay::create_mesh(bool initialize) {
 
 		cv::Vec4f explored_color(1.f, 1.f, 1.f, 1.f);
 		//cv::Vec4f unexplored_color(.86f, 0.08f, .24f, 1.f);
-		cv::Vec4f unexplored_color(.1f, .1f, .1f, 1.f);
+		cv::Vec4f unexplored_color(.4f, .4f, .4f, 1.f);
 		cv::Vec4f interior_color(121.f, 96.f, 76.f, 255.f);
 		interior_color /= 255.f;
 
@@ -349,23 +352,50 @@ void GridOverlay::update(glm::mat4 global_model) {
 	//create_mesh(false);
 }
 
+void GridOverlay::update_poo_position(const glm::vec3& position, const cv::Vec4f& color) {
+	VertexBufferData bufferdata;
+	int y = SwarmViewer::OCCUPANCY_GRID_HEIGHT + 10;
+	cv::Vec3f pos(position.x, y, position.z);
+	bufferdata.positions.push_back(pos);
+
+	cv::Vec3f normal(0.f, 1.f, 0.f);
+	bufferdata.normals.push_back(normal);
+	bufferdata.indices.push_back(0);
+	bufferdata.count.push_back(bufferdata.positions.size());
+	bufferdata.base_index.push_back(0);
+	bufferdata.offset.push_back(0);
+	bufferdata.colors.push_back(color);
+
+	RenderEntity poo(GL_POINTS, shader_);
+	poo.upload_data_to_gpu(bufferdata);
+
+	mesh_.push_back(poo);
+
+
+}
+
 void GridOverlay::update_grid_position(const glm::ivec3& position, const cv::Vec4f& color) {
-	RenderEntity& entity = mesh_[0];
 
-	std::vector<cv::Vec4f> fill_color(6);
-	std::fill(fill_color.begin(), fill_color.end(), color);
 
-	glBindVertexArray(entity.vao_);
-	glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
-	glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (position.x * grid_height_) + position.z) * sizeof(cv::Vec4f), 
-		6 * sizeof(cv::Vec4f), &fill_color[0]);
 
-	glBindVertexArray(0);
+
+	//RenderEntity& entity = mesh_[0];
+
+	//std::vector<cv::Vec4f> fill_color(6);
+	//std::fill(fill_color.begin(), fill_color.end(), color);
+
+	//glBindVertexArray(entity.vao_);
+	//glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
+	//glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (position.x * grid_height_) + position.z) * sizeof(cv::Vec4f), 
+	//	6 * sizeof(cv::Vec4f), &fill_color[0]);
+
+	//glBindVertexArray(0);
 
 }
 
 void GridOverlay::update_grid_position(const glm::ivec3& position) {
-	update_grid_position(position, fill_color_[0]);
+
+	//update_grid_position(position, fill_color_[0]);
 	//RenderEntity& entity = mesh_[0];
 
 
@@ -1152,11 +1182,11 @@ void SwarmViewer::create_lights() {
 
 	std::random_device rd;
 	std::mt19937 rng(rd());
-	std::uniform_real_distribution<float> color(0.5, 1); // uniform, unbiased
-	std::uniform_int_distribution<int> position_x(0, occupancy_grid_->get_grid_square_length() 
-		* occupancy_grid_->get_grid_width());
-	std::uniform_int_distribution<int> position_z(0, occupancy_grid_->get_grid_square_length() 
-		* occupancy_grid_->get_grid_height());
+	//std::uniform_real_distribution<float> color(0.5, 1); // uniform, unbiased
+	//std::uniform_int_distribution<int> position_x(0, occupancy_grid_->get_grid_square_length() 
+	//	* occupancy_grid_->get_grid_width());
+	//std::uniform_int_distribution<int> position_z(0, occupancy_grid_->get_grid_square_length() 
+	//	* occupancy_grid_->get_grid_height());
 
 	m_shader.bind();
 
@@ -1178,8 +1208,10 @@ void SwarmViewer::create_lights() {
 		light->light_color_location_ = m_shader.uniformLocation(light_color_name.str().c_str());
 
 		//glm::vec3 light_position(0, 0, -100);
-		glm::vec3 light_position(position_x(rng), 1500.f, position_z(rng));
-		glm::vec3 light_color(color(rng), color(rng), color(rng));
+		//glm::vec3 light_position(position_x(rng), 1500.f, position_z(rng));
+		//glm::vec3 light_color(color(rng), color(rng), color(rng));
+		glm::vec3 light_position(1400.f, 1500.f, 1400.f);
+		glm::vec3 light_color(.8, .8, .8);
 		SwarmUtils::print_vector("position of light : ", light_position);
 
 		light->color_ = light_color;

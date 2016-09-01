@@ -106,9 +106,15 @@ void ExperimentalRobot::update_visualization_structs() {
 
 	explored_mutex_.lock();
 	for (auto& adjacent_sensor_cell : explored_cells_) {
-		overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
+		//overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
+		overlay_->update_grid_position(adjacent_sensor_cell, color_ );
 	}
 	explored_cells_.clear();
+	for (auto& visited_cells : poo_cells_) {
+		//overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
+		overlay_->update_poo_position(visited_cells, color_ );
+	}
+	poo_cells_.clear();
 	explored_mutex_.unlock();
 	recon_mutex_.lock();
 	for (auto& reconstructed_position : reconstructed_positions_) {
@@ -848,9 +854,9 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 									mark_locally_covered(cell_position);
 									if (!occupancy_grid_->is_interior(cell_position)) {
 										if (render_) {
-											explored_mutex_.lock();
-											explored_cells_.push_back(cell_position);
-											explored_mutex_.unlock();
+											//explored_mutex_.lock();
+											//explored_cells_.push_back(cell_position);
+											//explored_mutex_.unlock();
 										}
 									}
 									//if (id_ == 2) {
@@ -984,6 +990,15 @@ void ExperimentalRobot::update(int timestamp) {
 	update_adjacent_and_interior(previous_grid_position, grid_position);
 
 
+	if (timestamp % 10 == 0 > timestamp > 0) {
+				if (render_) {
+					explored_mutex_.lock();
+					poo_cells_.push_back(position_);
+					explored_mutex_.unlock();
+				}
+		
+	}
+
 	if (interior_updated_) {
 		for (auto sensored_cell : adjacent_cells_) {
 			float distance = glm::length(glm::vec3(grid_position - sensored_cell));
@@ -996,11 +1011,11 @@ void ExperimentalRobot::update(int timestamp) {
 				mark_locally_covered(sensored_cell);
 #endif
 			if (!occupancy_grid_->is_interior(sensored_cell)) {
-				if (render_) {
-					explored_mutex_.lock();
-					explored_cells_.push_back(sensored_cell);
-					explored_mutex_.unlock();
-				}
+				//if (render_) {
+				//	explored_mutex_.lock();
+				//	explored_cells_.push_back(sensored_cell);
+				//	explored_mutex_.unlock();
+				//}
 				occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
 				occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
 			}

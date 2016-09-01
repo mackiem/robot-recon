@@ -39,6 +39,7 @@ struct GridOverlay : public VisObject {
 	void update_grid_position(const glm::ivec3& position);
 	void create_mesh(bool initialize);
 	void update(glm::mat4 global_model) override;
+	void update_poo_position(const glm::vec3& position, const cv::Vec4f& color);
 };
 
 struct Range {
@@ -165,6 +166,7 @@ protected:
 	bool show_forces_;
 
 	std::vector<glm::ivec3> explored_cells_;
+	std::vector<glm::vec3> poo_cells_;
 	QMutex explored_mutex_;
 
 	int discovery_range_;
