@@ -91,12 +91,12 @@ void ExperimentalRobot::populate_clustering_map() {
 void ExperimentalRobot::update_visualization_structs() {
 	// update visualization
 	if (show_forces_) {
-		update_force_visualization(0, explore_force_);
+		/*Vupdate_force_visualization(0, explore_force_);
 		update_force_visualization(1, separation_force_);
 		update_force_visualization(3, perimeter_force_);
 		update_force_visualization(4, cluster_force_);
 		update_force_visualization(5, alignment_force_);
-		update_force_visualization(2, 100.f * resultant_force_);
+		update_force_visualization(2, 100.f * resultant_force_);*/
 	}
 	// update rendered mesh
 	for (auto& render_entity : mesh_) {
@@ -356,8 +356,8 @@ bool ExperimentalRobot::local_explore_search(glm::ivec3& explore_cell_position) 
 				if (std::abs(x) == sensor_level
 					|| std::abs(z) == sensor_level) {
 					glm::ivec3 cell_position = grid_position + glm::ivec3(x, 0, z);
-					if (occupancy_grid_->is_interior(cell_position)
-						&& !occupancy_grid_->is_out_of_bounds(cell_position)) {
+					if (!occupancy_grid_->is_out_of_bounds(cell_position)
+						&& occupancy_grid_->is_interior(cell_position)) {
 						// get adjacent cells
 						int free_adjacent_cells = 0;
 						int sensor_level_interior = 1;
@@ -365,8 +365,8 @@ bool ExperimentalRobot::local_explore_search(glm::ivec3& explore_cell_position) 
 							for (int x_interior = -sensor_level_interior; x_interior <= sensor_level_interior; ++x_interior) {
 								if (!(x_interior == 0 && z_interior == 0)) {
 									glm::ivec3 adjacent_cell = cell_position + glm::ivec3(x_interior, 0.f, z_interior);
-									if (!occupancy_grid_->is_interior(adjacent_cell)
-										&& !occupancy_grid_->is_out_of_bounds(adjacent_cell)
+									if (!occupancy_grid_->is_out_of_bounds(adjacent_cell)
+										&& !occupancy_grid_->is_interior(adjacent_cell)
 										&& not_locally_visited(adjacent_cell)
 										&& !occupancy_grid_->going_through_interior_test(grid_position, adjacent_cell))
 									{
@@ -411,8 +411,7 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 						out_of_bounds++;
 					}
 
-					if (
-						!occupancy_grid_->is_out_of_bounds(cell_position)
+					if (!occupancy_grid_->is_out_of_bounds(cell_position)
 						&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
 						&& not_locally_visited(cell_position)) {
 

@@ -1,7 +1,7 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'cameradisplaywidget.h'
 **
-** Created by: The Qt Meta Object Compiler version 67 (Qt 5.3.2)
+** Created by: The Qt Meta Object Compiler version 67 (Qt 5.5.1)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
@@ -12,7 +12,7 @@
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'cameradisplaywidget.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
-#error "This file was generated using the moc from 5.3.2. It"
+#error "This file was generated using the moc from 5.5.1. It"
 #error "cannot be used with the include files from this version of Qt."
 #error "(The moc has changed too much.)"
 #endif
@@ -20,24 +20,25 @@
 QT_BEGIN_MOC_NAMESPACE
 struct qt_meta_stringdata_GLWidget_t {
     QByteArrayData data[9];
-    char stringdata[94];
+    char stringdata0[94];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    qptrdiff(offsetof(qt_meta_stringdata_GLWidget_t, stringdata) + ofs \
+    qptrdiff(offsetof(qt_meta_stringdata_GLWidget_t, stringdata0) + ofs \
         - idx * sizeof(QByteArrayData)) \
     )
 static const qt_meta_stringdata_GLWidget_t qt_meta_stringdata_GLWidget = {
     {
-QT_MOC_LITERAL(0, 0, 8),
-QT_MOC_LITERAL(1, 9, 13),
-QT_MOC_LITERAL(2, 23, 0),
-QT_MOC_LITERAL(3, 24, 18),
-QT_MOC_LITERAL(4, 43, 3),
-QT_MOC_LITERAL(5, 47, 6),
-QT_MOC_LITERAL(6, 54, 13),
-QT_MOC_LITERAL(7, 68, 5),
-QT_MOC_LITERAL(8, 74, 19)
+QT_MOC_LITERAL(0, 0, 8), // "GLWidget"
+QT_MOC_LITERAL(1, 9, 13), // "display_image"
+QT_MOC_LITERAL(2, 23, 0), // ""
+QT_MOC_LITERAL(3, 24, 18), // "FlyCapture2::Image"
+QT_MOC_LITERAL(4, 43, 3), // "img"
+QT_MOC_LITERAL(5, 47, 6), // "cam_no"
+QT_MOC_LITERAL(6, 54, 13), // "set_threshold"
+QT_MOC_LITERAL(7, 68, 5), // "value"
+QT_MOC_LITERAL(8, 74, 19) // "toggle_thresholding"
+
     },
     "GLWidget\0display_image\0\0FlyCapture2::Image\0"
     "img\0cam_no\0set_threshold\0value\0"
@@ -75,6 +76,7 @@ void GLWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, vo
 {
     if (_c == QMetaObject::InvokeMetaMethod) {
         GLWidget *_t = static_cast<GLWidget *>(_o);
+        Q_UNUSED(_t)
         switch (_id) {
         case 0: _t->display_image((*reinterpret_cast< const FlyCapture2::Image(*)>(_a[1])),(*reinterpret_cast< int(*)>(_a[2]))); break;
         case 1: _t->set_threshold((*reinterpret_cast< int(*)>(_a[1]))); break;
@@ -97,7 +99,7 @@ void GLWidget::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, vo
 
 const QMetaObject GLWidget::staticMetaObject = {
     { &QGLWidget::staticMetaObject, qt_meta_stringdata_GLWidget.data,
-      qt_meta_data_GLWidget,  qt_static_metacall, 0, 0}
+      qt_meta_data_GLWidget,  qt_static_metacall, Q_NULLPTR, Q_NULLPTR}
 };
 
 
@@ -108,8 +110,8 @@ const QMetaObject *GLWidget::metaObject() const
 
 void *GLWidget::qt_metacast(const char *_clname)
 {
-    if (!_clname) return 0;
-    if (!strcmp(_clname, qt_meta_stringdata_GLWidget.stringdata))
+    if (!_clname) return Q_NULLPTR;
+    if (!strcmp(_clname, qt_meta_stringdata_GLWidget.stringdata0))
         return static_cast<void*>(const_cast< GLWidget*>(this));
     return QGLWidget::qt_metacast(_clname);
 }

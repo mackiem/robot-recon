@@ -96,7 +96,7 @@ void RobotWorker::do_work() {
 		}
 		if (!paused_) {
 			if (slow_down_) {
-				QThread::currentThread()->msleep(100);
+				QThread::currentThread()->msleep(10);
 			}
 			step_count_--;
 			if (time_step_count_ > max_time_taken_) {
@@ -279,7 +279,7 @@ void GridOverlay::create_mesh(bool initialize) {
 		cv::Vec4f explored_color(1.f, 1.f, 1.f, 1.f);
 		//cv::Vec4f unexplored_color(.86f, 0.08f, .24f, 1.f);
 		cv::Vec4f unexplored_color(.4f, .4f, .4f, 1.f);
-		cv::Vec4f interior_color(121.f, 96.f, 76.f, 255.f);
+		cv::Vec4f interior_color(84.f, 65.f, 51.f, 255.f);
 		interior_color /= 255.f;
 
 		cv::Vec3f normal(0.f, 1.f, 0.f);
@@ -364,7 +364,9 @@ void GridOverlay::update_poo_position(const glm::vec3& position, const cv::Vec4f
 	bufferdata.count.push_back(bufferdata.positions.size());
 	bufferdata.base_index.push_back(0);
 	bufferdata.offset.push_back(0);
-	bufferdata.colors.push_back(color);
+	cv::Vec4f new_color = color * 1.f / 2.f;
+	new_color[3] = 1.f;
+	bufferdata.colors.push_back(new_color);
 
 	RenderEntity poo(GL_POINTS, shader_);
 	poo.upload_data_to_gpu(bufferdata);
