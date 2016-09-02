@@ -26,7 +26,7 @@ double max_multi_sampling_g;
 SwarmViewer* SwarmOptimizer::swarm_viewer_g;
 double SwarmOptimizer::separation_constant_;
 
-double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 10.0;
+double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 30.0;
 double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 10.0;
 double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = 50.0;
 double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 10.0;
