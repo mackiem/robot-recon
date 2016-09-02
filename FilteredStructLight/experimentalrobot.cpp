@@ -850,18 +850,21 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 								no_of_iter++;
 								if (!occupancy_grid_->is_out_of_bounds(cell_position)
 									&& not_locally_visited(cell_position)) {
-									mark_locally_covered(cell_position);
-									if (!occupancy_grid_->is_interior(cell_position)) {
-										if (render_) {
-											//explored_mutex_.lock();
-											//explored_cells_.push_back(cell_position);
-											//explored_mutex_.unlock();
+										float distance = glm::length(glm::vec3(other_robot_grid_position - cell_position));
+										if (distance < (sensor_range_ - 2)) {
+											mark_locally_covered(cell_position);
 										}
-									}
-									//if (id_ == 2) {
-									//	std::string str = std::to_string(robot_id) + " " + std::to_string(local_no_of_unexplored_cells_) + " ";
-									//	SwarmUtils::print_vector(str, cell_position);
-									//}
+										if (!occupancy_grid_->is_interior(cell_position)) {
+											if (render_) {
+												//explored_mutex_.lock();
+												//explored_cells_.push_back(cell_position);
+												//explored_mutex_.unlock();
+											}
+										}
+										//if (id_ == 2) {
+										//	std::string str = std::to_string(robot_id) + " " + std::to_string(local_no_of_unexplored_cells_) + " ";
+										//	SwarmUtils::print_vector(str, cell_position);
+										//}
 								}
 							}
 						}
@@ -1007,7 +1010,9 @@ void ExperimentalRobot::update(int timestamp) {
 
 #ifdef LOCAL
 			// interior or not we need to mark as covered
+			if (distance < (sensor_range_ - 2)) {
 				mark_locally_covered(sensored_cell);
+			}
 #endif
 			if (!occupancy_grid_->is_interior(sensored_cell)) {
 				//if (render_) {
@@ -1016,7 +1021,11 @@ void ExperimentalRobot::update(int timestamp) {
 				//	explored_mutex_.unlock();
 				//}
 				occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
-				occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
+
+				// We need to go one extra grid to cover interior, so make sure it's always less than 1
+				if (distance < (sensor_range_ - 2)) {
+					occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
+				}
 			}
 			else {
 			}
