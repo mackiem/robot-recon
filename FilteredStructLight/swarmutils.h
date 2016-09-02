@@ -90,6 +90,7 @@ struct SwarmParams {
 	int death_time_taken_;
 	QString config_name_;
 	QString model_matrix_filename_;
+	int robots_in_a_cluster_;
 };
 
 

@@ -740,28 +740,51 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 	}
 }
 
-double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
-		//sampling_avg_storage_.push_back(calculate_simultaneous_sampling_per_cluster());
+SimSampMap SwarmOccupancyTree::calculate_simultaneous_sampling_per_grid_cell() {
 
-		//int no_of_timesteps = 0;
-
-		//for (auto& sampling : sampling_avg_storage_) {
-		//	sampling_factor += sampling.first;
-		//	no_of_timesteps += sampling.second;
-		//}
-		//sampling_factor = (sampling_factor / sampling_avg_storage_.size());
-		//if (interior_list_.size() > 0) {
-		//	sampling_factor /= interior_list_.size();
-		//}
 	calculate_simultaneous_sampling_per_cluster();
+
+	SimSampMap simultaneous_sampling_map;
+
+	for (auto& sample_per_timestep : no_of_simul_samples_per_timestep_per_gridcell) {
+		auto grid_cell = sample_per_timestep.first;
+		auto no_of_total_samples_per_grid_cell = sample_per_timestep.second;
+		// we have to know the actual timesteps this was sampled
+		auto no_of_timesteps_grid_cell_was_sampled =  no_of_sampled_timesteps_per_gridcell[grid_cell];
+		simultaneous_sampling_map[grid_cell] = (double) no_of_total_samples_per_grid_cell / no_of_timesteps_grid_cell_was_sampled;
+	}
+
+	return simultaneous_sampling_map;
+}
+
+double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
+
+	//calculate_simultaneous_sampling_per_cluster();
+
+	//double sampling_factor = 0.0;
+
+	//for (auto& sample_per_timestep : no_of_simul_samples_per_timestep_per_gridcell) {
+	//	auto grid_cell = sample_per_timestep.first;
+	//	auto no_of_total_samples_per_grid_cell = sample_per_timestep.second;
+	//	// we have to know the actual timesteps this was sampled
+	//	auto no_of_timesteps_grid_cell_was_sampled =  no_of_sampled_timesteps_per_gridcell[grid_cell];
+	//	sampling_factor += (double) no_of_total_samples_per_grid_cell / no_of_timesteps_grid_cell_was_sampled;
+	//}
+
+	//if (no_of_sampled_timesteps_per_gridcell.size() > 0) {
+	//	sampling_factor /= interior_list_.size();
+	//}
 
 	double sampling_factor = 0.0;
 
-	for (auto& sample_per_timestep : no_of_simul_samples_per_timestep_per_gridcell) {
-		sampling_factor += (double)sample_per_timestep.second / no_of_sampled_timesteps_per_gridcell[sample_per_timestep.first];
+	auto simultaneous_sampling_map = calculate_simultaneous_sampling_per_grid_cell();
+
+	for (auto& cell_entry : simultaneous_sampling_map) {
+		auto simultaneous_sampling_per_grid_cell = cell_entry.second;
+		sampling_factor += simultaneous_sampling_per_grid_cell;
 	}
 
-	if (no_of_sampled_timesteps_per_gridcell.size() > 0) {
+	if (simultaneous_sampling_map.size() > 0) {
 		sampling_factor /= interior_list_.size();
 	}
 

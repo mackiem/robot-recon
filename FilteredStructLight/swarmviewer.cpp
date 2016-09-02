@@ -11,6 +11,9 @@
 #include <QtCore/qcoreapplication.h>
 #include "experimentalrobot.h"
 #include <fstream>
+#include <boost/container/container_fwd.hpp>
+#include <glm/detail/type_mat.hpp>
+#include <unordered_map>
 
 
 //const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/house interior.obj";
@@ -74,6 +77,14 @@ void RobotWorker::set_swarm_params(SwarmParams swarm_params) {
 	swarm_params_ = swarm_params;
 }
 
+void RobotWorker::set_simlutaneous_sampling_per_gridcell_map(ThreadSafeSimSampMap* simultaneous_sampling_per_grid_cell) {
+	simultaneous_sampling_per_grid_cell_ = simultaneous_sampling_per_grid_cell;
+}
+
+//void RobotWorker::set_overlay_lock(QMutex* overlay_lock) {
+//	overlay_lock_ = overlay_lock;
+//}
+
 
 void RobotWorker::finish_work() {
 	if (!sampling_updated_) {
@@ -129,7 +140,10 @@ void RobotWorker::do_work() {
 				for (auto& robot : robots_) {
 					robot->update(time_step_count_);
 				}
-				//accumulator_ -= delta_time;
+				if (time_step_count_ > 0 && time_step_count_ % 100 == 0) {
+					auto map = occupancy_grid_->calculate_simultaneous_sampling_per_grid_cell();
+					simultaneous_sampling_per_grid_cell_->set_map(map);
+				}
 				time_step_count_++;
 			} catch (OutOfGridBoundsException& ex) {
 				std::cout << "Out of bounds...\n";
@@ -253,10 +267,9 @@ void Recon3DPoints::update_3d_points(const glm::ivec3& position) {
 
 
 GridOverlay::GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree, 
-	int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader) : 
-
+	int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader, int no_of_robots_in_a_cluster) : 
 	VisObject(locations), occupany_grid_(octree), grid_width_(grid_width), grid_height_(grid_height), grid_length_(grid_length), 
-	robot_color_map_(robot_color_map), shader_(shader)  {
+	robot_color_map_(robot_color_map), shader_(shader), simult_sampling_grid_(mm::Quadtree<SamplingTime>(grid_width_, grid_height_, 1, SamplingTime())), no_of_robots_in_a_cluster_(no_of_robots_in_a_cluster)  {
 	
 	fill_color_.resize(6);
 	for (int i = 0; i < 6; ++i) {
@@ -266,7 +279,15 @@ GridOverlay::GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree
 	create_mesh(true);
 	glPointSize(5.f);
 
-	//poo_grid_ = mm::QuadTree<std::set<int>*>();
+	// init sampling grid
+	for (int x = 0; x < grid_width_; ++x) {
+		for (int z = 0; z < grid_height_; ++z) {
+			SamplingTime sampling_time;
+			sampling_time.simultaneous_samples = 0;
+			sampling_time.timestamps = 0;
+			simult_sampling_grid_.set(x, z, sampling_time);
+		}
+	}
 }
 
 void GridOverlay::create_mesh(bool initialize) {
@@ -372,14 +393,11 @@ void GridOverlay::update_poo_position(const glm::vec3& position, const cv::Vec4f
 	poo.upload_data_to_gpu(bufferdata);
 
 	mesh_.push_back(poo);
-
-
 }
 
 void GridOverlay::update_grid_position(const glm::ivec3& position, const cv::Vec4f& color) {
 
-
-
+	//auto& sampling_time = simult_sampling_grid_.at(position.x, position.z);
 
 	//RenderEntity& entity = mesh_[0];
 
@@ -392,7 +410,40 @@ void GridOverlay::update_grid_position(const glm::ivec3& position, const cv::Vec
 	//	6 * sizeof(cv::Vec4f), &fill_color[0]);
 
 	//glBindVertexArray(0);
+}
 
+cv::Vec4f GridOverlay::calculate_heatmap_color_grid_cell(double minimum, double maximum, double unclamped_value) {
+	double value = std::max(std::min(unclamped_value, maximum), minimum);
+	double ratio = 2 * (value-minimum) / (maximum - minimum);
+    int b = int(std::max(0.0, 255*(1 - ratio)));
+    int r = int(std::max(0.0, 255*(ratio - 1)));
+    int g = 255 - b - r;
+	cv::Vec4f color(r, g, b, 255.f);
+	color /= 255.f;
+    return color;
+}
+
+void GridOverlay::update_simultaneous_sampling_heatmap(const SimSampMap simultaneous_sampling_per_grid_cell) {
+
+	//auto& sampling_time = simult_sampling_grid_.at(position.x, position.z);
+	RenderEntity& entity = mesh_[0];
+
+	glBindVertexArray(entity.vao_);
+	glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
+
+	for (auto& sampling_per_grid_cell : simultaneous_sampling_per_grid_cell) {
+		auto& grid_cell = sampling_per_grid_cell.first;
+		auto& sampling = sampling_per_grid_cell.second;
+
+		auto color = calculate_heatmap_color_grid_cell(0.0, no_of_robots_in_a_cluster_, sampling); 
+		std::vector<cv::Vec4f> fill_color(6);
+		std::fill(fill_color.begin(), fill_color.end(), color);
+
+		glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (grid_cell.x * grid_height_) + grid_cell.z) * sizeof(cv::Vec4f), 
+			6 * sizeof(cv::Vec4f), &fill_color[0]);
+	}
+
+	glBindVertexArray(0);
 }
 
 void GridOverlay::update_grid_position(const glm::ivec3& position) {
@@ -700,6 +751,9 @@ void SwarmViewer::custom_draw_code() {
 			}
 		}
 
+		// need to update the cells here
+		overlay_->update_simultaneous_sampling_heatmap(simultaneous_sampling_per_grid_cell_map_.get_map());
+		
 		for (auto& vis_object : reset_vis_objects_) {
 			vis_object->update(model_);
 			vis_object->draw(model_, camera_, projection_);
@@ -807,20 +861,17 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 
 	render_ = gui_render_;
 
-
-
 	VertexBufferData* vertex_buffer_data = nullptr;
 	SwarmUtils::load_interior_model_from_matrix(swarm_params, &occupancy_grid_, &recon_grid_, &collision_grid_);
 
-	swarm_params_ = swarm_params;
 	//SwarmUtils::create_grids(&occupancy_grid_, &recon_grid_, &collision_grid_);
+	swarm_params_ = swarm_params;
 
 	occupancy_grid_->create_perimeter_list();
 	occupancy_grid_->create_empty_space_list();
 	occupancy_grid_->create_interior_list();
 
-	SwarmUtils::create_robots(swarm_params, death_map_, occupancy_grid_, collision_grid_, recon_grid_, uniform_locations_, &m_shader, render_, robots_);
-
+	SwarmUtils::create_robots(swarm_params_, death_map_, occupancy_grid_, collision_grid_, recon_grid_, uniform_locations_, &m_shader, render_, robots_);
 
 	// assumption - global position of other robots are known
 	for (auto& robot : robots_) {
@@ -841,7 +892,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 		create_lights();
 
 		overlay_ = new GridOverlay(uniform_locations_,
-			occupancy_grid_, swarm_params.grid_width_, swarm_params.grid_height_, swarm_params.grid_length_, robot_color_map_, &m_shader);
+			occupancy_grid_, swarm_params.grid_width_, swarm_params.grid_height_, swarm_params.grid_length_, robot_color_map_, &m_shader, swarm_params_.robots_in_a_cluster_);
 		update_perimiter_positions_in_overlay();
 
 		reset_vis_objects_.push_back(overlay_);
@@ -870,6 +921,8 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	connect(robot_worker_, &RobotWorker::update_sampling, this, &SwarmViewer::update_sampling);
 	connect(&robot_update_thread_, &QThread::started, robot_worker_, &RobotWorker::do_work);
 
+	simultaneous_sampling_per_grid_cell_map_.clear();
+	robot_worker_->set_simlutaneous_sampling_per_gridcell_map(&simultaneous_sampling_per_grid_cell_map_);
 	robot_worker_->set_swarm_params(swarm_params);
 	robot_worker_->set_robots(robots_);
 	robot_worker_->set_occupancy_tree(occupancy_grid_);

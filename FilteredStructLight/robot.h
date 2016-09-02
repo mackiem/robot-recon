@@ -24,6 +24,11 @@ struct Recon3DPoints : public VisObject {
 
 };
 
+struct SamplingTime {
+	int simultaneous_samples;
+	int timestamps;
+};
+
 struct GridOverlay : public VisObject {
 	SwarmOccupancyTree* occupany_grid_;
 	unsigned int grid_width_;
@@ -33,13 +38,16 @@ struct GridOverlay : public VisObject {
 	std::map<int, cv::Vec4f> robot_color_map_;
 	std::vector<cv::Vec4f> fill_color_;
 	GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree,  
-		int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader);
-
+		int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader, int no_of_robots_in_a_cluster);
+	int no_of_robots_in_a_cluster_;
+	mm::Quadtree<SamplingTime> simult_sampling_grid_;
 	void update_grid_position(const glm::ivec3& position, const cv::Vec4f& color);
 	void update_grid_position(const glm::ivec3& position);
 	void create_mesh(bool initialize);
 	void update(glm::mat4 global_model) override;
 	void update_poo_position(const glm::vec3& position, const cv::Vec4f& color);
+	cv::Vec4f calculate_heatmap_color_grid_cell(double minimum, double maximum, double unclamped_value);
+	void update_simultaneous_sampling_heatmap(const SimSampMap simultaneous_sampling_per_grid_cell);
 };
 
 struct Range {

@@ -851,6 +851,7 @@ void SwarmUtils::create_robots(SwarmParams& swarm_params, std::unordered_map<int
 
 	int no_of_clusters = (swarm_params.no_of_clusters_ > swarm_params.no_of_robots_) ? swarm_params.no_of_robots_ : swarm_params.no_of_clusters_;
 	int robots_in_a_cluster = swarm_params.no_of_robots_ / no_of_clusters;
+	swarm_params.robots_in_a_cluster_ = robots_in_a_cluster;
 		
 	//std::cout << "Debug : " << robots_in_a_cluster << "," << no_of_clusters << ", " << robot_positions.size() << ", " << swarm_params.no_of_robots_ << "\n";
 	for (int i = 0; i < swarm_params.no_of_robots_; ++i) {
@@ -898,6 +899,8 @@ void SwarmUtils::populate_death_map(SwarmParams& swarm_params, std::unordered_ma
 				std::cout << "Unknown robot_id : " << robot_id << "\n";
 			} else {
 				int death_time = death_time_distribution(eng);
+
+				// init sampling grid
 				death_map_[robot_id] = death_time;
 				dead_robots_count++;
 			}

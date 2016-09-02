@@ -4,6 +4,7 @@
 #include <memory>
 #include <queue>
 #include <functional>
+#include <QMutex>
 
 #define GRID_MAX 100000
 //class OutOfGridBoundsException : public std::exception {
@@ -71,6 +72,33 @@ struct Vec3Comparator {
 		}
 	}
 };
+
+typedef std::unordered_map<glm::ivec3, double, IVec3Hasher, IVec3Equals> SimSampMap;
+
+class ThreadSafeSimSampMap {
+	
+	QMutex lock_;
+	SimSampMap map_;
+
+public:
+	void set_map(SimSampMap& map) {
+		lock_.lock();
+		map_ = map;
+		lock_.unlock();
+	}
+	SimSampMap get_map() {
+		lock_.lock();
+		auto map = map_;
+		lock_.unlock();
+		return map;
+	}
+
+	void clear() {
+		lock_.lock();
+		map_ = SimSampMap();
+		lock_.unlock();
+	}
+}; 
 
 struct PerimeterPos {
 	float distance_;
@@ -228,6 +256,8 @@ public:
 	void mark_explored_in_perimeter_list(const glm::ivec3& grid_position);
 	void mark_explored_in_empty_space_list(const glm::ivec3& grid_position);
 	void mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position);
+
+	SimSampMap calculate_simultaneous_sampling_per_grid_cell();
 	
 	virtual ~SwarmOccupancyTree();
 };

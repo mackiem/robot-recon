@@ -9,6 +9,7 @@
 #include "swarmutils.h"
 #include "experimentalrobot.h"
 
+
 class ParallelMCMCOptimizer;
 class RobotWorker : public QObject {
 	Q_OBJECT
@@ -25,6 +26,9 @@ class RobotWorker : public QObject {
 	double max_time_taken_;
 	Swarm3DReconTree* recon_grid_;
 	SwarmParams swarm_params_;
+	ThreadSafeSimSampMap* simultaneous_sampling_per_grid_cell_;
+	//QMutex* overlay_lock_;
+
 public:
 	RobotWorker();
 	void set_robots(std::vector<Robot*> robots);
@@ -34,6 +38,9 @@ public:
 	void abort();
 	void set_max_time_taken(int max_time_taken);
 	void set_swarm_params(SwarmParams swarm_params);
+	void set_simlutaneous_sampling_per_gridcell_map(ThreadSafeSimSampMap* simultaneous_sampling_per_grid_cell);
+	//void set_overlay_lock(QMutex* overlay_lock);
+
 	//double calculate_coverage();
 	//double calculate_occulusion_factor();
 	void finish_work();
@@ -152,6 +159,8 @@ private:
 
 	ParallelMCMCOptimizer* optimizer_worker_;
 	QThread* optimizer_thread_;
+	//QMutex overlay_lock_;
+	ThreadSafeSimSampMap simultaneous_sampling_per_grid_cell_map_;
 
 protected:
 
