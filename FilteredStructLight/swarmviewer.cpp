@@ -696,7 +696,7 @@ void SwarmViewer::change_to_top_down_view() {
 	center_ = mid_point;
 	eye_ = mid_point;
 	float distance = (height / 2.f) / std::tan((fovy_ /2.f));
-	eye_.y = distance - 200;
+	eye_.y = distance;
 
 	up_ = glm::vec3(1.f, 0.f, 0.f);
 	
