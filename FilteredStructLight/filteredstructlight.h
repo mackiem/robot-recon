@@ -253,7 +253,7 @@ private:
 	QDoubleSpinBox* occlusion_score_textbox_;
 	QLabel* clustering_score_label_;
 	QDoubleSpinBox* clustering_score_textbox_;
-
+	QDoubleSpinBox* coverage_needed_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();

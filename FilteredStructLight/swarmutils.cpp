@@ -74,6 +74,7 @@ const char* SwarmUtils::MAX_TIME_TAKEN = "max_time_taken";
 const char* SwarmUtils::NO_OF_CLUSTERS = "no_of_clusters_";
 const char* SwarmUtils::DEATH_PERCENTAGE = "death_percentage_";
 const char* SwarmUtils::DEATH_TIME_TAKEN = "death_time_taken";
+const char* SwarmUtils::COVERAGE_FACTOR = "coverage_factor";
 
 
 const std::string SwarmUtils::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/l-shape-floor-plan.obj";
@@ -205,6 +206,8 @@ SwarmParams SwarmUtils::load_swarm_params(const QString& filename) {
 	swarm_params.no_of_clusters_ = (settings.value(NO_OF_CLUSTERS, "1").toInt());
 	swarm_params.death_time_taken_ = (settings.value(DEATH_TIME_TAKEN, "2000").toInt());
 	swarm_params.death_percentage_ = (settings.value(DEATH_PERCENTAGE, "0.0").toDouble());
+
+	swarm_params.coverage_needed_ = settings.value(COVERAGE_FACTOR, "1.0").toDouble();
 	return swarm_params;
 }
 
@@ -278,6 +281,7 @@ void SwarmUtils::save_swarm_params(const SwarmParams& params, const QString& fil
 	settings.setValue(DEATH_PERCENTAGE, params.death_percentage_);
 	settings.setValue(NO_OF_CLUSTERS, params.no_of_clusters_);
 	settings.setValue(DEATH_TIME_TAKEN, params.death_time_taken_);
+	settings.setValue(COVERAGE_FACTOR, params.coverage_needed_);
 }
 
 void SwarmUtils::print_vector(const std::string& name, const glm::vec3& vector) {
@@ -732,8 +736,8 @@ void SwarmUtils::derive_floor_plan(const VertexBufferData& bufferdata, float sca
 	//occupancy_grid_->remove_inner_interiors();
 }
 
-void SwarmUtils::load_interior_model_from_matrix(SwarmParams& swarm_params, SwarmOccupancyTree** occupancy_grid, 
-	Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid) {
+bool SwarmUtils::load_interior_model_from_matrix(SwarmParams& swarm_params, SwarmOccupancyTree** occupancy_grid,
+                                                 Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid) {
 
 
 
@@ -749,6 +753,10 @@ void SwarmUtils::load_interior_model_from_matrix(SwarmParams& swarm_params, Swar
 		model_matrix = cv::imread(model_filename, CV_LOAD_IMAGE_GRAYSCALE);
 	} else {
 		std::cout << "Unknown file type :  " << file_ext << "\n";
+	}
+
+	if (model_matrix.empty()) {
+		return false;
 	}
 
 	//if (occupancy_grid->get_grid_resolution_per_side() != model_matrix.rows) {
@@ -774,7 +782,7 @@ void SwarmUtils::load_interior_model_from_matrix(SwarmParams& swarm_params, Swar
 	int mark = (*occupancy_grid)->get_interior_mark();
 
 	int y = 0;
-	for (int x = 0; x < model_matrix.rows; ++x) {
+	for (int x = 0; x < model_matrix.cols; ++x) {
 		for (int z = 0; z < model_matrix.rows; ++z) {
 			int value = model_matrix.at<unsigned char>(z, x);
 			if (value < 220) {
@@ -784,6 +792,7 @@ void SwarmUtils::load_interior_model_from_matrix(SwarmParams& swarm_params, Swar
 			}
 		}
 	}
+	return true;
 	
 }
 

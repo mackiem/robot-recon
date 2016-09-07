@@ -79,6 +79,7 @@ void RobotWorker::set_max_time_taken(int max_time_taken) {
 
 void RobotWorker::set_swarm_params(SwarmParams swarm_params) {
 	swarm_params_ = swarm_params;
+	//swarm_params_.coverage_needed_ = swarm_params.coverage_needed_;
 }
 
 void RobotWorker::set_simlutaneous_sampling_per_gridcell_map(ThreadSafeSimSampMap* simultaneous_sampling_per_grid_cell) {
@@ -118,7 +119,7 @@ void RobotWorker::do_work() {
 				finish_work();
 			}
 
-			if (occupancy_grid_->no_of_unexplored_cells() > 0
+			if ((occupancy_grid_->no_of_unexplored_cells() - (1.0 - swarm_params_.coverage_needed_) * occupancy_grid_->no_of_interior_cells()) > 0
 				&& !(time_step_count_ > max_time_taken_)) {
 				emit update_time_step_count(time_step_count_);
 			} else {
@@ -694,7 +695,7 @@ void SwarmViewer::change_to_top_down_view() {
 
 	center_ = mid_point;
 	eye_ = mid_point;
-	float distance = (height / 2.f) / std::tan(glm::radians(fovy_ /2.f));
+	float distance = (height / 2.f) / std::tan((fovy_ /2.f));
 	eye_.y = distance - 200;
 
 	up_ = glm::vec3(1.f, 0.f, 0.f);
@@ -871,7 +872,11 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	render_ = gui_render_;
 
 	VertexBufferData* vertex_buffer_data = nullptr;
-	SwarmUtils::load_interior_model_from_matrix(swarm_params, &occupancy_grid_, &recon_grid_, &collision_grid_);
+	bool file_exists = SwarmUtils::load_interior_model_from_matrix(swarm_params, &occupancy_grid_, &recon_grid_, &collision_grid_);
+	if (!file_exists) {
+		std::cout << "Floor plan doesn't exist.\n";
+		return;
+	}
 
 	//SwarmUtils::create_grids(&occupancy_grid_, &recon_grid_, &collision_grid_);
 	swarm_params_ = swarm_params;

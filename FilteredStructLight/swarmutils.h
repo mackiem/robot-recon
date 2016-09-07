@@ -91,6 +91,7 @@ struct SwarmParams {
 	QString config_name_;
 	QString model_matrix_filename_;
 	int robots_in_a_cluster_;
+	double coverage_needed_;
 };
 
 
@@ -182,6 +183,7 @@ class SwarmUtils
 	static const char* NO_OF_CLUSTERS;
 	static const char* DEATH_PERCENTAGE;
 	static const char* DEATH_TIME_TAKEN;
+	static const char* COVERAGE_FACTOR;
 
 	// delete later
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
@@ -217,9 +219,9 @@ public:
 	static bool intersect(const cv::Vec3f& n, float d, const cv::Vec3f& a, const cv::Vec3f& b, cv::Vec3f& intersection_pt);
 	static void derive_floor_plan(const VertexBufferData& bufferdata, float scale, const glm::vec3& offset,
 		SwarmOccupancyTree* occupancy_grid_, Swarm3DReconTree* recon_grid_);
-	static void load_interior_model_from_matrix(SwarmParams& swarm_params, 
-		SwarmOccupancyTree** occupancy_grid, 
-		Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
+	static bool load_interior_model_from_matrix(SwarmParams& swarm_params,
+	                                            SwarmOccupancyTree** occupancy_grid,
+	                                            Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
 	static void create_grids(SwarmOccupancyTree** occupancy_grid, Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
 };
 

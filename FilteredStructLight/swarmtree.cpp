@@ -11,6 +11,8 @@
 #include <glm/detail/type_mat.hpp>
 #include <glm/detail/type_mat.hpp>
 #include <glm/detail/type_mat.hpp>
+#include <glm/detail/type_mat.hpp>
+#include <glm/detail/type_mat.hpp>
 
 //#include <vld.h>
 
@@ -157,6 +159,11 @@ SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_width, int
  int SwarmOccupancyTree::no_of_unexplored_cells() {
 	 //return explore_perimeter_list_.size();
 	 return explore_interior_list_.size();
+}
+
+ int SwarmOccupancyTree::no_of_interior_cells() const {
+	 //return explore_perimeter_list_.size();
+	 return interior_list_.size();
 }
 
 std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_static_perimeter_list() {
@@ -891,6 +898,20 @@ double SwarmOccupancyTree::calculate_coverage() {
 
 	
 	return coverage;
+}
+
+bool SwarmOccupancyTree::is_perimeter(const glm::ivec3& grid_position) const {
+	if (!is_interior(grid_position)) {
+		std::vector<glm::ivec3> adjacent_cells;
+		adjacent_cells.reserve(9);
+		get_adjacent_cells(grid_position, adjacent_cells, 1);
+		for (auto& adjacent_cell : adjacent_cells) {
+			if (is_interior(adjacent_cell)) {
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 void SwarmOccupancyTree::create_perimeter_list() {

@@ -149,6 +149,8 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 	swarm_params.death_percentage_ = death_percentage_->value();
 	swarm_params.death_time_taken_ = death_time_taken_->value();
 
+	swarm_params.coverage_needed_ = coverage_needed_->value();
+
 	return swarm_params;
 }
 
@@ -280,6 +282,9 @@ void FilteredStructLight::set_swarm_params_to_ui(const SwarmParams& swarm_params
 
 	death_percentage_->setValue(swarm_params.death_percentage_);
 	emit death_percentage_->valueChanged(death_percentage_->value());
+
+	coverage_needed_->setValue(swarm_params.coverage_needed_);
+	emit coverage_needed_->valueChanged(coverage_needed_->value());
 
 }
 
@@ -1631,6 +1636,17 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	max_time_layout->addWidget(max_time_taken_);
 
 	group_box_layout->addLayout(max_time_layout);
+
+	QHBoxLayout* coverage_needed_layout = new QHBoxLayout();
+	QLabel* coverage_needed_label = new QLabel("Coverage Needed (%)");
+	coverage_needed_ = new QDoubleSpinBox(group_box);
+	coverage_needed_->setMinimum(0.0);
+	coverage_needed_->setMaximum(1.0);
+
+	coverage_needed_layout->addWidget(coverage_needed_label);
+	coverage_needed_layout->addWidget(coverage_needed_);
+
+	group_box_layout->addLayout(coverage_needed_layout);
 
 
 	// should render

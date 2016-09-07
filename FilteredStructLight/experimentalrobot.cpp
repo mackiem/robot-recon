@@ -688,7 +688,6 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 		}
 	}
 	return false;
-	
 }
 
 

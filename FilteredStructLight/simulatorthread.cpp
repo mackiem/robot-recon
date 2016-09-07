@@ -112,10 +112,10 @@ void SimulatorThread::run() {
 		if (time_step_count_ > swarm_params_.max_time_taken_) {
 			finish_work();
 		}
-		if (occupancy_grid_->no_of_unexplored_cells() > 0) {
 
-		}
-		else {
+		if ((occupancy_grid_->no_of_unexplored_cells() - (1.0 - swarm_params_.coverage_needed_) * occupancy_grid_->no_of_interior_cells()) > 0) {
+
+		} else {
 			finish_work();
 		}
 		try {

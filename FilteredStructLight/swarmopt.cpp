@@ -26,10 +26,10 @@ double max_multi_sampling_g;
 SwarmViewer* SwarmOptimizer::swarm_viewer_g;
 double SwarmOptimizer::separation_constant_;
 
-double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 30.0;
+double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 50.0;
 double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 10.0;
 double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = 50.0;
-double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 10.0;
+double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 30.0;
 
 double ParallelMCMCOptimizer::MIN_SEPARATION_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_ALIGNMENT_VALUE = 0.0;
@@ -618,6 +618,7 @@ SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int th
 
 	MCMCParams next_params;
 	next_params.swarm_params = swarm_params_;
+	//next_params.swarm_params.coverage_needed_ = swarm_params_.coverage_needed_;
 	next_params.swarm_params.separation_constant_ = init_value(MIN_SEPARATION_VALUE, MAX_SEPARATION_VALUE);
 	next_params.swarm_params.alignment_constant_ = init_value(MIN_ALIGNMENT_VALUE, MAX_ALIGNMENT_VALUE);
 	next_params.swarm_params.cluster_constant_ = init_value(MIN_CLUSTER_VALUE, MAX_CLUSTER_VALUE);

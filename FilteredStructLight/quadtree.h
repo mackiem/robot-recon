@@ -63,7 +63,7 @@ namespace mm {
 
 template <class T>
 bool mm::Quadtree<T>::set(unsigned x, unsigned y, T& object) {
-	grid_[y * grid_height_ + x] = object;
+	grid_[y * grid_width_ + x] = object;
 	return true;
 
 	//return insert_value(root_, x, y, object);
@@ -72,7 +72,7 @@ bool mm::Quadtree<T>::set(unsigned x, unsigned y, T& object) {
 
 template <class T>
 T mm::Quadtree<T>::at(unsigned x, unsigned y) const {
-	return grid_[y * grid_height_ + x];
+	return grid_[y * grid_width_ + x];
 	//QuadNode* result_node;
 	//bool success = find_node(root_, x, y, result_node);
 	//if (success) {
@@ -86,7 +86,7 @@ T mm::Quadtree<T>::at(unsigned x, unsigned y) const {
 
 template <class T>
 bool mm::Quadtree<T>::unset(unsigned x, unsigned y) {
-	grid_[y * grid_height_ + x] = empty_value_;
+	grid_[y * grid_width_ + x] = empty_value_;
 	return true;
 
 

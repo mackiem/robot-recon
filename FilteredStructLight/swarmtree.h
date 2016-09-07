@@ -185,6 +185,9 @@ private:
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_simul_samples_per_timestep_per_gridcell;
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_sampled_timesteps_per_gridcell;
 public:
+
+	bool is_perimeter(const glm::ivec3& grid_position) const;
+
 	bool going_through_interior_test(const glm::ivec3& robot_position, const glm::ivec3& point_to_test) const;
 	bool find_closest_perimeter(const glm::ivec3& robot_grid_position,
 		glm::ivec3& perimeter_position);
@@ -207,6 +210,7 @@ public:
  
 	std::set<glm::ivec3, IVec3Comparator> get_unexplored_perimeter_list();
 	int no_of_unexplored_cells();
+	int no_of_interior_cells() const;
 	std::set<glm::ivec3, IVec3Comparator> get_static_perimeter_list();
 	std::set<glm::ivec3, IVec3Comparator> get_interior_list();
 
