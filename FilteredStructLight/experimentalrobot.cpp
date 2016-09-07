@@ -44,6 +44,7 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	bounce_function_multiplier_(bounce_function_multiplier), recon_tree_(recon_tree), max_time_(max_time), 
 	local_map_(mm::Quadtree<char>(occupancy_grid_->get_grid_width(), occupancy_grid_->get_grid_height(), occupancy_grid_->get_grid_square_length(), 0))
 {
+	measurement_time_step_ = 100;
 	random_direction_ = glm::vec3(1.f, 0.f, 0.f);
 	max_velocity_ = 4.f;
 	robot_radius_ = 11.85f;
@@ -67,7 +68,6 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	local_no_of_unexplored_cells_ = occupancy_grid_->get_grid_width() * occupancy_grid_->get_grid_height();
 
 	previous_no_of_local_explored_cells_ = 0;
-	measurement_time_step_ = 5;
 
 	figure_mode_ = false;
 }
