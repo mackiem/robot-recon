@@ -14,6 +14,7 @@ class ParallelMCMCOptimizer;
 class RobotWorker : public QObject {
 	Q_OBJECT
 	std::vector<Robot*> robots_;
+	bool figure_mode_;
 	bool aborted_;
 	bool paused_;
 	int time_step_count_;
@@ -31,6 +32,7 @@ class RobotWorker : public QObject {
 
 public:
 	RobotWorker();
+	void set_figure_mode(bool figure_mode);
 	void set_robots(std::vector<Robot*> robots);
 	void set_occupancy_tree(SwarmOccupancyTree* occupancy_grid);
 	void set_recon_tree(Swarm3DReconTree* recon_grid);
@@ -39,6 +41,7 @@ public:
 	void set_max_time_taken(int max_time_taken);
 	void set_swarm_params(SwarmParams swarm_params);
 	void set_simlutaneous_sampling_per_gridcell_map(ThreadSafeSimSampMap* simultaneous_sampling_per_grid_cell);
+
 	//void set_overlay_lock(QMutex* overlay_lock);
 
 	//double calculate_coverage();
@@ -161,6 +164,8 @@ private:
 	QThread* optimizer_thread_;
 	//QMutex overlay_lock_;
 	ThreadSafeSimSampMap simultaneous_sampling_per_grid_cell_map_;
+
+	bool figure_mode_;
 
 protected:
 

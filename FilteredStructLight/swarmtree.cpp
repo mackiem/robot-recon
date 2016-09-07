@@ -155,7 +155,8 @@ SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_width, int
 }
 
  int SwarmOccupancyTree::no_of_unexplored_cells() {
-	 return explore_perimeter_list_.size();
+	 //return explore_perimeter_list_.size();
+	 return explore_interior_list_.size();
 }
 
 std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_static_perimeter_list() {
@@ -945,6 +946,7 @@ void SwarmOccupancyTree::create_interior_list() {
 			}
 		}
 	}
+	explore_interior_list_ = interior_list_;
 }
 
 
@@ -982,6 +984,10 @@ void SwarmOccupancyTree::mark_explored_in_list(std::set<glm::ivec3, IVec3Compara
 SwarmOccupancyTree::~SwarmOccupancyTree() {
 	//sampling_tracker_->clear();
 	delete sampling_tracker_;
+}
+
+void SwarmOccupancyTree::mark_explored_in_interior_list(const glm::ivec3& grid_position) {
+	mark_explored_in_list(explore_interior_list_, grid_position);
 }
 
 void SwarmOccupancyTree::mark_explored_in_perimeter_list(const glm::ivec3& grid_position) {

@@ -43,11 +43,15 @@ void SwarmViewer::Light::update(glm::mat4 global_model) {
 	glUniform3fv(light_position_location_, 1, glm::value_ptr(world_position));
 }
 
-RobotWorker::RobotWorker() : aborted_(false), paused_(false), sampling_updated_(false) {
+RobotWorker::RobotWorker() : aborted_(false), paused_(false), sampling_updated_(false), figure_mode_(false) {
 	//refresh_rate_ = 1.f / 30.f;
 	//accumulator_ = 0.f;
 	
 };
+
+void RobotWorker::set_figure_mode(bool figure_mode) {
+	figure_mode_ = figure_mode;
+}
 
 void RobotWorker::set_robots(std::vector<Robot*> robots) {
 	robots_ = robots;
@@ -140,9 +144,11 @@ void RobotWorker::do_work() {
 				for (auto& robot : robots_) {
 					robot->update(time_step_count_);
 				}
-				if (time_step_count_ > 0 && time_step_count_ % 100 == 0) {
-					auto map = occupancy_grid_->calculate_simultaneous_sampling_per_grid_cell();
-					simultaneous_sampling_per_grid_cell_->set_map(map);
+				if (figure_mode_) {
+					if (time_step_count_ > 0 && time_step_count_ % 100 == 0) {
+						auto map = occupancy_grid_->calculate_simultaneous_sampling_per_grid_cell();
+						simultaneous_sampling_per_grid_cell_->set_map(map);
+					}
 				}
 				time_step_count_++;
 			} catch (OutOfGridBoundsException& ex) {
@@ -435,6 +441,7 @@ void GridOverlay::update_simultaneous_sampling_heatmap(const SimSampMap simultan
 		auto& grid_cell = sampling_per_grid_cell.first;
 		auto& sampling = sampling_per_grid_cell.second;
 
+		//int expected_cluster_value = std::max(no_of_robots_in_a_cluster_, 2);
 		auto color = calculate_heatmap_color_grid_cell(0.0, no_of_robots_in_a_cluster_, sampling); 
 		std::vector<cv::Vec4f> fill_color(6);
 		std::fill(fill_color.begin(), fill_color.end(), color);
@@ -752,7 +759,9 @@ void SwarmViewer::custom_draw_code() {
 		}
 
 		// need to update the cells here
-		overlay_->update_simultaneous_sampling_heatmap(simultaneous_sampling_per_grid_cell_map_.get_map());
+		if (figure_mode_) {
+			overlay_->update_simultaneous_sampling_heatmap(simultaneous_sampling_per_grid_cell_map_.get_map());
+		}
 		
 		for (auto& vis_object : reset_vis_objects_) {
 			vis_object->update(model_);
@@ -903,6 +912,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 		for (auto& robot : robots_) {
 			robot->set_grid_overlay(overlay_);
 			robot->set_recon_3d_points(recon_points_);
+			dynamic_cast<ExperimentalRobot*>(robot)->set_figure_mode(figure_mode_);
 		}
 	}
 
@@ -922,6 +932,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	connect(&robot_update_thread_, &QThread::started, robot_worker_, &RobotWorker::do_work);
 
 	simultaneous_sampling_per_grid_cell_map_.clear();
+	robot_worker_->set_figure_mode(figure_mode_);
 	robot_worker_->set_simlutaneous_sampling_per_gridcell_map(&simultaneous_sampling_per_grid_cell_map_);
 	robot_worker_->set_swarm_params(swarm_params);
 	robot_worker_->set_robots(robots_);
@@ -1171,6 +1182,7 @@ SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer
 	GLenum error = glGetError();
 	int i = 0;
 
+	figure_mode_ = false;
 
 	//max_time_taken_ = 20010.0;
 	//no_of_clusters_ = 4;

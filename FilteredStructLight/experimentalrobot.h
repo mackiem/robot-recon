@@ -31,6 +31,58 @@ private:
 	int previous_no_of_local_explored_cells_;
 	cv::Vec4f color_;
 	float diagonal_grid_length_;
+
+	bool figure_mode_;
+
+	// incremental sensor
+	int sensor_width_;
+	int sensor_height_;
+	int* sensor_cells_;
+	std::deque<int> x_sensor_index_;
+	std::deque<int> y_sensor_index_;
+	std::set<glm::ivec3, IVec3Comparator> incremental_interior_list_;
+
+	//static int INTERIOR;
+	//static int OUT_OF_BOUNDS;
+	//static int INVISIBLE;
+	//static int NORMAL;
+	enum SENSOR_STATE {
+		NORMAL = 0,
+		INVISIBLE = 1,
+		INTERIOR = 2,
+		OUT_OF_BOUNDS = 3
+	};
+
+
+	// visibility quadrant
+	int half_sensor_width_;
+	int half_sensor_height_;;
+
+	int no_of_bits_;
+	int no_of_char_arrays_;
+
+	char** quadrants_;
+
+	int no_of_edge_cells_;
+	int no_of_edge_cell_chars_;
+
+	enum QUADRANT {
+		SW = 0,
+		SE = 1,
+		NE = 2,
+		NW = 3
+	};
+
+	ExperimentalRobot::QUADRANT get_quadrant(const glm::ivec3& pt) const;
+	glm::ivec3 flip_to_SW(const glm::ivec3& pt, ExperimentalRobot::QUADRANT quadrant) const;
+	bool is_visible(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
+		const glm::ivec3& point_to_test);
+	void increment_sensor_range(glm::ivec3 increment);
+
+	bool is_visible_to_robot(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
+		const glm::ivec3& point_to_test) const;
+	void create_visibility_quadrant();
+
 public:
 	//ExperimentalRobot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree,
 	//	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
@@ -48,12 +100,16 @@ public:
 		bool collide_with_robots, bool render, QGLShaderProgram* shader);
 	void populate_occlusion_map();
 	void populate_clustering_map();
+	void init_sensor_range();
+	void set_sensor_value(int x, int y, int value) const;
+	int get_sensor_value(int x, int y) const;
 	virtual void update_visualization_structs() override;
 	void change_color(cv::Vec4f& color);
 	void set_colors_buffer(std::vector<cv::Vec4f>& colors);
 
 	void set_death_time(int death_time);
 	void set_cluster_id(int cluster_id);
+	void set_figure_mode(bool figure_mode);
 
 	virtual ~ExperimentalRobot() override;
 

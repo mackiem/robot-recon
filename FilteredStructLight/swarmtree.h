@@ -159,6 +159,7 @@ private:
 
 	std::set<glm::ivec3, IVec3Comparator> static_perimeter_list_;
 	std::set<glm::ivec3, IVec3Comparator> interior_list_;
+	std::set<glm::ivec3, IVec3Comparator> explore_interior_list_;
 	//int empty_value_;
 
 	int pool_size_;
@@ -253,6 +254,7 @@ public:
 
 	bool next_cell_to_explore(const glm::ivec3& robot_grid_position,
 		glm::ivec3& explore_position, float range_min, float range_max);
+	void mark_explored_in_interior_list(const glm::ivec3& grid_position);
 	void mark_explored_in_perimeter_list(const glm::ivec3& grid_position);
 	void mark_explored_in_empty_space_list(const glm::ivec3& grid_position);
 	void mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position);
