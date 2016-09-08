@@ -1663,6 +1663,11 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	collide_with_other_robots_ = new QCheckBox("Collide with other robots?", group_box);
 	group_box_layout->addWidget(collide_with_other_robots_);
 
+	figure_mode_ = new QCheckBox("Figure Mode", group_box);
+	group_box_layout->addWidget(figure_mode_);
+	connect(figure_mode_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_figure_mode);
+	figure_mode_->setCheckState(Qt::CheckState::Unchecked);
+
 	//collide with interior
 
 	group_box->setLayout(group_box_layout);

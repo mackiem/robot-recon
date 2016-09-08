@@ -44,6 +44,7 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	bounce_function_multiplier_(bounce_function_multiplier), recon_tree_(recon_tree), max_time_(max_time), 
 	local_map_(mm::Quadtree<char>(occupancy_grid_->get_grid_width(), occupancy_grid_->get_grid_height(), occupancy_grid_->get_grid_square_length(), 0))
 {
+	
 	measurement_time_step_ = 100;
 	random_direction_ = glm::vec3(1.f, 0.f, 0.f);
 	max_velocity_ = 4.f;
@@ -396,6 +397,7 @@ void ExperimentalRobot::set_cluster_id(int cluster_id) {
 
 void ExperimentalRobot::set_figure_mode(bool figure_mode) {
 	figure_mode_ = figure_mode;
+	measurement_time_step_ = 5;
 }
 
 ExperimentalRobot::~ExperimentalRobot()

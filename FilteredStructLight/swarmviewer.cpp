@@ -106,6 +106,7 @@ void RobotWorker::finish_work() {
 	
 
 void RobotWorker::do_work() {
+	int visualization_count = 0;
 	while (!aborted_) {
 		if (step_count_ == 0) {
 			paused_ = true;
@@ -118,7 +119,13 @@ void RobotWorker::do_work() {
 			if (time_step_count_ > max_time_taken_) {
 				finish_work();
 			}
+			if ((occupancy_grid_->no_of_unexplored_cells() - (1.0 - swarm_params_.coverage_needed_) * occupancy_grid_->no_of_interior_cells()) <= 0) {
+				visualization_count++;
+			}
 
+			//if (
+			//	!(time_step_count_ > max_time_taken_) && visualization_count < 100) {
+			//	emit update_time_step_count(time_step_count_);
 			if ((occupancy_grid_->no_of_unexplored_cells() - (1.0 - swarm_params_.coverage_needed_) * occupancy_grid_->no_of_interior_cells()) > 0
 				&& !(time_step_count_ > max_time_taken_)) {
 				emit update_time_step_count(time_step_count_);
@@ -146,7 +153,7 @@ void RobotWorker::do_work() {
 					robot->update(time_step_count_);
 				}
 				if (figure_mode_) {
-					if (time_step_count_ > 0 && time_step_count_ % 100 == 0) {
+					if (time_step_count_ > 0 && time_step_count_ % 10 == 0) {
 						auto map = occupancy_grid_->calculate_simultaneous_sampling_per_grid_cell();
 						simultaneous_sampling_per_grid_cell_->set_map(map);
 					}
@@ -947,6 +954,11 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	robot_worker_->set_max_time_taken(swarm_params.max_time_taken_);
 	robot_update_thread_.start();
 }
+
+void SwarmViewer::set_figure_mode(bool figure_mode) {
+	figure_mode_ = figure_mode;
+}
+
 //
 //void SwarmViewer::set_show_forces(int show) {
 //	show_forces_ = show;
