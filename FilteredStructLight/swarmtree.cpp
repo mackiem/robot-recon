@@ -892,8 +892,8 @@ void SwarmOccupancyTree::calculate_simultaneous_sampling_per_cluster() {
 double SwarmOccupancyTree::calculate_coverage() {
 	double coverage = 0.0;
 
-	if (static_perimeter_list_.size() > 0) {
-		coverage = 1.0 - (no_of_unexplored_cells() / (double)(static_perimeter_list_.size()));
+	if (interior_list_.size() > 0) {
+		coverage = 1.0 - (no_of_unexplored_cells() / (double)(interior_list_.size()));
 	}
 
 	
