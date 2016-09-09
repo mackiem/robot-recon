@@ -285,10 +285,14 @@ GridOverlay::GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree
 	VisObject(locations), occupany_grid_(octree), grid_width_(grid_width), grid_height_(grid_height), grid_length_(grid_length), 
 	robot_color_map_(robot_color_map), shader_(shader), simult_sampling_grid_(mm::Quadtree<SamplingTime>(grid_width_, grid_height_, 1, SamplingTime())), no_of_robots_in_a_cluster_(no_of_robots_in_a_cluster)  {
 	
+	cv::Vec4f dark_green(60.f, 179.f, 113.f, 255.f);
+
 	fill_color_.resize(6);
 	for (int i = 0; i < 6; ++i) {
-		fill_color_[i] = cv::Vec4f(160.f, 32.f, 240.f, 255.f);
-		fill_color_[i] /= 255.f;
+		//fill_color_[i] = cv::Vec4f(160.f, 32.f, 240.f, 255.f);
+		fill_color_[i] = dark_green;
+		fill_color_[i] /= (255.f * 1.2f);
+		fill_color_[i][3] = 255.f;
 	}
 	create_mesh(true);
 	glPointSize(5.f);
@@ -302,6 +306,9 @@ GridOverlay::GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree
 			simult_sampling_grid_.set(x, z, sampling_time);
 		}
 	}
+
+
+	
 }
 
 void GridOverlay::create_mesh(bool initialize) {
@@ -413,17 +420,19 @@ void GridOverlay::update_grid_position(const glm::ivec3& position, const cv::Vec
 
 	//auto& sampling_time = simult_sampling_grid_.at(position.x, position.z);
 
-	//RenderEntity& entity = mesh_[0];
+	RenderEntity& entity = mesh_[0];
+
 
 	//std::vector<cv::Vec4f> fill_color(6);
-	//std::fill(fill_color.begin(), fill_color.end(), color);
+	////std::fill(fill_color.begin(), fill_color.end(), color);
+	//std::fill(fill_color.begin(), fill_color.end(), dark_green/255.f/1.2f);
 
-	//glBindVertexArray(entity.vao_);
-	//glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
-	//glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (position.x * grid_height_) + position.z) * sizeof(cv::Vec4f), 
-	//	6 * sizeof(cv::Vec4f), &fill_color[0]);
+	glBindVertexArray(entity.vao_);
+	glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
+	glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (position.x * grid_height_) + position.z) * sizeof(cv::Vec4f), 
+		6 * sizeof(cv::Vec4f), &fill_color_[0]);
 
-	//glBindVertexArray(0);
+	glBindVertexArray(0);
 }
 
 cv::Vec4f GridOverlay::calculate_heatmap_color_grid_cell(double minimum, double maximum, double unclamped_value) {
@@ -440,23 +449,23 @@ cv::Vec4f GridOverlay::calculate_heatmap_color_grid_cell(double minimum, double 
 void GridOverlay::update_simultaneous_sampling_heatmap(const SimSampMap simultaneous_sampling_per_grid_cell) {
 
 	//auto& sampling_time = simult_sampling_grid_.at(position.x, position.z);
-	RenderEntity& entity = mesh_[0];
+	//RenderEntity& entity = mesh_[0];
 
-	glBindVertexArray(entity.vao_);
-	glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
+	//glBindVertexArray(entity.vao_);
+	//glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
 
-	for (auto& sampling_per_grid_cell : simultaneous_sampling_per_grid_cell) {
-		auto& grid_cell = sampling_per_grid_cell.first;
-		auto& sampling = sampling_per_grid_cell.second;
+	//for (auto& sampling_per_grid_cell : simultaneous_sampling_per_grid_cell) {
+	//	auto& grid_cell = sampling_per_grid_cell.first;
+	//	auto& sampling = sampling_per_grid_cell.second;
 
-		//int expected_cluster_value = std::max(no_of_robots_in_a_cluster_, 2);
-		auto color = calculate_heatmap_color_grid_cell(0.0, no_of_robots_in_a_cluster_, sampling); 
-		std::vector<cv::Vec4f> fill_color(6);
-		std::fill(fill_color.begin(), fill_color.end(), color);
+	//	//int expected_cluster_value = std::max(no_of_robots_in_a_cluster_, 2);
+	//	auto color = calculate_heatmap_color_grid_cell(0.0, no_of_robots_in_a_cluster_, sampling); 
+	//	std::vector<cv::Vec4f> fill_color(6);
+	//	std::fill(fill_color.begin(), fill_color.end(), color);
 
-		glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (grid_cell.x * grid_height_) + grid_cell.z) * sizeof(cv::Vec4f), 
-			6 * sizeof(cv::Vec4f), &fill_color[0]);
-	}
+	//	glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (grid_cell.x * grid_height_) + grid_cell.z) * sizeof(cv::Vec4f), 
+	//		6 * sizeof(cv::Vec4f), &fill_color[0]);
+	//}
 
 	glBindVertexArray(0);
 }
@@ -768,7 +777,7 @@ void SwarmViewer::custom_draw_code() {
 
 		// need to update the cells here
 		if (figure_mode_) {
-			overlay_->update_simultaneous_sampling_heatmap(simultaneous_sampling_per_grid_cell_map_.get_map());
+			//overlay_->update_simultaneous_sampling_heatmap(simultaneous_sampling_per_grid_cell_map_.get_map());
 		}
 		
 		for (auto& vis_object : reset_vis_objects_) {
@@ -854,12 +863,15 @@ void SwarmViewer::cleanup() {
 
 	if (occupancy_grid_) {
 		delete occupancy_grid_;
+		occupancy_grid_ = nullptr;
 	}
 	if (collision_grid_) {
 		delete collision_grid_;
+		collision_grid_ = nullptr;
 	}
 	if (recon_grid_) {
 		delete recon_grid_;
+		recon_grid_ = nullptr;
 	}
 	
 }
@@ -914,7 +926,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 
 		overlay_ = new GridOverlay(uniform_locations_,
 			occupancy_grid_, swarm_params.grid_width_, swarm_params.grid_height_, swarm_params.grid_length_, robot_color_map_, &m_shader, swarm_params_.robots_in_a_cluster_);
-		update_perimiter_positions_in_overlay();
+		//update_perimiter_positions_in_overlay();
 
 		reset_vis_objects_.push_back(overlay_);
 

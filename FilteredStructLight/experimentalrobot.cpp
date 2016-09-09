@@ -327,12 +327,12 @@ void ExperimentalRobot::update_visualization_structs() {
 	// update visualization
 	if (show_forces_) {
 		if (!figure_mode_) {
-			update_force_visualization(0, explore_force_);
-			update_force_visualization(1, separation_force_);
-			update_force_visualization(3, perimeter_force_);
-			update_force_visualization(4, cluster_force_);
-			update_force_visualization(5, alignment_force_);
-			update_force_visualization(2, 100.f * resultant_force_);
+			//update_force_visualization(0, explore_force_);
+			//update_force_visualization(1, separation_force_);
+			//update_force_visualization(3, perimeter_force_);
+			//update_force_visualization(4, cluster_force_);
+			//update_force_visualization(5, alignment_force_);
+			//update_force_visualization(2, 100.f * resultant_force_);
 		}
 	}
 	// update rendered mesh
@@ -1258,11 +1258,11 @@ void ExperimentalRobot::update(int timestamp) {
 			}
 #endif
 			if (!occupancy_grid_->is_interior(sensored_cell)) {
-				//if (render_) {
-				//	explored_mutex_.lock();
-				//	explored_cells_.push_back(sensored_cell);
-				//	explored_mutex_.unlock();
-				//}
+				if (render_) {
+					explored_mutex_.lock();
+					explored_cells_.push_back(sensored_cell);
+					explored_mutex_.unlock();
+				}
 				occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
 
 				// We need to go one extra grid to cover interior, so make sure it's always less than 1
