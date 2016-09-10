@@ -65,7 +65,7 @@ protected:
 	float m_xRot;
 	float m_yRot;
 	float m_zRot;
-
+	float aspect_ratio_;
 	bool prepareShaderProgram(const QString& vertexShaderPath,
 		const QString& fragmentShaderPath);
 	bool prepareShaderProgram(const QString& vertexShaderPath, const QString& fragmentShaderPath, QGLShaderProgram& shader);

@@ -263,8 +263,9 @@ void RobotViewer::update_camera() {
 
 	//glUniformMatrix4fv(model_loc, 1, GL_FALSE, glm::value_ptr(model));
 
-	projection_ = glm::perspective(fovy_, 
-		static_cast<float>(size().width())/static_cast<float>(size().height()), 0.1f, 100000.0f);
+	aspect_ratio_ = static_cast<float>(size().width())/static_cast<float>(size().height());
+	projection_ = glm::perspective(fovy_, aspect_ratio_
+		, 0.1f, 100000.0f);
 	//glm::mat4 projection = glm::perspective(fovy_, 1.f, 0.1f, 1000.0f);
 
 
