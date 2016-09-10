@@ -161,7 +161,7 @@ bool VisibilityQuadrant::is_visible_to_robot(const glm::ivec3& robot_position, c
 	const glm::ivec3& point_to_test) const {
 
 	float length = glm::length((glm::vec3(point_to_test - robot_position)));
-	float division_factor = (1.f / 10.f);
+	float division_factor = (1.f / 20.f);
 	int no_of_segments = (length / division_factor) + 1;
 #ifdef DEBUG
 	//std::cout << "No of segments : " << no_of_segments << std::endl;
@@ -173,7 +173,7 @@ bool VisibilityQuadrant::is_visible_to_robot(const glm::ivec3& robot_position, c
 	}
 
 	bool interior_found = false;
-	float interior_threshold = 0.7;
+	float interior_threshold = 0.8;
 	for (int i = 0; i < no_of_segments; ++i) {
 		glm::vec3 testing_grid_position = glm::vec3(robot_position) + direction * (division_factor)* static_cast<float>(i);
 		float distance_away = glm::length(testing_grid_position - glm::vec3(interior_position));
@@ -366,12 +366,12 @@ void ExperimentalRobot::update_visualization_structs() {
 	// update visualization
 	if (show_forces_) {
 		if (!figure_mode_) {
-			//update_force_visualization(0, explore_force_);
-			//update_force_visualization(1, separation_force_);
-			//update_force_visualization(3, perimeter_force_);
-			//update_force_visualization(4, cluster_force_);
-			//update_force_visualization(5, alignment_force_);
-			//update_force_visualization(2, 100.f * resultant_force_);
+			update_force_visualization(0, 100.f * explore_force_);
+			update_force_visualization(1, separation_force_);
+			update_force_visualization(3, perimeter_force_);
+			update_force_visualization(4, cluster_force_);
+			update_force_visualization(5, alignment_force_);
+			update_force_visualization(2, 100.f * resultant_force_);
 		}
 	}
 	// update rendered mesh
@@ -386,11 +386,14 @@ void ExperimentalRobot::update_visualization_structs() {
 		overlay_->update_grid_position(adjacent_sensor_cell);
 	}
 	for (auto& adjacent_sensor_cell : interior_explored_cells_) {
-		//overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
 		overlay_->update_grid_position(adjacent_sensor_cell, color_ );
+	}
+	for (auto& adjacent_sensor_cell : search_output_cells_) {
+		overlay_->update_grid_position(adjacent_sensor_cell, search_color_ );
 	}
 	explored_cells_.clear();
 	interior_explored_cells_.clear();
+	search_output_cells_.clear();
 	for (auto& visited_cells : poo_cells_) {
 		//overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
 		overlay_->update_poo_position(visited_cells, color_ );
@@ -413,6 +416,8 @@ void ExperimentalRobot::update_visualization_structs() {
 
 void ExperimentalRobot::change_color(cv::Vec4f& color) {
 	color_ = color;
+	search_color_ = color / 3.f;
+	search_color_[3] = 1.f;
 	RenderEntity& entity = mesh_[mesh_.size() - 1];
 
 	if (colors_.size() > 0) {
@@ -780,6 +785,9 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 
 	if (something_to_explore) {
 		previous_local_explore_cell = explore_cell;
+		explored_mutex_.lock();
+		search_output_cells_.push_back(explore_cell);
+		explored_mutex_.unlock();
 		auto move_to_position = occupancy_grid_->map_to_position(explore_cell);
 		float max_distance = diagonal_grid_length_ * occupancy_grid_->get_grid_square_length();
 		float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);

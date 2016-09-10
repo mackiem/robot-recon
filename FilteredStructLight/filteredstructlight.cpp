@@ -1118,6 +1118,7 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 	group_box->setLayout(group_box_layout);
 
 
+	connect(show_forces_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_forces);
 
 
 

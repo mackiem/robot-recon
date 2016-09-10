@@ -307,8 +307,8 @@ void set_should_render(int render);
 void set_slow_down(int slow_down);
 void reset_sim(SwarmParams& swarm_params);
 void set_figure_mode(bool figure_mode);
-
-//void set_magic_k(double magic_k);
+	void set_show_forces(int show);
+	//void set_magic_k(double magic_k);
 //
 //void set_collide_with_robots(int collide);
 //

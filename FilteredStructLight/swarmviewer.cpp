@@ -929,7 +929,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	for (auto& robot : robots_) {
 		robot->update_robots(robots_);
 		if (render_) {
-			//robot->set_show_forces(show_forces_);
+			robot->set_show_forces(show_forces_);
 		}
 	}
 
@@ -993,12 +993,12 @@ void SwarmViewer::set_figure_mode(bool figure_mode) {
 }
 
 //
-//void SwarmViewer::set_show_forces(int show) {
-//	show_forces_ = show;
-//	for (auto& robot : robots_) {
-//		robot->set_show_forces(show_forces_);
-//	}
-//}
+void SwarmViewer::set_show_forces(int show) {
+	show_forces_ = show;
+	//for (auto& robot : robots_) {
+	//	robot->set_show_forces(show_forces_);
+	//}
+}
 //
 //void SwarmViewer::set_model_filename(QString filename) {
 //	interior_model_filename_ = filename.toStdString();
