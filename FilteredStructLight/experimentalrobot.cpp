@@ -161,7 +161,7 @@ bool VisibilityQuadrant::is_visible_to_robot(const glm::ivec3& robot_position, c
 	const glm::ivec3& point_to_test) const {
 
 	float length = glm::length((glm::vec3(point_to_test - robot_position)));
-	float division_factor = (1.f / 20.f);
+	float division_factor = (1.f / 100.f);
 	int no_of_segments = (length / division_factor) + 1;
 #ifdef DEBUG
 	//std::cout << "No of segments : " << no_of_segments << std::endl;
@@ -173,7 +173,7 @@ bool VisibilityQuadrant::is_visible_to_robot(const glm::ivec3& robot_position, c
 	}
 
 	bool interior_found = false;
-	float interior_threshold = 0.8;
+	float interior_threshold = 0.7;
 	for (int i = 0; i < no_of_segments; ++i) {
 		glm::vec3 testing_grid_position = glm::vec3(robot_position) + direction * (division_factor)* static_cast<float>(i);
 		float distance_away = glm::length(testing_grid_position - glm::vec3(interior_position));
@@ -631,8 +631,6 @@ bool ExperimentalRobot::local_explore_search(glm::ivec3& explore_cell_position) 
 	// maybe just try local picking of a location and hope everyone agrees through cluster and alignment?
 	//make the  local picking pick the same direction
 
-
-
 	// sensor grid size will be	(sensor_range_ * 2 + 1)^2;
 
 	// do it in a bfs way
@@ -640,47 +638,61 @@ bool ExperimentalRobot::local_explore_search(glm::ivec3& explore_cell_position) 
 	glm::ivec3 grid_position = occupancy_grid_->map_to_grid(position_);
 	bool cell_found = false;
 
-	for (int sensor_level = 1; sensor_level <= sensor_range_; ++sensor_level) {
-		for (int z = -sensor_level; z <= sensor_level; ++z) {
-			for (int x = -sensor_level; x <= sensor_level; ++x) {
-				if (std::abs(x) == sensor_level
-					|| std::abs(z) == sensor_level) {
-					glm::ivec3 cell_position = grid_position + glm::ivec3(x, 0, z);
-					if (!occupancy_grid_->is_out_of_bounds(cell_position)
-						&& occupancy_grid_->is_interior(cell_position)) {
-						// get adjacent cells
-						int free_adjacent_cells = 0;
-						int sensor_level_interior = 1;
-						for (int z_interior = -sensor_level_interior; z_interior <= sensor_level_interior; ++z_interior) {
-							for (int x_interior = -sensor_level_interior; x_interior <= sensor_level_interior; ++x_interior) {
-								if (!(x_interior == 0 && z_interior == 0)) {
-									glm::ivec3 adjacent_cell = cell_position + glm::ivec3(x_interior, 0.f, z_interior);
-									if (!occupancy_grid_->is_out_of_bounds(adjacent_cell)
-										&& !occupancy_grid_->is_interior(adjacent_cell)
-										&& not_locally_visited(adjacent_cell)
-										//&& !occupancy_grid_->going_through_interior_test(grid_position, adjacent_cell)
-											)
-									{
-										free_adjacent_cells++;
-										cell_found = true;
-										explore_cell_position = adjacent_cell;
-										return true;
-									}
-								}
-							}
-						}
-
-						//if (free_adjacent_cells > 1) {
-						//	cell_found = true;
-						//	explore_cell_position  = cell_
-						//	
-						//}
-
-					}
-				}
+	for (auto& interior : interior_cells_) {
+		for (auto& adjacent_cell : adjacent_cells_) {
+			float distance = glm::length(glm::vec3(occupancy_grid_->map_to_grid(interior) - adjacent_cell));
+			if (!occupancy_grid_->is_interior(adjacent_cell) 
+				&& not_locally_visited(adjacent_cell)
+				&& distance < 1.42) {
+				cell_found = true;
+				explore_cell_position = adjacent_cell;
+				return true;
 			}
 		}
 	}
+
+	//for (int sensor_level = 1; sensor_level <= sensor_range_; ++sensor_level) {
+	//	for (int z = -sensor_level; z <= sensor_level; ++z) {
+	//		for (int x = -sensor_level; x <= sensor_level; ++x) {
+	//			if (std::abs(x) == sensor_level
+	//				|| std::abs(z) == sensor_level) {
+	//				glm::ivec3 cell_position = grid_position + glm::ivec3(x, 0, z);
+	//				if (!occupancy_grid_->is_out_of_bounds(cell_position)
+	//					&& occupancy_grid_->is_interior(cell_position)) {
+	//					// get adjacent cells
+	//					int free_adjacent_cells = 0;
+	//					int sensor_level_interior = 1;
+	//					for (int z_interior = -sensor_level_interior; z_interior <= sensor_level_interior; ++z_interior) {
+	//						for (int x_interior = -sensor_level_interior; x_interior <= sensor_level_interior; ++x_interior) {
+	//							if (!(x_interior == 0 && z_interior == 0)) {
+	//								glm::ivec3 adjacent_cell = cell_position + glm::ivec3(x_interior, 0.f, z_interior);
+	//								if (!occupancy_grid_->is_out_of_bounds(adjacent_cell)
+	//									&& !occupancy_grid_->is_interior(adjacent_cell)
+	//									&& not_locally_visited(adjacent_cell)
+	//									//&& VisibilityQuadrant::visbility_quadrant(sensor_range_)->is_sensor_cell_visible(current_position, occupancy_grid_->map_to_grid(interior_cell), *itr)
+	//									//&& !occupancy_grid_->going_through_interior_test(grid_position, adjacent_cell)
+	//										)
+	//								{
+	//									free_adjacent_cells++;
+	//									cell_found = true;
+	//									explore_cell_position = adjacent_cell;
+	//									return true;
+	//								}
+	//							}
+	//						}
+	//					}
+
+	//					//if (free_adjacent_cells > 1) {
+	//					//	cell_found = true;
+	//					//	explore_cell_position  = cell_
+	//					//	
+	//					//}
+
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 	return false;
 }
 
@@ -703,7 +715,8 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 					}
 
 					if (!occupancy_grid_->is_out_of_bounds(cell_position)
-						//&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
+						&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
+						&& !occupancy_grid_->is_interior(cell_position)
 						&& not_locally_visited(cell_position)) {
 
 						cell_found = true;
@@ -1318,7 +1331,7 @@ void ExperimentalRobot::update(int timestamp) {
 
 
 	if (figure_mode_) {
-		if (timestamp % 10 == 0 > timestamp > 0) {
+		if (timestamp % 10 == 0 && timestamp > 0) {
 			if (render_) {
 				explored_mutex_.lock();
 				poo_cells_.push_back(position_);
@@ -1342,15 +1355,15 @@ void ExperimentalRobot::update(int timestamp) {
 			}
 #endif
 			if (!occupancy_grid_->is_interior(sensored_cell)) {
-				if (render_) {
-					explored_mutex_.lock();
-					explored_cells_.push_back(sensored_cell);
-					explored_mutex_.unlock();
-				}
 				occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
 
 				// We need to go one extra grid to cover interior, so make sure it's always less than 1
 				if (distance < (sensor_range_ - 2)) {
+					if (render_) {
+						explored_mutex_.lock();
+						explored_cells_.push_back(sensored_cell);
+						explored_mutex_.unlock();
+					}
 					occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
 				}
 			}
