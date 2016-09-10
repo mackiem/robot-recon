@@ -80,6 +80,8 @@ void SimulatorThread::reset_sim(SwarmParams& swarm_params) {
 
 	SwarmUtils::create_robots(swarm_params, death_map_, occupancy_grid_, collision_grid_, recon_grid_, uniform_locations_, m_shader, render_, robots_);
 
+	VisibilityQuadrant::visbility_quadrant(swarm_params_.sensor_range_);
+
 	// assumption - global position of other robots are known
 	for (auto& robot : robots_) {
 		robot->update_robots(robots_);

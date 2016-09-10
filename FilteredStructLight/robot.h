@@ -174,6 +174,7 @@ protected:
 	bool show_forces_;
 
 	std::vector<glm::ivec3> explored_cells_;
+	std::vector<glm::ivec3> interior_explored_cells_;
 	std::vector<glm::vec3> poo_cells_;
 	QMutex explored_mutex_;
 
@@ -238,7 +239,6 @@ public:
 
 	//Robot(UniformLocations& locations, unsigned int id, std::shared_ptr<SwarmOctTree> octree);
 
-	void update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position);
 
 	glm::vec3 calculate_obstacle_avoidance_direction(glm::vec3 resultant_force);
 	void set_show_forces(bool show);

@@ -1,6 +1,35 @@
 #pragma once
 #include "robot.h"
 
+class VisibilityQuadrant {
+
+	int sensor_width_;
+	int sensor_height_;
+	int half_sensor_width_;
+	int half_sensor_height_;;
+	int sensor_range_;
+
+	char** quadrants_;
+	bool is_visible_to_robot(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
+		const glm::ivec3& point_to_test) const;
+	void cleanup_internal();
+
+	static VisibilityQuadrant* instance_;
+	VisibilityQuadrant(int sensor_range);
+
+	
+public:
+	static void cleanup();
+	static VisibilityQuadrant* visbility_quadrant(int sensor_range);
+	static int INVISIBLE;
+	static int VISIBLE;
+	bool is_sensor_cell_visible(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
+		const glm::ivec3& point_to_test);
+	void create_visibility_quadrant();
+	~VisibilityQuadrant();
+	
+};
+
 class ExperimentalRobot : public Robot
 {
 private:
@@ -46,25 +75,31 @@ private:
 	//static int OUT_OF_BOUNDS;
 	//static int INVISIBLE;
 	//static int NORMAL;
-	enum SENSOR_STATE {
-		NORMAL = 0,
-		INVISIBLE = 1,
-		INTERIOR = 2,
-		OUT_OF_BOUNDS = 3
-	};
+	//enum SENSOR_STATE {
+	//	NORMAL = 0,
+	//	INVISIBLE = 1,
+	//	INTERIOR = 2,
+	//	OUT_OF_BOUNDS = 3
+	//};
 
 
 	// visibility quadrant
 	int half_sensor_width_;
 	int half_sensor_height_;;
 
-	int no_of_bits_;
-	int no_of_char_arrays_;
+	//int no_of_bits_;
+	//int no_of_char_arrays_;
 
-	char** quadrants_;
 
-	int no_of_edge_cells_;
-	int no_of_edge_cell_chars_;
+	//int no_of_edge_cells_;
+	//int no_of_edge_cell_chars_;
+
+	enum LOCAL_SEARCH_STATE {
+		EXPLORE = 0,
+		PERIMETER = 1
+	};
+
+	LOCAL_SEARCH_STATE local_explore_state_;
 
 	enum QUADRANT {
 		SW = 0,
@@ -75,13 +110,9 @@ private:
 
 	ExperimentalRobot::QUADRANT get_quadrant(const glm::ivec3& pt) const;
 	glm::ivec3 flip_to_SW(const glm::ivec3& pt, ExperimentalRobot::QUADRANT quadrant) const;
-	bool is_visible(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
-		const glm::ivec3& point_to_test);
 	void increment_sensor_range(glm::ivec3 increment);
 
-	bool is_visible_to_robot(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
-		const glm::ivec3& point_to_test) const;
-	void create_visibility_quadrant();
+	void update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position);
 
 public:
 	//ExperimentalRobot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree,

@@ -423,14 +423,13 @@ void GridOverlay::update_grid_position(const glm::ivec3& position, const cv::Vec
 	RenderEntity& entity = mesh_[0];
 
 
-	//std::vector<cv::Vec4f> fill_color(6);
-	////std::fill(fill_color.begin(), fill_color.end(), color);
-	//std::fill(fill_color.begin(), fill_color.end(), dark_green/255.f/1.2f);
+	std::vector<cv::Vec4f> fill_color(6);
+	std::fill(fill_color.begin(), fill_color.end(), color);
 
 	glBindVertexArray(entity.vao_);
 	glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
 	glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (position.x * grid_height_) + position.z) * sizeof(cv::Vec4f), 
-		6 * sizeof(cv::Vec4f), &fill_color_[0]);
+		6 * sizeof(cv::Vec4f), &fill_color[0]);
 
 	glBindVertexArray(0);
 }
@@ -472,6 +471,18 @@ void GridOverlay::update_simultaneous_sampling_heatmap(const SimSampMap simultan
 
 void GridOverlay::update_grid_position(const glm::ivec3& position) {
 
+	RenderEntity& entity = mesh_[0];
+
+
+	//std::vector<cv::Vec4f> fill_color(6);
+	//std::fill(fill_color.begin(), fill_color.end(), color);
+
+	glBindVertexArray(entity.vao_);
+	glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
+	glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (position.x * grid_height_) + position.z) * sizeof(cv::Vec4f), 
+		6 * sizeof(cv::Vec4f), &fill_color_[0]);
+
+	glBindVertexArray(0);
 	//update_grid_position(position, fill_color_[0]);
 	//RenderEntity& entity = mesh_[0];
 
@@ -829,6 +840,7 @@ void SwarmViewer::shutdown_worker() {
 }
 
 SwarmViewer::~SwarmViewer() {
+	VisibilityQuadrant::cleanup();
 	shutdown_worker();
 	cleanup();
 	timer_->stop();
@@ -913,6 +925,8 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 			//robot->set_show_forces(show_forces_);
 		}
 	}
+
+	VisibilityQuadrant::visbility_quadrant(swarm_params_.sensor_range_);
 
 
 	// graphics setup

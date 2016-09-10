@@ -31,6 +31,11 @@
 //	dead_ = false;
 //}
 
+int VisibilityQuadrant::INVISIBLE = -1;
+int VisibilityQuadrant::VISIBLE = 1;
+
+//char** ExperimentalRobot::quadrants_ = nullptr;
+
 ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
 	SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree, int cluster_id, double separation_constant, double alignment_constant,
 	double cluster_constant, double explore_constant, double sensor_range,
@@ -71,6 +76,15 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, S
 	previous_no_of_local_explored_cells_ = 0;
 
 	figure_mode_ = false;
+
+	sensor_width_ = sensor_range_ * 2 + 1;
+	sensor_height_ = sensor_range_ * 2 + 1;
+	//half_sensor_width_ = std::ceil(sensor_width_ / 2.f);
+	//half_sensor_height_ = std::ceil(sensor_height_ / 2.f);;
+	half_sensor_width_ = (sensor_width_ / 2.f);
+	half_sensor_height_ = (sensor_height_ / 2.f);;
+
+	local_explore_state_ = EXPLORE;
 }
 
 void ExperimentalRobot::populate_occlusion_map() {
@@ -110,13 +124,13 @@ void ExperimentalRobot::init_sensor_range() {
 			glm::ivec3 sensor_cell(x, 0, y);
 			glm::ivec3 relative_sensor_cell = sensor_cell - robot_sensor_position;
 			auto sensor_grid_position = robot_grid_position + relative_sensor_cell;
-			SENSOR_STATE state = NORMAL;
-			if (occupancy_grid_->is_out_of_bounds(sensor_grid_position)) {
-				state = OUT_OF_BOUNDS;
-			} else if (occupancy_grid_->going_through_interior_test(robot_grid_position, sensor_grid_position)) {
-				state = INVISIBLE;
-			}
-			set_sensor_value(x, y, state);
+			//SENSOR_STATE state = NORMAL;
+			//if (occupancy_grid_->is_out_of_bounds(sensor_grid_position)) {
+			//	state = OUT_OF_BOUNDS;
+			//} else if (occupancy_grid_->going_through_interior_test(robot_grid_position, sensor_grid_position)) {
+			//	state = INVISIBLE;
+			//}
+			//set_sensor_value(x, y, state);
 		}
 	}
 
@@ -143,7 +157,7 @@ int ExperimentalRobot::get_sensor_value(int x, int y) const {
 	return sensor_cells_[y_memory_index * sensor_width_ + x_memory_index];
 }
 
-bool ExperimentalRobot::is_visible_to_robot(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
+bool VisibilityQuadrant::is_visible_to_robot(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
 	const glm::ivec3& point_to_test) const {
 
 	float length = glm::length((glm::vec3(point_to_test - robot_position)));
@@ -159,57 +173,87 @@ bool ExperimentalRobot::is_visible_to_robot(const glm::ivec3& robot_position, co
 	}
 
 	bool interior_found = false;
+	float interior_threshold = 0.7;
 	for (int i = 0; i < no_of_segments; ++i) {
-		glm::ivec3 testing_grid_position = glm::vec3(robot_position) + direction * (division_factor)* static_cast<float>(i);
-		if (testing_grid_position == interior_position) {
+		glm::vec3 testing_grid_position = glm::vec3(robot_position) + direction * (division_factor)* static_cast<float>(i);
+		float distance_away = glm::length(testing_grid_position - glm::vec3(interior_position));
+		if (distance_away < interior_threshold) {
 			interior_found = true;
 			break;
 		}
 	}
 
 	return !interior_found;
-
-	
 }
 
-void ExperimentalRobot::create_visibility_quadrant() {
+VisibilityQuadrant* VisibilityQuadrant::instance_ = nullptr;
 
-	no_of_bits_ = 8;
-	no_of_char_arrays_ = half_sensor_height_ * half_sensor_width_;
+void VisibilityQuadrant::cleanup_internal() {
+	if (quadrants_) {
+		int no_of_cells = sensor_width_ * sensor_height_;
+		for (int i = 0; i < no_of_cells; ++i) {
+			delete [] quadrants_[i];
+		}
+		delete[] quadrants_;
+		quadrants_ = nullptr;
+	}
+}
 
-	quadrants_ = new char*[no_of_char_arrays_];
+void VisibilityQuadrant::cleanup() {
+	if (instance_) {
+		instance_->cleanup_internal();
+	}
+}
 
-	no_of_edge_cells_ = half_sensor_width_ + half_sensor_height_ - 1;
-	no_of_edge_cell_chars_ = std::ceil(no_of_edge_cells_/static_cast<float>(no_of_bits_));
+VisibilityQuadrant::VisibilityQuadrant(int sensor_range) : sensor_width_(0), sensor_height_(0), half_sensor_width_(0), half_sensor_height_(0), sensor_range_(-1), quadrants_(nullptr) {
+	sensor_range_ = sensor_range;
+	sensor_width_ = sensor_range_ * 2 + 1;
+	sensor_height_ = sensor_range_ * 2 + 1;
+	half_sensor_width_ = (sensor_width_ / 2.f);
+	half_sensor_height_ = (sensor_height_ / 2.f);;
+	create_visibility_quadrant();
+}
 
-	for (int i = 0; i < no_of_char_arrays_; ++i) {
-		quadrants_[i] = new char[no_of_edge_cell_chars_];
-		std::fill(quadrants_[i], quadrants_[i] + no_of_edge_cell_chars_, static_cast<unsigned char>(0));
+VisibilityQuadrant* VisibilityQuadrant::visbility_quadrant(int sensor_range) {
+	if (instance_) {
+		if (instance_->sensor_range_ == sensor_range) {
+			return instance_;
+		}
+		instance_->cleanup_internal();
+	}
+	instance_ = new VisibilityQuadrant(sensor_range);
+	return instance_;
+}
+
+void VisibilityQuadrant::create_visibility_quadrant() {
+
+	int no_of_sensor_cells = sensor_width_ * sensor_height_;
+
+	quadrants_ = new char*[no_of_sensor_cells];
+
+	//no_of_edge_cells_ = half_sensor_width_ + half_sensor_height_ - 1;
+	//no_of_edge_cell_chars_ = std::ceil(no_of_edge_cells_/static_cast<float>(no_of_bits_));
+
+	for (int i = 0; i < no_of_sensor_cells; ++i) {
+		quadrants_[i] = new char[no_of_sensor_cells];
+		std::fill(quadrants_[i], quadrants_[i] + no_of_sensor_cells, static_cast<char>(VISIBLE));
 	}
 
 	glm::ivec3 robot_position(half_sensor_width_, 0, half_sensor_height_);
 
-	// creates the NW (or SW, depending where the origin is) quadrant
-	// we need only one because visiblity quadrants are symmetrical
-	// we convert point from other quadrants to NW quadrant
-	for (int y = 0; y < half_sensor_width_; ++y) {
-		for (int x = 0; x < half_sensor_height_; ++x) {
+	for (int interior_y = 0; interior_y < sensor_height_; ++interior_y) {
+		for (int interior_x = 0; interior_x < sensor_width_; ++interior_x) {
+			glm::ivec3 interior_position(interior_x, 0, interior_y);
 
-			glm::ivec3 interior_position(x, 0, y);
-			for (int edge_cell_index = 0; edge_cell_index < no_of_edge_cells_; ++ edge_cell_index) {
-				// check visibility
-				glm::ivec3 edge_cell(0, 0, 0);
-				if (edge_cell_index <= half_sensor_width_) {
-					edge_cell += glm::ivec3(edge_cell_index, 0, 0);
-				} else {
-					edge_cell += glm::ivec3(0, 0, edge_cell_index - half_sensor_width_);
-				}
-				
-				if (!is_visible_to_robot(robot_position, interior_position, edge_cell)) {
-					char*& edge_bits = quadrants_[y * half_sensor_width_ + x];
-					int char_no = edge_cell_index / no_of_bits_;
-					int bit_no = edge_cell_index % no_of_bits_;
-					edge_bits[char_no] |= 1 << bit_no;
+			for (int y = 0; y < sensor_height_; ++y) {
+				for (int x = 0; x < sensor_width_; ++x) {
+					glm::ivec3 sensor_cell_position(x, 0, y);
+					if (x == interior_x && y == interior_y) {
+						continue;
+					}
+					if (!is_visible_to_robot(robot_position, interior_position, sensor_cell_position)) {
+						quadrants_[interior_y * sensor_width_ + interior_x][y * sensor_width_ + x] = static_cast<char>(INVISIBLE);
+					}
 				}
 			}
 		}
@@ -217,19 +261,24 @@ void ExperimentalRobot::create_visibility_quadrant() {
 
 }
 
+VisibilityQuadrant::~VisibilityQuadrant() {
+	//delete local_map_;
+	cleanup_internal();
+}
+
 ExperimentalRobot::QUADRANT ExperimentalRobot::get_quadrant(const glm::ivec3& pt) const {
-	if (pt.x > half_sensor_width_ && pt.y > half_sensor_height_) {
-		return NE;
-	}
-	if (pt.x > half_sensor_width_ && pt.y <= half_sensor_height_) {
-		return SE;
-	}
-	if (pt.x <= half_sensor_width_ && pt.y > half_sensor_height_) {
-		return NW;
-	}
-	if (pt.x <= half_sensor_width_ && pt.y <= half_sensor_height_) {
-		return SW;
-	}
+	//if (pt.x > half_sensor_width_ && pt.y > half_sensor_height_) {
+	//	return NE;
+	//}
+	//if (pt.x > half_sensor_width_ && pt.y <= half_sensor_height_) {
+	//	return SE;
+	//}
+	//if (pt.x <= half_sensor_width_ && pt.y > half_sensor_height_) {
+	//	return NW;
+	//}
+	//if (pt.x <= half_sensor_width_ && pt.y <= half_sensor_height_) {
+	//	return SW;
+	//}
 	return SW;
 }
 
@@ -258,42 +307,32 @@ glm::ivec3 ExperimentalRobot::flip_to_SW(const glm::ivec3& pt, ExperimentalRobot
 }
 
 
-bool ExperimentalRobot::is_visible(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
+bool VisibilityQuadrant::is_sensor_cell_visible(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
 	const glm::ivec3& point_to_test) {
 
 		glm::ivec3 relative_point_position = point_to_test - robot_position + glm::ivec3(half_sensor_width_, 0, half_sensor_height_);;
 		glm::ivec3 relative_interior_position = interior_position - robot_position + glm::ivec3(half_sensor_width_, 0, half_sensor_height_);
 
-		if (relative_point_position.x > sensor_width_
-			|| relative_point_position.z > sensor_height_) {
-			return false;
-		}
-		auto pt_quadrant = get_quadrant(relative_point_position);
-		auto interior_quadrant = get_quadrant(relative_interior_position);
-		if (pt_quadrant != interior_quadrant) {
+		if (relative_point_position.x >= sensor_width_
+			|| relative_point_position.z >= sensor_height_
+			|| relative_interior_position.x >= sensor_width_
+			|| relative_interior_position.z >= sensor_height_) {
 			return false;
 		}
 
-		auto flipped_relative_pt = flip_to_SW(relative_point_position, pt_quadrant);
-		auto flipped_interior_pt = flip_to_SW(relative_interior_position, interior_quadrant);
-
-		assert((point_to_test.x == 0 || point_to_test.z == 0) && point_to_test.x <= sensor_width_
-			&& point_to_test.z <= sensor_height_);
-
-		int edge_cell_index = 0;
+		char visible = quadrants_[relative_interior_position.z * sensor_width_ + relative_interior_position.x]
+			[relative_point_position.z * sensor_width_ + relative_point_position.x];
+		//char*& edge_bits = quadrants_[flipped_interior_pt.z * half_sensor_width_ + flipped_interior_pt.x];
+		//int char_no = edge_cell_index / no_of_bits_;
+		//int bit_no = edge_cell_index % no_of_bits_;
+		//char visible = edge_bits[char_no] >> bit_no & 1;
 		
-		if (point_to_test.x > 0) {
-			edge_cell_index = point_to_test.x;
-		} else if (point_to_test.z > 0) {
-			edge_cell_index = half_sensor_width_ + point_to_test.z;
-		}
+		//if (visible == INVISIBLE) {
+		//	SwarmUtils::print_vector("test pt", point_to_test);
+		//	SwarmUtils::print_vector("interior", interior_position);
+		//}
 
-		char*& edge_bits = quadrants_[flipped_interior_pt.z * half_sensor_width_ + flipped_interior_pt.x];
-		int char_no = edge_cell_index / no_of_bits_;
-		int bit_no = edge_cell_index % no_of_bits_;
-		char visible = edge_bits[char_no] >> bit_no & 1;
-		return (visible == 1);
-
+		return (visible == VISIBLE);
 }
 
 
@@ -344,9 +383,14 @@ void ExperimentalRobot::update_visualization_structs() {
 	explored_mutex_.lock();
 	for (auto& adjacent_sensor_cell : explored_cells_) {
 		//overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
+		overlay_->update_grid_position(adjacent_sensor_cell);
+	}
+	for (auto& adjacent_sensor_cell : interior_explored_cells_) {
+		//overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
 		overlay_->update_grid_position(adjacent_sensor_cell, color_ );
 	}
 	explored_cells_.clear();
+	interior_explored_cells_.clear();
 	for (auto& visited_cells : poo_cells_) {
 		//overlay_->update_grid_position(adjacent_sensor_cell, color_ /2.f);
 		overlay_->update_poo_position(visited_cells, color_ );
@@ -402,7 +446,6 @@ void ExperimentalRobot::set_figure_mode(bool figure_mode) {
 
 ExperimentalRobot::~ExperimentalRobot()
 {
-	//delete local_map_;
 }
 
 glm::vec3 ExperimentalRobot::calculate_separation_velocity() {
@@ -610,7 +653,8 @@ bool ExperimentalRobot::local_explore_search(glm::ivec3& explore_cell_position) 
 									if (!occupancy_grid_->is_out_of_bounds(adjacent_cell)
 										&& !occupancy_grid_->is_interior(adjacent_cell)
 										&& not_locally_visited(adjacent_cell)
-										&& !occupancy_grid_->going_through_interior_test(grid_position, adjacent_cell))
+										//&& !occupancy_grid_->going_through_interior_test(grid_position, adjacent_cell)
+											)
 									{
 										free_adjacent_cells++;
 										cell_found = true;
@@ -654,7 +698,7 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 					}
 
 					if (!occupancy_grid_->is_out_of_bounds(cell_position)
-						&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
+						//&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
 						&& not_locally_visited(cell_position)) {
 
 						cell_found = true;
@@ -705,24 +749,33 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 	bool something_to_explore = false;
 	glm::ivec3 explore_cell;
 	//if ((previous_no_of_explored_cells_ == explored_cells) && (previous_cell == current_cell)) {
-	if ((previous_no_of_explored_cells_ == explored_cells)) {
-		something_to_explore = true;
-		explore_cell = previous_local_explore_cell;
-	}
-	else {
-		something_to_explore = local_explore_search(explore_cell);
-		if (!something_to_explore) {
-			// go left
-			something_to_explore = local_perimeter_search(explore_cell);
+	//if (local_explore_state_ == PERIMETER && current_cell != previous_local_explore_cell) {
+	//	something_to_explore = true;
+	//	explore_cell = previous_local_explore_cell;
+	//} else {
+		if ((previous_no_of_explored_cells_ == explored_cells)) {
+			something_to_explore = true;
+			explore_cell = previous_local_explore_cell;
+		}
+		else {
+			something_to_explore = local_explore_search(explore_cell);
+			local_explore_state_ = EXPLORE;
 
 			if (!something_to_explore) {
-				//explore_cell = glm::vec3(0.f, 0.f, 1.f);
-				//something_to_explore = true;
-			}
-		} 
-		//std::string str = std::to_string(id_) + " " + std::to_string(local_no_of_unexplored_cells_) + " ";
-		//SwarmUtils::print_vector(str, explore_cell);
-	}
+				// go left
+				something_to_explore = local_perimeter_search(explore_cell);
+				local_explore_state_ = PERIMETER;
+
+
+				if (!something_to_explore) {
+					//explore_cell = glm::vec3(0.f, 0.f, 1.f);
+					//something_to_explore = true;
+				}
+			} 
+			//std::string str = std::to_string(id_) + " " + std::to_string(local_no_of_unexplored_cells_) + " ";
+			//SwarmUtils::print_vector(str, explore_cell);
+		}
+	//}
 
 
 	if (something_to_explore) {
@@ -1117,6 +1170,29 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 
 }
 
+
+void ExperimentalRobot::update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position) {
+	if (current_position == previous_position && adjacent_cells_.size() > 0) {
+		interior_updated_ = false;
+		return;
+	}
+
+	adjacent_cells_.clear();
+	adjacent_cells_.reserve(std::pow(sensor_range_ * 2 + 1, 2));
+	get_adjacent_cells(occupancy_grid_->map_to_position(current_position), adjacent_cells_);
+	interior_cells_ = get_interior_cell_positions(adjacent_cells_);
+	for (auto& interior_cell : interior_cells_) {
+		for (auto itr = adjacent_cells_.begin(); itr != adjacent_cells_.end(); ) {
+			if (!VisibilityQuadrant::visbility_quadrant(sensor_range_)->is_sensor_cell_visible(current_position, occupancy_grid_->map_to_grid(interior_cell), *itr)) {
+				itr = adjacent_cells_.erase(itr);
+			} else {
+				++itr;
+			}
+		}
+	}
+	interior_updated_ = true;
+}
+
 #define LOCAL
 
 void ExperimentalRobot::update(int timestamp) {
@@ -1271,6 +1347,11 @@ void ExperimentalRobot::update(int timestamp) {
 				}
 			}
 			else {
+				if (render_) {
+					explored_mutex_.lock();
+					interior_explored_cells_.push_back(sensored_cell);
+					explored_mutex_.unlock();
+				}
 				occupancy_grid_->mark_explored_in_interior_list(sensored_cell);
 			}
 		}

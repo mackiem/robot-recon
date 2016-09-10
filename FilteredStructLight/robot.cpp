@@ -88,18 +88,6 @@ void Robot::get_adjacent_cells(const glm::vec3& position, std::vector<glm::ivec3
 	}
 }
 
-void Robot::update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position) {
-	if (current_position == previous_position && adjacent_cells_.size() > 0) {
-		interior_updated_ = false;
-		return;
-	}
-
-	adjacent_cells_.clear();
-	adjacent_cells_.reserve(std::pow(sensor_range_ * 2, 2));
-	get_adjacent_cells(occupancy_grid_->map_to_position(current_position), adjacent_cells_);
-	interior_cells_ = get_interior_cell_positions(adjacent_cells_);
-	interior_updated_ = true;
-}
 
 void Robot::calculate_work_force() {
 	work_force_ = glm::vec3(0.f, 0.f, 0.f);
