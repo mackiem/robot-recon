@@ -314,10 +314,10 @@ bool VisibilityQuadrant::is_sensor_cell_visible(const glm::ivec3& robot_position
 		glm::ivec3 relative_point_position = point_to_test - robot_position + glm::ivec3(half_sensor_width_, 0, half_sensor_height_);;
 		glm::ivec3 relative_interior_position = interior_position - robot_position + glm::ivec3(half_sensor_width_, 0, half_sensor_height_);
 
-		if (relative_point_position.x >= sensor_width_
-			|| relative_point_position.z >= sensor_height_
-			|| relative_interior_position.x >= sensor_width_
-			|| relative_interior_position.z >= sensor_height_
+		if (relative_point_position.x >= (sensor_width_ - 1)
+			|| relative_point_position.z >= (sensor_height_- 1)
+			|| relative_interior_position.x >= (sensor_width_- 1)
+			|| relative_interior_position.z >= (sensor_height_- 1)
 
 			|| relative_point_position.x < 0
 			|| relative_point_position.z < 0
