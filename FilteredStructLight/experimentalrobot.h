@@ -86,7 +86,8 @@ private:
 	// visibility quadrant
 	int half_sensor_width_;
 	int half_sensor_height_;
-	cv::Vec4f search_color_;;
+	cv::Vec4f search_color_;
+	int same_cell_count_;;
 
 	//int no_of_bits_;
 	//int no_of_char_arrays_;

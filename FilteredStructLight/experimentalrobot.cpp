@@ -216,7 +216,7 @@ VisibilityQuadrant::VisibilityQuadrant(int sensor_range) : sensor_width_(0), sen
 
 VisibilityQuadrant* VisibilityQuadrant::visbility_quadrant(int sensor_range) {
 	if (instance_) {
-		if (instance_->sensor_range_ <= sensor_range) {
+		if (instance_->sensor_range_ >= sensor_range) {
 			return instance_;
 		}
 		instance_->cleanup_internal();
@@ -316,7 +316,15 @@ bool VisibilityQuadrant::is_sensor_cell_visible(const glm::ivec3& robot_position
 		if (relative_point_position.x >= sensor_width_
 			|| relative_point_position.z >= sensor_height_
 			|| relative_interior_position.x >= sensor_width_
-			|| relative_interior_position.z >= sensor_height_) {
+			|| relative_interior_position.z >= sensor_height_
+
+			|| relative_point_position.x < 0
+			|| relative_point_position.z < 0
+			|| relative_interior_position.x < 0
+			|| relative_interior_position.z < 0
+
+			) {
+
 			return false;
 		}
 
@@ -702,17 +710,18 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 	bool cell_found = false;
 
 	for (int sensor_level = sensor_range_ + 1; sensor_level <= diagonal_grid_length_; ++sensor_level) {
-		int no_of_iter = 0;
-		int out_of_bounds = 0;
+		//int no_of_iter = 0;
+		//int out_of_bounds = 0;
 		for (int z = -sensor_level; z <= sensor_level; ++z) {
 			for (int x = -sensor_level; x <= sensor_level; ++x) {
 				if (std::abs(x) == sensor_level
 					|| std::abs(z) == sensor_level) {
+
 					glm::ivec3 cell_position = current_robot_grid_position + glm::ivec3(x, 0, z);
-					no_of_iter++;
-					if (occupancy_grid_->is_out_of_bounds(cell_position)) {
-						out_of_bounds++;
-					}
+					//no_of_iter++;
+					//if (occupancy_grid_->is_out_of_bounds(cell_position)) {
+					//	out_of_bounds++;
+					//}
 
 					if (!occupancy_grid_->is_out_of_bounds(cell_position)
 						//&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
@@ -721,7 +730,8 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 
 							bool visible = true;
 							for (auto& interior_cell : interior_cells_) {
-								if (!VisibilityQuadrant::visbility_quadrant(sensor_level)->is_sensor_cell_visible(current_robot_grid_position, occupancy_grid_->map_to_grid(interior_cell), cell_position)) {
+								auto interior_grid_pos = occupancy_grid_->map_to_grid(interior_cell);
+								if (!VisibilityQuadrant::visbility_quadrant(sensor_level)->is_sensor_cell_visible(current_robot_grid_position, interior_grid_pos, cell_position)) {
 									visible = false;
 									break;
 								}
@@ -758,10 +768,10 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 				}
 			}
 		}
-		if (no_of_iter > 0 && no_of_iter == out_of_bounds) {
-			// we are outside the defined world, time to quit
-			break;
-		}
+		//if (no_of_iter > 0 && no_of_iter == out_of_bounds) {
+		//	// we are outside the defined world, time to quit
+		//	break;
+		//}
 	}
 	return false;
 }
@@ -779,28 +789,34 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 	bool something_to_explore = false;
 	glm::ivec3 explore_cell;
 	//if ((previous_no_of_explored_cells_ == explored_cells) && (previous_cell == current_cell)) {
-	if (local_explore_state_ == PERIMETER &&  not_locally_visited(previous_local_explore_cell)) {
-		bool visible = true;
-		for (auto& interior_cell : interior_cells_) {
-			if (!VisibilityQuadrant::visbility_quadrant(sensor_range_)->is_sensor_cell_visible(occupancy_grid_->map_to_grid(position_), occupancy_grid_->map_to_grid(interior_cell), previous_local_explore_cell)) {
-				visible = false;
-				break;
-			}
-		}
-		if (visible) {
-			something_to_explore = true;
-			explore_cell = previous_local_explore_cell;
-		}
-	} 
 
 
-	if (!something_to_explore) {
 		
-	if ((previous_no_of_explored_cells_ == explored_cells)) {
+	if ((previous_no_of_local_explored_cells_ == explored_cells)) {
+		same_cell_count_++;
 		something_to_explore = true;
 		explore_cell = previous_local_explore_cell;
+		if (same_cell_count_ > 300) {
+			something_to_explore = false;
+		}
 	}
-	else {
+
+	if (!something_to_explore) {
+		same_cell_count_ = 0;
+		//if (local_explore_state_ == PERIMETER &&  not_locally_visited(previous_local_explore_cell)) {
+		//	bool visible = true;
+		//	for (auto& interior_cell : interior_cells_) {
+		//		if (!VisibilityQuadrant::visbility_quadrant(sensor_range_)->is_sensor_cell_visible(occupancy_grid_->map_to_grid(position_), occupancy_grid_->map_to_grid(interior_cell), previous_local_explore_cell)) {
+		//			visible = false;
+		//			break;
+		//		}
+		//	}
+		//	if (visible) {
+		//		something_to_explore = true;
+		//		explore_cell = previous_local_explore_cell;
+		//	}
+		//} 
+
 		something_to_explore = local_explore_search(explore_cell);
 		local_explore_state_ = EXPLORE;
 
@@ -817,7 +833,6 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 		} 
 		//std::string str = std::to_string(id_) + " " + std::to_string(local_no_of_unexplored_cells_) + " ";
 		//SwarmUtils::print_vector(str, explore_cell);
-	}
 	}
 
 

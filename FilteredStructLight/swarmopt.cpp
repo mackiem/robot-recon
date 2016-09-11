@@ -30,11 +30,13 @@ double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 30.0;
 double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 10.0;
 double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = 50.0;
 double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 10.0;
+//double ParallelMCMCOptimizer::MAX_BOUNCE_MULTIPLIER_VALUE = 50.0;
 
 double ParallelMCMCOptimizer::MIN_SEPARATION_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_ALIGNMENT_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_CLUSTER_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_EXPLORE_VALUE = 0.0;
+//double ParallelMCMCOptimizer::MIN_BOUNCE_MULTIPLIER_VALUE = 10.0;
 
 //int
 //SwarmOptimizer::swarm_sim_opt_error_(int *m_ptr, int *n_ptr, double *params, double *error, int *)
