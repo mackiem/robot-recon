@@ -933,7 +933,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 		}
 	}
 
-	VisibilityQuadrant::visbility_quadrant(swarm_params_.sensor_range_ * 3);
+	VisibilityQuadrant::visbility_quadrant(swarm_params_.sensor_range_ * 2);
 
 
 	// graphics setup

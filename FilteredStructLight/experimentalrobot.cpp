@@ -221,6 +221,7 @@ VisibilityQuadrant* VisibilityQuadrant::visbility_quadrant(int sensor_range) {
 		}
 		instance_->cleanup_internal();
 	}
+	std::cout << "Creating sensor range visibility quadrant : " << sensor_range << "\n";
 	instance_ = new VisibilityQuadrant(sensor_range);
 	return instance_;
 }
@@ -729,12 +730,16 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 						&& not_locally_visited(cell_position)) {
 
 							bool visible = true;
-							for (auto& interior_cell : interior_cells_) {
-								auto interior_grid_pos = occupancy_grid_->map_to_grid(interior_cell);
-								if (!VisibilityQuadrant::visbility_quadrant(sensor_level)->is_sensor_cell_visible(current_robot_grid_position, interior_grid_pos, cell_position)) {
-									visible = false;
-									break;
+							if (sensor_width_ * 2 >= sensor_level) {
+								for (auto& interior_cell : interior_cells_) {
+									auto interior_grid_pos = occupancy_grid_->map_to_grid(interior_cell);
+									if (!VisibilityQuadrant::visbility_quadrant(sensor_level)->is_sensor_cell_visible(current_robot_grid_position, interior_grid_pos, cell_position)) {
+										visible = false;
+										break;
+									}
 								}
+							} else {
+								visible = !occupancy_grid_->going_through_interior_test(current_robot_grid_position, cell_position);
 							}
 
 							if (visible) {
