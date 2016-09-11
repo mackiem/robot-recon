@@ -554,6 +554,7 @@ double ParallelMCMCOptimizer::MIN_EXPLORE_VALUE = 0.0;
 ParallelMCMCOptimizer::ParallelMCMCOptimizer(const SwarmParams& swarm_params, const OptimizationParams& optimization_params, std::string& optimizer_filename) 
 	: swarm_params_(swarm_params), optimization_params_(optimization_params), optimizer_filename_(optimizer_filename), 
 	current_working_threads_(0), cull_threshold_(0.2f) {
+	VisibilityQuadrant::visbility_quadrant(swarm_params_.sensor_range_ * 3);
 }
 
 double ParallelMCMCOptimizer::init_value(double min, double max) {
