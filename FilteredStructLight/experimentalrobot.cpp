@@ -314,10 +314,10 @@ bool VisibilityQuadrant::is_sensor_cell_visible(const glm::ivec3& robot_position
 		glm::ivec3 relative_point_position = point_to_test - robot_position + glm::ivec3(half_sensor_width_, 0, half_sensor_height_);;
 		glm::ivec3 relative_interior_position = interior_position - robot_position + glm::ivec3(half_sensor_width_, 0, half_sensor_height_);
 
-		if (relative_point_position.x >= (sensor_width_ - 1)
-			|| relative_point_position.z >= (sensor_height_- 1)
-			|| relative_interior_position.x >= (sensor_width_- 1)
-			|| relative_interior_position.z >= (sensor_height_- 1)
+		if (relative_point_position.x > (sensor_width_ - 1)
+			|| relative_point_position.z > (sensor_height_- 1)
+			|| relative_interior_position.x > (sensor_width_- 1)
+			|| relative_interior_position.z > (sensor_height_- 1)
 
 			|| relative_point_position.x < 0
 			|| relative_point_position.z < 0
@@ -730,7 +730,7 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 						&& not_locally_visited(cell_position)) {
 
 							bool visible = true;
-							if (sensor_width_ * 2 >= sensor_level) {
+							if (sensor_range_ * 2 >= sensor_level) {
 								for (auto& interior_cell : interior_cells_) {
 									auto interior_grid_pos = occupancy_grid_->map_to_grid(interior_cell);
 									if (!VisibilityQuadrant::visbility_quadrant(sensor_level)->is_sensor_cell_visible(current_robot_grid_position, interior_grid_pos, cell_position)) {
