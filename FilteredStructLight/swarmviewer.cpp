@@ -113,7 +113,7 @@ void RobotWorker::do_work() {
 		}
 		if (!paused_) {
 			if (slow_down_) {
-				QThread::currentThread()->msleep(10);
+				QThread::currentThread()->msleep(2);
 			}
 			step_count_--;
 			if (time_step_count_ > max_time_taken_) {

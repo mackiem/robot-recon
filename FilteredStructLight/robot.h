@@ -176,6 +176,7 @@ protected:
 	std::vector<glm::ivec3> explored_cells_;
 	std::vector<glm::ivec3> interior_explored_cells_;
 	std::vector<glm::ivec3> search_output_cells_;
+	std::vector<glm::ivec3> move_to_output_cells_;
 	std::vector<glm::vec3> poo_cells_;
 	QMutex explored_mutex_;
 

@@ -23,9 +23,9 @@
 //	}
 //} doAtExit;
 //
-//void dump() {
-//		_CrtDumpMemoryLeaks();
-//}
+void dump() {
+		_CrtDumpMemoryLeaks();
+}
 
 void run_program(int argc, char *argv[]) {
 	QApplication a(argc, argv);
