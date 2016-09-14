@@ -107,9 +107,10 @@ private:
 
 	std::set<glm::ivec3, IVec3Comparator> local_interior_list_;
 	glm::ivec3 previous_local_move_to_grid_cell;
-	bool astar_search(const glm::ivec3& start, const glm::ivec3& end, glm::ivec3& next, std::vector<glm::ivec3>& path);
+	bool astar_search(const glm::ivec3& start, const glm::ivec3& end, glm::ivec3& next, std::deque<glm::ivec3>& path);
 
 	bool is_local_interior(const glm::ivec3& grid_position) const;
+	std::deque<glm::ivec3> astar_path_;
 	//static int OUT_OF_BOUNDS;
 	//static int INVISIBLE;
 	//enum SENSOR_STATE {

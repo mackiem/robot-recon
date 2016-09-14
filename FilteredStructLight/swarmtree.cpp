@@ -733,7 +733,7 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 	sample.cluster_id = cluster_id;
 	sampling_tracker_->push_back(sample);
 
-	if (sampling_tracker_->size() % 1000000 == 0) {
+	if (sampling_tracker_->size() % 100000 == 0) {
 		//std::cout << "tracker memory : " << sampling_tracker_->size() * sizeof(Sampling) / (1024 * 1024) << "\n";
 		last_multisample_timestep_ = timestep;
 		update_multisampling_ = true;
