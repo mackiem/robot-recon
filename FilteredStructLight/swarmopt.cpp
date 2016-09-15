@@ -30,13 +30,13 @@ double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 30.0;
 double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 10.0;
 double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = 50.0;
 double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 10.0;
-double ParallelMCMCOptimizer::MAX_BOUNCE_MULTIPLIER_VALUE = 5.0;
+//double ParallelMCMCOptimizer::MAX_BOUNCE_MULTIPLIER_VALUE = 50.0;
 
 double ParallelMCMCOptimizer::MIN_SEPARATION_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_ALIGNMENT_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_CLUSTER_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_EXPLORE_VALUE = 0.0;
-double ParallelMCMCOptimizer::MIN_BOUNCE_MULTIPLIER_VALUE = 0.1;
+//double ParallelMCMCOptimizer::MIN_BOUNCE_MULTIPLIER_VALUE = 10.0;
 
 //int
 //SwarmOptimizer::swarm_sim_opt_error_(int *m_ptr, int *n_ptr, double *params, double *error, int *)
@@ -626,8 +626,6 @@ SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int th
 	next_params.swarm_params.alignment_constant_ = init_value(MIN_ALIGNMENT_VALUE, MAX_ALIGNMENT_VALUE);
 	next_params.swarm_params.cluster_constant_ = init_value(MIN_CLUSTER_VALUE, MAX_CLUSTER_VALUE);
 	next_params.swarm_params.explore_constant_ = init_value(MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
-	next_params.swarm_params.bounce_function_multiplier_ = init_value(MIN_BOUNCE_MULTIPLIER_VALUE, MAX_BOUNCE_MULTIPLIER_VALUE);
-
 	//next_params.swarm_params.bounce_function_multiplier_ = init_value(0.0, 100.0);
 	//next_params.swarm_params.separation_range_max_ = init_value(0.0, 5.0);
 
@@ -666,7 +664,7 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 	std::random_device rd;
 	std::mt19937 mt(rd());
 	//std::uniform_int_distribution<> uniform_int_distribution(0, 5);
-	std::uniform_int_distribution<> uniform_int_distribution(0, 4);
+	std::uniform_int_distribution<> uniform_int_distribution(0, 3);
 	
 	int param_index = uniform_int_distribution(mt);
 
@@ -702,11 +700,11 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 			temperatures_[temperature], MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
 		break;
 	}
-	case 4: {
-		next_mcmc_params.swarm_params.bounce_function_multiplier_ = perturb_value(next_mcmc_params.swarm_params.bounce_function_multiplier_,
-			temperatures_[temperature], MIN_BOUNCE_MULTIPLIER_VALUE, MAX_BOUNCE_MULTIPLIER_VALUE);
-		break;
-	}
+	//case 4: {
+	//	next_mcmc_params.swarm_params.bounce_function_multiplier_ = perturb_value(next_mcmc_params.swarm_params.bounce_function_multiplier_,
+	//		temperatures_[temperature], 0.0, 100.0);
+	//	break;
+	//}
 	//case 5: {
 	//	next_mcmc_params.swarm_params.separation_range_max_ = perturb_value(next_mcmc_params.swarm_params.separation_range_max_,
 	//		temperatures_[temperature], 0.0, 5.0);

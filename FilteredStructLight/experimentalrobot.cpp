@@ -2,7 +2,6 @@
 #include <chrono>
 #include "swarmutils.h"
 #include <glm/detail/type_mat.hpp>
-#include <boost/thread/csbl/memory/scoped_allocator.hpp>
 
 #define PI 3.14159265359	
 
@@ -34,306 +33,8 @@
 
 int VisibilityQuadrant::INVISIBLE = -1;
 int VisibilityQuadrant::VISIBLE = 1;
-int ExperimentalRobot::INTERIOR = 2;
-int ExperimentalRobot::EMPTY = 1;
 
 //char** ExperimentalRobot::quadrants_ = nullptr;
-int MapSearchNode::GetMap( const glm::ivec3& position) const
-{
-	if( position_.x < 0 ||
-	    position_.x >= local_map_->get_grid_width()||
-		 position_.z < 0 ||
-		 position_.z >= local_map_->get_grid_height() 
-	  )
-	{
-		return ExperimentalRobot::INTERIOR;	 
-	}
-
-	return local_map_->at(position_.x, position_.z);
-}
-
-bool MapSearchNode::IsSameState( MapSearchNode &rhs )
-{
-
-	// same state in a maze search is simply when (x,y) are the same
-	if( position_ == rhs.position_ )
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
-
-}
-
-void MapSearchNode::PrintNodeInfo()
-{
-	char str[100];
-	sprintf( str, "Node position : (%d,%d)\n", position_.x, position_.z );
-
-	cout << str;
-}
-
-// Here's the heuristic function that estimates the distance from a Node
-// to the Goal. 
-
-float MapSearchNode::GoalDistanceEstimate( MapSearchNode &nodeGoal )
-{
-	return fabsf(position_.x - nodeGoal.position_.x) + fabsf(position_.z - nodeGoal.position_.z);	
-}
-
-bool MapSearchNode::IsGoal( MapSearchNode &nodeGoal )
-{
-
-	if(position_ == nodeGoal.position_) 
-	{
-		return true;
-	}
-
-	return false;
-}
-
-// This generates the successors to the given Node. It uses a helper function called
-// AddSuccessor to give the successors to the AStar class. The A* specific initialisation
-// is done for each node internally, so here you just set the state information that
-// is specific to the application
-bool MapSearchNode::GetSuccessors( AStarSearch<MapSearchNode> *astarsearch, MapSearchNode *parent_node )
-{
-
-	//int parent_x = -1; 
-	//int parent_y = -1; 
-
-	//if( parent_node )
-	//{
-	//	parent_x = parent_node->x;
-	//	parent_y = parent_node->y;
-	//}
-
-	glm::ivec3 parent;
-	if (parent_node) {
-		parent = parent_node->position_;
-	}
-	
-
-	MapSearchNode NewNode;
-
-	// push each possible move except allowing the search to go backwards
-
-	glm::ivec3 xminus1 = position_ + glm::ivec3(-1, 0, 0);
-	int interior = ExperimentalRobot::INTERIOR; 
-	if( (GetMap(xminus1) < interior) 
-		&& !(parent == xminus1)
-	  ) 
-	{
-		NewNode = MapSearchNode( xminus1, local_map_);
-		astarsearch->AddSuccessor( NewNode );
-	}	
-
-	glm::ivec3 yminus1 = position_ + glm::ivec3(0, 0, -1);
-	if( (GetMap(yminus1) < interior) 
-		&& !(parent == yminus1)
-	  ) 
-	{
-		NewNode = MapSearchNode( yminus1, local_map_);
-		astarsearch->AddSuccessor( NewNode );
-	}	
-
-	glm::ivec3 xplus1 = position_ + glm::ivec3(1, 0, 0);
-	if( (GetMap(xplus1) < interior) 
-		&& !(parent == xplus1)
-	  ) 
-	{
-		NewNode = MapSearchNode( xplus1, local_map_);
-		astarsearch->AddSuccessor( NewNode );
-	}	
-
-	glm::ivec3 yplus1 = position_ + glm::ivec3(0, 0, 1);
-	if( (GetMap(yplus1) < interior) 
-		&& !(parent == yplus1)
-	  ) 
-	{
-		NewNode = MapSearchNode( yplus1, local_map_);
-		astarsearch->AddSuccessor( NewNode );
-	}	
-
-	return true;
-}
-
-// given this node, what does it cost to move to successor. In the case
-// of our map the answer is the map terrain value at this node since that is 
-// conceptually where we're moving
-
-float MapSearchNode::GetCost( MapSearchNode &successor )
-{
-	return (float) GetMap(position_);
-
-}
-
-//#define DEBUG_LISTS 1
-
-// Main
-
-bool ExperimentalRobot::astar_search(const glm::ivec3& start, const glm::ivec3& end, glm::ivec3& next, std::deque<glm::ivec3>& path)
-{
-
-	// Our sample problem defines the world as a 2d array representing a terrain
-	// Each element contains an integer from 0 to 5 which indicates the cost 
-	// of travel across the terrain. Zero means the least possible difficulty 
-	// in travelling (think ice rink if you can skate) whilst 5 represents the 
-	// most difficult. 9 indicates that we cannot pass.
-
-	// Create an instance of the search class...
-
-	AStarSearch<MapSearchNode> astarsearch;
-
-	unsigned int SearchCount = 0;
-
-	const unsigned int NumSearches = 1;
-
-	while(SearchCount < NumSearches)
-	{
-
-		// Create a start state
-		MapSearchNode nodeStart(start, &local_map_);
-
-		// Define the goal state
-		MapSearchNode nodeEnd(end, &local_map_);;
-		
-		// Set Start and goal states
-		astarsearch.SetStartAndGoalStates( nodeStart, nodeEnd );
-
-		unsigned int SearchState;
-		unsigned int SearchSteps = 0;
-
-		do
-		{
-			SearchState = astarsearch.SearchStep();
-
-			SearchSteps++;
-
-	#if DEBUG_LISTS
-
-			cout << "Steps:" << SearchSteps << "\n";
-
-			int len = 0;
-
-			cout << "Open:\n";
-			MapSearchNode *p = astarsearch.GetOpenListStart();
-			while( p )
-			{
-				len++;
-	#if !DEBUG_LIST_LENGTHS_ONLY			
-				((MapSearchNode *)p)->PrintNodeInfo();
-	#endif
-				p = astarsearch.GetOpenListNext();
-				
-			}
-
-			cout << "Open list has " << len << " nodes\n";
-
-			len = 0;
-
-			cout << "Closed:\n";
-			p = astarsearch.GetClosedListStart();
-			while( p )
-			{
-				len++;
-	#if !DEBUG_LIST_LENGTHS_ONLY			
-				p->PrintNodeInfo();
-	#endif			
-				p = astarsearch.GetClosedListNext();
-			}
-
-			cout << "Closed list has " << len << " nodes\n";
-	#endif
-
-		}
-		while( SearchState == AStarSearch<MapSearchNode>::SEARCH_STATE_SEARCHING );
-
-		if( SearchState == AStarSearch<MapSearchNode>::SEARCH_STATE_SUCCEEDED )
-		{
-			//cout << "Search found goal state\n";
-
-				MapSearchNode *node = astarsearch.GetSolutionStart();
-
-	#if DISPLAY_SOLUTION
-				cout << "Displaying solution\n";
-	#endif
-				int steps = 0;
-
-				//node->PrintNodeInfo();
-				for( ;; )
-				{
-					node = astarsearch.GetSolutionNext();
-
-					if( !node )
-					{
-						break;
-					}
-
-
-					//node->PrintNodeInfo();
-					steps ++;
-
-					path.push_back(node->position_);
-					//break;
-					//next = node->position_;
-
-					//return true;
-				};
-				if (path.size() > 0) {
-					next = path[0];
-					return true;
-				} else {
-					return false;
-				}
-				
-
-
-				//cout << "Solution steps " << steps << endl;
-
-				// Once you're done with the solution you can free the nodes up
-				astarsearch.FreeSolutionNodes();
-		}
-		else if( SearchState == AStarSearch<MapSearchNode>::SEARCH_STATE_FAILED ) 
-		{
-			cout << "Search terminated. Did not find goal state\n";
-			return false;
-		
-		}
-
-		// Display the number of loops the search went through
-		//cout << "SearchSteps : " << SearchSteps << "\n";
-
-		SearchCount ++;
-
-		astarsearch.EnsureMemoryFreed();
-	}
-	
-	return 0;
-}
-
-VisibilityQuadrant::~VisibilityQuadrant() {
-	//delete local_map_;
-	cleanup_internal();
-}
-
-VisibilityQuadrant::QUADRANT VisibilityQuadrant::get_quadrant(const glm::ivec3& pt) const {
-	if (pt.x > half_sensor_width_ && pt.y > half_sensor_height_) {
-		return NE;
-	}
-	if (pt.x > half_sensor_width_ && pt.y <= half_sensor_height_) {
-		return SE;
-	}
-	if (pt.x <= half_sensor_width_ && pt.y > half_sensor_height_) {
-		return NW;
-	}
-	if (pt.x <= half_sensor_width_ && pt.y <= half_sensor_height_) {
-		return SW;
-	}
-	return SW;
-}
 
 ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
 	SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree, int cluster_id, double separation_constant, double alignment_constant,
@@ -561,32 +262,50 @@ void VisibilityQuadrant::create_visibility_quadrant() {
 
 }
 
+VisibilityQuadrant::~VisibilityQuadrant() {
+	//delete local_map_;
+	cleanup_internal();
+}
 
+ExperimentalRobot::QUADRANT ExperimentalRobot::get_quadrant(const glm::ivec3& pt) const {
+	//if (pt.x > half_sensor_width_ && pt.y > half_sensor_height_) {
+	//	return NE;
+	//}
+	//if (pt.x > half_sensor_width_ && pt.y <= half_sensor_height_) {
+	//	return SE;
+	//}
+	//if (pt.x <= half_sensor_width_ && pt.y > half_sensor_height_) {
+	//	return NW;
+	//}
+	//if (pt.x <= half_sensor_width_ && pt.y <= half_sensor_height_) {
+	//	return SW;
+	//}
+	return SW;
+}
 
-
-//glm::ivec3 ExperimentalRobot::flip_to_SW(const glm::ivec3& pt, ExperimentalRobot::QUADRANT quadrant) const {
-//	glm::ivec3 flipped_pt = pt;
-//	switch (quadrant) {
-//	case NE : {
-//		flipped_pt.x = sensor_width_ - flipped_pt.x;
-//		flipped_pt.y = sensor_height_- flipped_pt.y;
-//		break;
-//	}
-//	case SW: {
-//		break;
-//	}
-//	case SE: {
-//		flipped_pt.x = sensor_width_ - flipped_pt.x;
-//		break;
-//	}
-//	case NW: {
-//		flipped_pt.y = sensor_height_- flipped_pt.y;
-//		break;
-//	}
-//	default: break;
-//	}
-//	return flipped_pt;
-//}
+glm::ivec3 ExperimentalRobot::flip_to_SW(const glm::ivec3& pt, ExperimentalRobot::QUADRANT quadrant) const {
+	glm::ivec3 flipped_pt = pt;
+	switch (quadrant) {
+	case NE : {
+		flipped_pt.x = sensor_width_ - flipped_pt.x;
+		flipped_pt.y = sensor_height_- flipped_pt.y;
+		break;
+	}
+	case SW: {
+		break;
+	}
+	case SE: {
+		flipped_pt.x = sensor_width_ - flipped_pt.x;
+		break;
+	}
+	case NW: {
+		flipped_pt.y = sensor_height_- flipped_pt.y;
+		break;
+	}
+	default: break;
+	}
+	return flipped_pt;
+}
 
 
 bool VisibilityQuadrant::is_sensor_cell_visible(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
@@ -609,13 +328,6 @@ bool VisibilityQuadrant::is_sensor_cell_visible(const glm::ivec3& robot_position
 
 			return false;
 		}
-
-		auto pt_quadrant = get_quadrant(relative_point_position);
-		auto interior_quadrant = get_quadrant(relative_interior_position);
-		
-		//if (pt_quadrant != interior_quadrant) {
-		//	return false;
-		//}
 
 		char visible = quadrants_[relative_interior_position.z * sensor_width_ + relative_interior_position.x]
 			[relative_point_position.z * sensor_width_ + relative_point_position.x];
@@ -688,9 +400,6 @@ void ExperimentalRobot::update_visualization_structs() {
 	for (auto& adjacent_sensor_cell : search_output_cells_) {
 		overlay_->update_grid_position(adjacent_sensor_cell, search_color_ );
 	}
-	for (auto& adjacent_sensor_cell : move_to_output_cells_) {
-		overlay_->update_grid_position(adjacent_sensor_cell, move_to_color_ );
-	}
 	explored_cells_.clear();
 	interior_explored_cells_.clear();
 	search_output_cells_.clear();
@@ -718,8 +427,6 @@ void ExperimentalRobot::change_color(cv::Vec4f& color) {
 	color_ = color;
 	search_color_ = color / 3.f;
 	search_color_[3] = 1.f;
-	move_to_color_ = color / 6.f;
-	move_to_color_[3] = 1.f;
 	RenderEntity& entity = mesh_[mesh_.size() - 1];
 
 	if (colors_.size() > 0) {
@@ -1012,9 +719,14 @@ bool  ExperimentalRobot::local_perimeter_search(glm::ivec3& explore_cell_positio
 					|| std::abs(z) == sensor_level) {
 
 					glm::ivec3 cell_position = current_robot_grid_position + glm::ivec3(x, 0, z);
+					//no_of_iter++;
+					//if (occupancy_grid_->is_out_of_bounds(cell_position)) {
+					//	out_of_bounds++;
+					//}
 
 					if (!occupancy_grid_->is_out_of_bounds(cell_position)
-						&& !is_local_interior(cell_position)
+						//&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
+						&& !occupancy_grid_->is_interior(cell_position)
 						&& not_locally_visited(cell_position)) {
 
 							bool visible = true;
@@ -1084,41 +796,11 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 	//if ((previous_no_of_explored_cells_ == explored_cells) && (previous_cell == current_cell)) {
 
 
-	glm::ivec3 move_to_grid_position;
-
-	//if (local_explore_state_ == PERIMETER && (previous_cell == current_cell)) {
-	//	if (astar_path_.size() > 0 ) {
-	//		something_to_explore = true;
-	//		explore_cell = previous_local_explore_cell;
-	//		auto move_to_position = astar_path_.front();
-	//		if (not_locally_visited(move_to_position)) {
-	//			move_to_grid_position = move_to_position;
-	//		} else {
-	//			astar_path_.pop_front();
-	//			if (astar_path_.size() > 0) {
-	//				auto new_move_to_position = astar_path_.front();
-	//				move_to_grid_position = new_move_to_position;
-	//			} else {
-	//				something_to_explore = false;
-	//			}
-	//			
-	//		}
-	//	}
-	//	
-	//}
 		
-	if ((previous_no_of_explored_cells_ == explored_cells)) {
-	//if ((previous_no_of_local_explored_cells_ == explored_cells)) {
+	if ((previous_no_of_local_explored_cells_ == explored_cells)) {
 		same_cell_count_++;
 		something_to_explore = true;
 		explore_cell = previous_local_explore_cell;
-		move_to_grid_position = previous_local_move_to_grid_cell;
-		//if (local_explore_state_ == EXPLORE) {
-		//	move_to_grid_position = pre;
-		//} else if (local_explore_state_ == PERIMETER) {
-		//	move_to_grid_position = explore_cell;
-		//	
-		//}
 		if (same_cell_count_ > 300) {
 			something_to_explore = false;
 		}
@@ -1141,49 +823,19 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 		//} 
 
 		something_to_explore = local_explore_search(explore_cell);
-		if (something_to_explore) {
-			local_explore_state_ = EXPLORE;
-			move_to_grid_position = explore_cell;
-		}
+		local_explore_state_ = EXPLORE;
 
 		if (!something_to_explore) {
+			// go left
 			something_to_explore = local_perimeter_search(explore_cell);
-			if (something_to_explore) {
-				local_explore_state_ = PERIMETER;
-				move_to_grid_position = explore_cell;
-				//bool can_reach = false;
-				//while (!can_reach) {
-				//	if (something_to_explore) {
-				//		can_reach = astar_search(occupancy_grid_->map_to_grid(position_), explore_cell, move_to_grid_position, astar_path_);
-				//		if (!can_reach) {
-				//			mark_locally_covered(explore_cell, true);
-				//			something_to_explore = local_perimeter_search(explore_cell);
-				//		} else {
-				//			move_to_grid_position = astar_path_.front();
-				//			astar_path_.clear();
-				//		}
-				//	} else {
-				//		break;
-				//	}
-				//}
-				//if (can_reach) {
-				//	//for (auto& path_cell : move_to_positions) {
-				//		//explored_mutex_.lock();
-				//		//search_output_cells_.push_back(explore_cell);
-				//		//move_to_output_cells_.push_back(path_cell);
-				//		//explored_mutex_.unlock();
-				//	//}
-				//}
+			local_explore_state_ = PERIMETER;
+
+
+			if (!something_to_explore) {
+				explore_cell = occupancy_grid_->map_to_grid(position_) + glm::ivec3(0.f, 0.f, 1.f);
+				something_to_explore = true;
 			}
-
-		}
-				
-		if (!something_to_explore) {
-			explore_cell = occupancy_grid_->map_to_grid(position_) + glm::ivec3(0.f, 0.f, 1.f);
-			move_to_grid_position = explore_cell;
-			something_to_explore = true;
-		}
-
+		} 
 		//std::string str = std::to_string(id_) + " " + std::to_string(local_no_of_unexplored_cells_) + " ";
 		//SwarmUtils::print_vector(str, explore_cell);
 	}
@@ -1191,14 +843,10 @@ glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 
 	if (something_to_explore) {
 		previous_local_explore_cell = explore_cell;
-		previous_local_move_to_grid_cell = move_to_grid_position;
-
 		//explored_mutex_.lock();
 		//search_output_cells_.push_back(explore_cell);
-		//move_to_output_cells_.push_back(move_to_grid_position);
 		//explored_mutex_.unlock();
-		//auto move_to_position = occupancy_grid_->map_to_position(explore_cell);
-		auto move_to_position = occupancy_grid_->map_to_position(move_to_grid_position);
+		auto move_to_position = occupancy_grid_->map_to_position(explore_cell);
 		float max_distance = diagonal_grid_length_ * occupancy_grid_->get_grid_square_length();
 		float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
 		explore_velocity = normalizing_constant * (move_to_position - position_) * explore_constant_;
@@ -1533,23 +1181,12 @@ bool ExperimentalRobot::not_locally_visited(const glm::ivec3& grid_position) {
 	return  false;
 }
 
-bool ExperimentalRobot::is_local_interior(const glm::ivec3& grid_position) const {
-	//int map_position = grid_position.x * occupancy_grid_->get_grid_resolution_per_side() + grid_position.z;
-	if (local_map_.at(grid_position.x, grid_position.z) == INTERIOR) {
-		return true;
-	}
-	return  false;
-}
-
-void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position, bool interior) {
+void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position) {
 	//int map_position = grid_position.x * occupancy_grid_->get_grid_resolution_per_side() + grid_position.z;
 	if (local_map_.at(grid_position.x, grid_position.z) == 0) {
-		char mark_value = (interior) ? INTERIOR : EMPTY;
-		local_map_.set(grid_position.x, grid_position.z, mark_value);
+		char val = 1;
+		local_map_.set(grid_position.x, grid_position.z, val);
 		local_no_of_unexplored_cells_--;
-		//if (interior) {
-		//	local_interior_list_.insert(grid_position);
-		//}
 	}
 }
 
@@ -1575,7 +1212,7 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 									&& not_locally_visited(cell_position)) {
 										float distance = glm::length(glm::vec3(other_robot_grid_position - cell_position));
 										if (distance < (sensor_range_ - 2)) {
-											mark_locally_covered(cell_position, false);
+											mark_locally_covered(cell_position);
 										}
 										if (!occupancy_grid_->is_interior(cell_position)) {
 											if (render_) {
@@ -1758,6 +1395,9 @@ void ExperimentalRobot::update(int timestamp) {
 
 #ifdef LOCAL
 			// interior or not we need to mark as covered
+			if (distance < (sensor_range_ - 2)) {
+				mark_locally_covered(sensored_cell);
+			}
 #endif
 			if (!occupancy_grid_->is_interior(sensored_cell)) {
 				occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
@@ -1769,9 +1409,6 @@ void ExperimentalRobot::update(int timestamp) {
 						explored_cells_.push_back(sensored_cell);
 						explored_mutex_.unlock();
 					}
-					if (distance < (sensor_range_ - 2)) {
-						mark_locally_covered(sensored_cell, false);
-					}
 					occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
 				}
 			}
@@ -1782,7 +1419,6 @@ void ExperimentalRobot::update(int timestamp) {
 					explored_mutex_.unlock();
 				}
 				occupancy_grid_->mark_explored_in_interior_list(sensored_cell);
-				mark_locally_covered(sensored_cell, true);
 			}
 		}
 		reconstruct_points();

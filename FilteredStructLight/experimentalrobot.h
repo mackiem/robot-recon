@@ -1,32 +1,6 @@
 #pragma once
 #include "robot.h"
-#include "stlastar.h"
 
-typedef mm::Quadtree<char> LocalMap;
-
-class MapSearchNode
-{
-public:
-	//int x;	 // the (x,y) positions of the node
-	//int y;	
-	glm::ivec3 position_;
-	LocalMap* local_map_;
-	
-	MapSearchNode() { };
-	MapSearchNode( glm::ivec3 position, LocalMap* local_map) : position_(position), local_map_(local_map) { };
-
-	int GetMap( const glm::ivec3& position) const;
-
-	float GoalDistanceEstimate( MapSearchNode &nodeGoal );
-	bool IsGoal( MapSearchNode &nodeGoal );
-	bool GetSuccessors( AStarSearch<MapSearchNode> *astarsearch, MapSearchNode *parent_node );
-	float GetCost( MapSearchNode &successor );
-	bool IsSameState( MapSearchNode &rhs );
-
-	void PrintNodeInfo(); 
-
-
-};
 class VisibilityQuadrant {
 
 	int sensor_width_;
@@ -45,13 +19,6 @@ class VisibilityQuadrant {
 
 	
 public:
-	enum QUADRANT {
-		SW = 0,
-		SE = 1,
-		NE = 2,
-		NW = 3
-	};
-	VisibilityQuadrant::QUADRANT VisibilityQuadrant::get_quadrant(const glm::ivec3& pt) const;
 	static void cleanup();
 	static VisibilityQuadrant* visbility_quadrant(int sensor_range);
 	static int INVISIBLE;
@@ -88,7 +55,7 @@ private:
 	int current_timestamp_;
 	float random_constant_;
 	glm::ivec3 previous_local_explore_cell;
-	LocalMap local_map_;
+	mm::Quadtree<char> local_map_;
 	int local_no_of_unexplored_cells_;
 	int previous_no_of_local_explored_cells_;
 	cv::Vec4f color_;
@@ -104,15 +71,10 @@ private:
 	std::deque<int> y_sensor_index_;
 	std::set<glm::ivec3, IVec3Comparator> incremental_interior_list_;
 
-
-	std::set<glm::ivec3, IVec3Comparator> local_interior_list_;
-	glm::ivec3 previous_local_move_to_grid_cell;
-	bool astar_search(const glm::ivec3& start, const glm::ivec3& end, glm::ivec3& next, std::deque<glm::ivec3>& path);
-
-	bool is_local_interior(const glm::ivec3& grid_position) const;
-	std::deque<glm::ivec3> astar_path_;
+	//static int INTERIOR;
 	//static int OUT_OF_BOUNDS;
 	//static int INVISIBLE;
+	//static int NORMAL;
 	//enum SENSOR_STATE {
 	//	NORMAL = 0,
 	//	INVISIBLE = 1,
@@ -125,7 +87,6 @@ private:
 	int half_sensor_width_;
 	int half_sensor_height_;
 	cv::Vec4f search_color_;
-	cv::Vec4f move_to_color_;
 	int same_cell_count_;;
 
 	//int no_of_bits_;
@@ -142,9 +103,15 @@ private:
 
 	LOCAL_SEARCH_STATE local_explore_state_;
 
+	enum QUADRANT {
+		SW = 0,
+		SE = 1,
+		NE = 2,
+		NW = 3
+	};
 
-	//ExperimentalRobot::QUADRANT get_quadrant(const glm::ivec3& pt) const;
-	//glm::ivec3 flip_to_SW(const glm::ivec3& pt, ExperimentalRobot::QUADRANT quadrant) const;
+	ExperimentalRobot::QUADRANT get_quadrant(const glm::ivec3& pt) const;
+	glm::ivec3 flip_to_SW(const glm::ivec3& pt, ExperimentalRobot::QUADRANT quadrant) const;
 	void increment_sensor_range(glm::ivec3 increment);
 
 	void update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position);
@@ -157,9 +124,6 @@ public:
 	//	double sensor_range, int discovery_range, int neighborhood_count,
 	//	double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render, double magic_k, bool collide_with_robots,
 	//	double square_radius, double bounce_function_power, double bounce_function_multipler);
-
-	static int INTERIOR;
-	static int EMPTY;
 
 	ExperimentalRobot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
 		SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree, int cluster_id, double separation_constant, double alignment_constant,
@@ -202,7 +166,7 @@ public:
 	bool local_explore_search(glm::ivec3& explore_cell_position);
 	glm::vec3 calculate_local_explore_velocity();
 	
-	void mark_locally_covered(const glm::ivec3& grid_position, bool interior);
+	void mark_locally_covered(const glm::ivec3& grid_position);
 	void mark_othere_robots_ranges();
 	glm::vec3 calculate_obstacle_avoidance_velocity();
 	bool  local_perimeter_search(glm::ivec3& explore_cell_position);
