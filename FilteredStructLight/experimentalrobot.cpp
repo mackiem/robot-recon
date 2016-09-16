@@ -1376,7 +1376,7 @@ void ExperimentalRobot::update(int timestamp) {
 
 
 	if (figure_mode_) {
-		if (timestamp % 10 == 0 && timestamp > 0) {
+		if (timestamp % 50 == 0 && timestamp > 0) {
 			if (render_) {
 				explored_mutex_.lock();
 				poo_cells_.push_back(position_);
@@ -1405,18 +1405,18 @@ void ExperimentalRobot::update(int timestamp) {
 				// We need to go one extra grid to cover interior, so make sure it's always less than 1
 				if (distance < (sensor_range_ - 2)) {
 					if (render_) {
-						explored_mutex_.lock();
-						explored_cells_.push_back(sensored_cell);
-						explored_mutex_.unlock();
+						//explored_mutex_.lock();
+						//explored_cells_.push_back(sensored_cell);
+						//explored_mutex_.unlock();
 					}
 					occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
 				}
 			}
 			else {
 				if (render_) {
-					explored_mutex_.lock();
-					interior_explored_cells_.push_back(sensored_cell);
-					explored_mutex_.unlock();
+					//explored_mutex_.lock();
+					//interior_explored_cells_.push_back(sensored_cell);
+					//explored_mutex_.unlock();
 				}
 				occupancy_grid_->mark_explored_in_interior_list(sensored_cell);
 			}

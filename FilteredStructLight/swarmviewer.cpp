@@ -447,24 +447,23 @@ cv::Vec4f GridOverlay::calculate_heatmap_color_grid_cell(double minimum, double 
 
 void GridOverlay::update_simultaneous_sampling_heatmap(const SimSampMap simultaneous_sampling_per_grid_cell) {
 
-	//auto& sampling_time = simult_sampling_grid_.at(position.x, position.z);
-	//RenderEntity& entity = mesh_[0];
+	RenderEntity& entity = mesh_[0];
 
-	//glBindVertexArray(entity.vao_);
-	//glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
+	glBindVertexArray(entity.vao_);
+	glBindBuffer(GL_ARRAY_BUFFER, entity.vbo_[RenderEntity::COLOR]);
 
-	//for (auto& sampling_per_grid_cell : simultaneous_sampling_per_grid_cell) {
-	//	auto& grid_cell = sampling_per_grid_cell.first;
-	//	auto& sampling = sampling_per_grid_cell.second;
+	for (auto& sampling_per_grid_cell : simultaneous_sampling_per_grid_cell) {
+		auto& grid_cell = sampling_per_grid_cell.first;
+		auto& sampling = sampling_per_grid_cell.second;
 
-	//	//int expected_cluster_value = std::max(no_of_robots_in_a_cluster_, 2);
-	//	auto color = calculate_heatmap_color_grid_cell(0.0, no_of_robots_in_a_cluster_, sampling); 
-	//	std::vector<cv::Vec4f> fill_color(6);
-	//	std::fill(fill_color.begin(), fill_color.end(), color);
+		//int expected_cluster_value = std::max(no_of_robots_in_a_cluster_, 2);
+		auto color = calculate_heatmap_color_grid_cell(0.0, no_of_robots_in_a_cluster_, sampling); 
+		std::vector<cv::Vec4f> fill_color(6);
+		std::fill(fill_color.begin(), fill_color.end(), color);
 
-	//	glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (grid_cell.x * grid_height_) + grid_cell.z) * sizeof(cv::Vec4f), 
-	//		6 * sizeof(cv::Vec4f), &fill_color[0]);
-	//}
+		glBufferSubData(GL_ARRAY_BUFFER, 6 * ( (grid_cell.x * grid_height_) + grid_cell.z) * sizeof(cv::Vec4f), 
+			6 * sizeof(cv::Vec4f), &fill_color[0]);
+	}
 
 	glBindVertexArray(0);
 }
@@ -795,7 +794,7 @@ void SwarmViewer::custom_draw_code() {
 
 		// need to update the cells here
 		if (figure_mode_) {
-			//overlay_->update_simultaneous_sampling_heatmap(simultaneous_sampling_per_grid_cell_map_.get_map());
+			overlay_->update_simultaneous_sampling_heatmap(simultaneous_sampling_per_grid_cell_map_.get_map());
 		}
 		
 		for (auto& vis_object : reset_vis_objects_) {
