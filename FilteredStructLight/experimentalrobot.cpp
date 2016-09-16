@@ -1414,9 +1414,9 @@ void ExperimentalRobot::update(int timestamp) {
 			}
 			else {
 				if (render_) {
-					//explored_mutex_.lock();
-					//interior_explored_cells_.push_back(sensored_cell);
-					//explored_mutex_.unlock();
+					explored_mutex_.lock();
+					interior_explored_cells_.push_back(sensored_cell);
+					explored_mutex_.unlock();
 				}
 				occupancy_grid_->mark_explored_in_interior_list(sensored_cell);
 			}
