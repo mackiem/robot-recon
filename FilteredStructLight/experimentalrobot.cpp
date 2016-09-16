@@ -1376,11 +1376,11 @@ void ExperimentalRobot::update(int timestamp) {
 
 
 	if (figure_mode_) {
-		if (timestamp % 50 == 0 && timestamp > 0) {
+		if (timestamp % 10 == 0 && timestamp > 0) {
 			if (render_) {
-				explored_mutex_.lock();
-				poo_cells_.push_back(position_);
-				explored_mutex_.unlock();
+				//explored_mutex_.lock();
+				//poo_cells_.push_back(position_);
+				//explored_mutex_.unlock();
 			}
 
 		}

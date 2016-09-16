@@ -94,6 +94,10 @@ void RobotWorker::set_simlutaneous_sampling_per_gridcell_map(ThreadSafeSimSampMa
 void RobotWorker::finish_work() {
 	if (!sampling_updated_) {
 
+		if (figure_mode_) {
+				auto map = occupancy_grid_->calculate_simultaneous_sampling_per_grid_cell();
+				simultaneous_sampling_per_grid_cell_->set_map(map);
+		}
 		OptimizationResults results;
 
 		SwarmUtils::calculate_sim_results(occupancy_grid_, recon_grid_, robots_, time_step_count_, swarm_params_, results);
@@ -152,12 +156,12 @@ void RobotWorker::do_work() {
 				for (auto& robot : robots_) {
 					robot->update(time_step_count_);
 				}
-				if (figure_mode_) {
-					if (time_step_count_ > 0 && time_step_count_ % 10 == 0) {
-						auto map = occupancy_grid_->calculate_simultaneous_sampling_per_grid_cell();
-						simultaneous_sampling_per_grid_cell_->set_map(map);
-					}
-				}
+				//if (figure_mode_) {
+				//	if (time_step_count_ > 0 && time_step_count_ % 10 == 0) {
+				//		auto map = occupancy_grid_->calculate_simultaneous_sampling_per_grid_cell();
+				//		simultaneous_sampling_per_grid_cell_->set_map(map);
+				//	}
+				//}
 				time_step_count_++;
 			} catch (OutOfGridBoundsException& ex) {
 				std::cout << "Out of bounds...\n";
