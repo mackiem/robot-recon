@@ -819,7 +819,6 @@ void ParallelMCMCOptimizer::write_out_best_results() {
 	std::string full_optimized_pathname = std::string(swarm_config_optimized_filename);
 	QString filename_qstring(full_optimized_pathname.c_str());
 	SwarmUtils::save_swarm_params(best_mcmc_results.swarm_params, filename_qstring);
-
 }
 
 void ParallelMCMCOptimizer::print_progression_results(std::string swarm_config_filename) {

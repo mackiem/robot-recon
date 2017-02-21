@@ -12,6 +12,14 @@
 //OutOfGridBoundsException(const char* message) : std::exception(message) {};
 //};
 
+struct VisibleCell {
+	glm::ivec3 cell;
+	bool visible;
+	VisibleCell() : visible(true) {
+	}
+	bool is_visible() const { return visible; };
+};
+
 struct IVec3Hasher {
 	std::size_t operator()(const glm::ivec3& k) const {
 		return k.x + GRID_MAX * k.x + GRID_MAX * GRID_MAX * k.z;
@@ -184,6 +192,8 @@ private:
 
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_simul_samples_per_timestep_per_gridcell;
 	std::unordered_map<glm::ivec3, int, IVec3Hasher, IVec3Equals>  no_of_sampled_timesteps_per_gridcell;
+
+	std::vector<PerimeterPos> perimeter_vector_;
 public:
 
 	bool is_perimeter(const glm::ivec3& grid_position) const;
@@ -238,6 +248,7 @@ public:
 	void calculate_simultaneous_sampling_per_cluster();
 	double calculate_coverage();
 	static int INTERIOR_MARK;
+	static int PERIMETER;
 	static int SEARCH_VISITED;
 	static int SEARCH_NOT_VISITED;
 	glm::ivec3 map_to_grid(const glm::vec3& position) const;
@@ -258,6 +269,14 @@ public:
 
 	bool next_cell_to_explore(const glm::ivec3& robot_grid_position,
 		glm::ivec3& explore_position, float range_min, float range_max);
+
+	bool next_cell_to_explore_visibility_non_aware(const glm::ivec3& robot_grid_position,
+		glm::ivec3& explore_position, float range_min, float range_max);
+
+	bool find_closest_position_from_list_visibility_non_aware(const std::set<glm::ivec3, IVec3Comparator>& perimeter_list,
+		const glm::ivec3& robot_grid_position,
+		glm::ivec3& explore_position, float range_min, float range_max);
+
 	void mark_explored_in_interior_list(const glm::ivec3& grid_position);
 	void mark_explored_in_perimeter_list(const glm::ivec3& grid_position);
 	void mark_explored_in_empty_space_list(const glm::ivec3& grid_position);
@@ -273,6 +292,8 @@ class SwarmCollisionTree : public mm::Quadtree<std::set<int>*> {
 public:
 	std::vector<int> find_adjacent_robots(int robot_id, const std::vector<glm::ivec3>& adjacent_cells) const;
 	std::vector<int> find_adjacent_robots(int robot_id, const glm::ivec3& position) const;
+	void find_adjacent_robots_memory_save(int robot_id, const std::vector<VisibleCell>& adjacent_cells, const int current_adjacent_cells,
+		std::vector<int>& adjacent_robots, int& current_no_of_robots) const;
 	SwarmCollisionTree(unsigned width, unsigned height);
 	void insert(int robot_id, const glm::ivec3& position);
 	void update(int robot_id, const glm::ivec3& previous_position, const glm::ivec3& current_position);

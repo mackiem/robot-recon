@@ -20,6 +20,7 @@ using namespace mm;
 
 // hoping there won't be 100k robots ever!
 int SwarmOccupancyTree::INTERIOR_MARK = 100000;
+int SwarmOccupancyTree::PERIMETER = 5000;
 
 int SwarmOccupancyTree::SEARCH_VISITED = 1;
 int SwarmOccupancyTree::SEARCH_NOT_VISITED = 0;
@@ -150,6 +151,8 @@ SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_width, int
 	pool_size_ = 100000;
 	current_pool_count_ = 100000;
 	heap_pool_.resize(pool_size_);
+
+	perimeter_vector_.resize(grid_width * grid_height);
 }
 
  std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_unexplored_perimeter_list() {
@@ -382,6 +385,34 @@ std::vector<int> SwarmCollisionTree::find_adjacent_robots(int robot_id, const st
 		}
 	}
 	return robots;
+}
+
+void SwarmCollisionTree::find_adjacent_robots_memory_save(int robot_id, const std::vector<VisibleCell>& adjacent_cells, const int current_adjacent_cells,
+	std::vector<int>& adjacent_robots, int& current_no_of_robots) const {
+
+	// if 3D we need to get 24 cells
+	// getting 8 for 2D
+	//int y = 0;
+	//std::vector<int> robots;
+	//robots.reserve(10);
+
+	current_no_of_robots = 0;
+
+	for (int i = 0; i < current_adjacent_cells; ++i) {
+		auto& visibility_aware_adjacent_cell = adjacent_cells[i];
+		if (!visibility_aware_adjacent_cell.is_visible()) {
+			continue;
+		}
+		auto& adjacent_cell = visibility_aware_adjacent_cell.cell;
+		auto robots_in_cell = at(adjacent_cell.x, adjacent_cell.z);
+		if (robots_in_cell->size() > 0) {
+			for (auto& other_robot_id : *robots_in_cell) {
+				if (other_robot_id != robot_id) {
+					adjacent_robots[current_no_of_robots++] = other_robot_id;
+				}
+			}
+		}
+	}
 }
 
 void SwarmCollisionTree::update(int robot_id, const glm::ivec3& previous_position, const glm::ivec3& current_position) {
@@ -1140,6 +1171,68 @@ bool SwarmOccupancyTree::find_closest_position_from_list(const std::set<glm::ive
 	return false;
 }
 
+bool SwarmOccupancyTree::find_closest_position_from_list_visibility_non_aware(const std::set<glm::ivec3, IVec3Comparator>& perimeter_list,
+	const glm::ivec3& robot_grid_position,
+	glm::ivec3& explore_position, float range_min, float range_max) {
+
+	// create a pool, to stop micro memory allocations all the time
+	//if (current_pool_count_ == pool_size_) {
+	//	current_pool_count_ = 0;
+	//	std::vector<PerimeterPos> sample_vector;
+	//	sample_vector.reserve(perimeter_list.size());
+	//	//heap_pool_.clear();
+	//	//heap_pool_.resize(pool_size_);
+	//	std::fill(heap_pool_.begin(), heap_pool_.end(), sample_vector);
+	//}
+
+	//std::vector<PerimeterPos> perimeter_vector = heap_pool_[current_pool_count_++];
+
+	int valid_perimeter_locs = 0;
+	for (auto itr = perimeter_list.begin(); itr != perimeter_list.end(); ++itr) {
+		auto perimeter_grid_position = *itr;
+		float grid_distance = glm::length(glm::vec3(perimeter_grid_position - robot_grid_position));
+
+		if (range_min <= grid_distance && grid_distance < range_max) {
+			perimeter_vector_[valid_perimeter_locs++] = (PerimeterPos(grid_distance, perimeter_grid_position));
+		}
+	}
+
+	if (valid_perimeter_locs == 0) return false;
+
+	std::stable_sort(perimeter_vector_.begin(), perimeter_vector_.begin() + valid_perimeter_locs);
+
+	explore_position = perimeter_vector_[0].grid_position_;
+
+	// try to get a position that is one step away from the wall, otherwise robot will always bounce, 
+	// due to obstacle avoidance
+
+	// check perimeter
+	for (int nx = -1; nx <= 1; ++nx) {
+		for (int ny = -1; ny <= 1; ++ny) {
+			if (!(nx == 0 && ny == 0)) {
+				//char loc;
+				int next_x = explore_position.x + nx;
+				int next_y = explore_position.z + ny;
+
+				glm::ivec3 next_pos(next_x, 0, next_y);
+
+
+				if (is_out_of_bounds(next_pos)) {
+					continue;
+				}
+
+				int loc = at(next_x, next_y);
+				if (!is_perimeter(next_pos) && !is_interior(next_pos)) {
+					explore_position = next_pos;
+					return true;
+				}
+			}
+		}
+	}
+
+	return true;
+}
+
 bool SwarmOccupancyTree::find_closest_2_positions_from_list(const std::set<glm::ivec3, IVec3Comparator>& perimeter_list,
 	const glm::ivec3& robot_grid_position,
 	std::vector<glm::ivec3>& explore_positions, float range_min, float range_max, bool enable_interior_test) {
@@ -1206,6 +1299,11 @@ bool SwarmOccupancyTree::next_cell_to_explore(const glm::ivec3& robot_grid_posit
 bool SwarmOccupancyTree::next_cell_to_explore(const glm::ivec3& robot_grid_position,
 	glm::ivec3& explore_position, float range_min, float range_max) {
 	return find_closest_position_from_list(explore_perimeter_list_, robot_grid_position, explore_position, range_min, range_max);
+}
+
+bool SwarmOccupancyTree::next_cell_to_explore_visibility_non_aware(const glm::ivec3& robot_grid_position,
+	glm::ivec3& explore_position, float range_min, float range_max) {
+	return find_closest_position_from_list_visibility_non_aware(explore_perimeter_list_, robot_grid_position, explore_position, range_min, range_max);
 }
 
 bool SwarmOccupancyTree::closest_perimeter(const glm::ivec3& robot_grid_position,

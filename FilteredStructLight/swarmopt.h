@@ -115,7 +115,6 @@ public:
 
 public slots:
 	void run_optimizer();
-	void cull_and_refill_queue(int iteration);
 	//Params create_params(int group_id, int thread_id, int iteration, double seperation_constant, double alignment_constant, double cluster_constant, double explore_constant, double seperation_distance, double simultaneous_sampling, double time_taken, double occlusion, double coverage);
 	//void restart_work(int group_id, int thread_id, int iteration,
 	//	double seperation_constant, double alignment_constant, double cluster_constant, double explore_constant,
@@ -123,6 +122,7 @@ public slots:
 	//void restart_work(int group_id, int thread_id, int iteration);
 
 	void print_best_results_progression(const std::string& swarm_config_filename);
+	void cull_and_refill_queue(int iteration);
 	void restart_work(int group_id, int thread_id, int iteration, SwarmParams params, OptimizationResults results);
 
 

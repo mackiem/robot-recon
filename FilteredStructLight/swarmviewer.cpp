@@ -94,10 +94,10 @@ void RobotWorker::set_simlutaneous_sampling_per_gridcell_map(ThreadSafeSimSampMa
 void RobotWorker::finish_work() {
 	if (!sampling_updated_) {
 
-		if (figure_mode_) {
+		//if (figure_mode_) {
 				auto map = occupancy_grid_->calculate_simultaneous_sampling_per_grid_cell();
 				simultaneous_sampling_per_grid_cell_->set_map(map);
-		}
+		//}
 		OptimizationResults results;
 
 		SwarmUtils::calculate_sim_results(occupancy_grid_, recon_grid_, robots_, time_step_count_, swarm_params_, results);
@@ -325,6 +325,7 @@ void GridOverlay::create_mesh(bool initialize) {
 		cv::Vec4f explored_color(1.f, 1.f, 1.f, 1.f);
 		//cv::Vec4f unexplored_color(.86f, 0.08f, .24f, 1.f);
 		cv::Vec4f unexplored_color(.4f, .4f, .4f, 1.f);
+		//cv::Vec4f unexplored_color(1.f, 1.f, 1.f, 1.f);
 		cv::Vec4f interior_color(84.f, 65.f, 51.f, 255.f);
 		interior_color /= 255.f;
 

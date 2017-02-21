@@ -60,6 +60,14 @@ struct Range {
 	bool within_range(float grid_distance);
 };
 
+//struct VisibleCell {
+//	glm::ivec3 cell;
+//	bool visible;
+//	VisibleCell() : visible(true) {
+//	}
+//	bool is_visible() const { return visible; };
+//};
+
 class Robot : public VisObject {
 
 protected:
@@ -151,7 +159,8 @@ protected:
 	float magic_k_;
 	int tick_tock_age_;
 	int cluster_id_;
-	std::vector<glm::ivec3> adjacent_cells_;
+	//std::vector<glm::ivec3> adjacent_cells_;
+	std::vector<VisibleCell> adjacent_cells_;
 	std::vector<glm::vec3> interior_cells_;
 	bool interior_updated_;
 	//int grid_cube_length_;
@@ -173,10 +182,6 @@ protected:
 	QGLShaderProgram* shader_;
 	bool show_forces_;
 
-	std::vector<glm::ivec3> explored_cells_;
-	std::vector<glm::ivec3> interior_explored_cells_;
-	std::vector<glm::ivec3> search_output_cells_;
-	std::vector<glm::vec3> poo_cells_;
 	QMutex explored_mutex_;
 
 	int discovery_range_;

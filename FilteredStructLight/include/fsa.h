@@ -55,7 +55,7 @@ public:
 	// Constants
 	enum
 	{
-		FSA_DEFAULT_SIZE = 100
+		FSA_DEFAULT_SIZE = 100000
 	};
 
 	// This class enables us to transparently manage the extra data 

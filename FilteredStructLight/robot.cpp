@@ -975,7 +975,7 @@ void Robot::update(int timestamp) {
 				if (!occupancy_grid_->is_interior(adjacent_sensor_cell)) {
 					if (render_) {
 						explored_mutex_.lock();
-						explored_cells_.push_back(adjacent_sensor_cell);
+						//vis_explored_cells_.push_back(adjacent_sensor_cell);
 						explored_mutex_.unlock();
 					}
 					occupancy_grid_->set(adjacent_sensor_cell.x, adjacent_sensor_cell.z, explored);

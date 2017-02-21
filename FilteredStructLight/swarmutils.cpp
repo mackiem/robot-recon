@@ -870,7 +870,7 @@ void SwarmUtils::create_robots(SwarmParams& swarm_params, std::unordered_map<int
 		auto separation_distance = swarm_params.separation_range_max_ * swarm_params.grid_length_;
 		int cluster_id = (i / robots_in_a_cluster) > (no_of_clusters - 1) ? 0 : i / robots_in_a_cluster;
 		ExperimentalRobot* robot = new ExperimentalRobot(uniform_locations, 
-			i, occupancy_grid_, collision_grid_, recon_grid_, cluster_id, 
+			i, swarm_params.no_of_robots_, occupancy_grid_, collision_grid_, recon_grid_, cluster_id, 
 			swarm_params.separation_constant_, swarm_params.alignment_constant_,swarm_params. cluster_constant_, swarm_params.explore_constant_,
 			swarm_params.sensor_range_, swarm_params.discovery_range_, 
 			separation_distance, robot_positions[i], swarm_params.square_radius_, swarm_params.bounce_function_power_,

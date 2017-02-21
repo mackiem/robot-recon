@@ -1,5 +1,7 @@
 #pragma once
 #include "robot.h"
+#include <type_traits>
+#include "astar.h"
 
 class VisibilityQuadrant {
 
@@ -34,7 +36,7 @@ class ExperimentalRobot : public Robot
 {
 private:
 	glm::vec3 random_direction_;
-	std::vector<int> robot_ids_;
+	//std::vector<int> robot_ids_;
 	int previous_no_of_explored_cells_;
 	glm::ivec3 previous_explore_cell;
 	glm::vec3 previous_nminus2_position_; 
@@ -55,7 +57,7 @@ private:
 	int current_timestamp_;
 	float random_constant_;
 	glm::ivec3 previous_local_explore_cell;
-	mm::Quadtree<char> local_map_;
+	mm::Quadtree<int> local_map_;
 	int local_no_of_unexplored_cells_;
 	int previous_no_of_local_explored_cells_;
 	cv::Vec4f color_;
@@ -87,7 +89,31 @@ private:
 	int half_sensor_width_;
 	int half_sensor_height_;
 	cv::Vec4f search_color_;
-	int same_cell_count_;;
+	int same_cell_count_;
+
+	//render
+	int max_render_cell_size_;
+	int explored_cell_count_;
+	int interior_explored_cell_count_;
+
+	// adjacent cells
+	int max_adjacent_cells_;
+	int current_adjacent_cells_;
+	int current_interior_cells_;
+	int no_of_robots_;
+	std::vector<int> adjacent_robots_;
+	int current_no_of_robots_;
+
+	std::deque<glm::ivec3> path_;
+
+
+	// visualization structs;
+	std::vector<glm::ivec3> vis_explored_cells_;
+	std::vector<glm::ivec3> vis_interior_explored_cells_;
+	std::vector<glm::ivec3> vis_goal_cells_;
+	std::vector<glm::ivec3> vis_astar_cells_;
+	std::vector<glm::vec3> vis_poo_cells_;
+	bool global_explore_;
 
 	//int no_of_bits_;
 	//int no_of_char_arrays_;
@@ -115,6 +141,7 @@ private:
 	void increment_sensor_range(glm::ivec3 increment);
 
 	void update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position);
+	void get_other_robots_memory_wise();
 
 public:
 	//ExperimentalRobot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree,
@@ -125,7 +152,7 @@ public:
 	//	double separation_distance, glm::vec3 position, QGLShaderProgram* shader, bool render, double magic_k, bool collide_with_robots,
 	//	double square_radius, double bounce_function_power, double bounce_function_multipler);
 
-	ExperimentalRobot(UniformLocations& locations, unsigned id, SwarmOccupancyTree* octree,
+	ExperimentalRobot(UniformLocations& locations, unsigned id, int no_of_robots, SwarmOccupancyTree* octree,
 		SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree, int cluster_id, double separation_constant, double alignment_constant,
 		double cluster_constant, double explore_constant, double sensor_range,
 		int discovery_range, double separation_distance, glm::vec3 position,
@@ -139,6 +166,8 @@ public:
 	virtual void update_visualization_structs() override;
 	void change_color(cv::Vec4f& color);
 	void set_colors_buffer(std::vector<cv::Vec4f>& colors);
+
+	void update_adjacent_and_interior_memory_save(const glm::vec3& previous_position, const glm::vec3& current_position);
 
 	void set_death_time(int death_time);
 	void set_cluster_id(int cluster_id);
@@ -166,9 +195,14 @@ public:
 	bool local_explore_search(glm::ivec3& explore_cell_position);
 	glm::vec3 calculate_local_explore_velocity();
 	
-	void mark_locally_covered(const glm::ivec3& grid_position);
+	void mark_locally_covered(const glm::ivec3& grid_position, bool is_interior);
 	void mark_othere_robots_ranges();
 	glm::vec3 calculate_obstacle_avoidance_velocity();
 	bool  local_perimeter_search(glm::ivec3& explore_cell_position);
+	bool local_perimeter_search_for_astar(glm::ivec3& explore_cell_position);
+	void calculate_astar_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell);
+
+	bool get_next_goal(glm::ivec3& position);
+	glm::vec3 calculate_astar_explore_velocity();
 };
 

@@ -22,6 +22,7 @@ namespace mm {
 		float get_grid_square_length() const;
 		bool create_grid(int width, int height);
 		bool map_to_grid(const float x, const float y, int& grid_x, int& grid_y) const;
+		bool is_out_of_bounds(const unsigned x, const unsigned y) const;
 	protected:
 		T* grid_;
 		unsigned int grid_height_;
@@ -48,7 +49,6 @@ namespace mm {
 			};
 		};
 
-		bool is_out_of_bounds(const unsigned x, const unsigned y) const;
 		void map_to_position(const unsigned grid_x, const unsigned grid_y, float& x, float& y) const;
 		//QuadNode* root_;
 		//bool insert_value(QuadNode* node, unsigned int x, unsigned int y, T& object);

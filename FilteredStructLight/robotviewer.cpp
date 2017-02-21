@@ -195,7 +195,7 @@ void RobotViewer::resizeGL(int w, int h)
 }
 
 void RobotViewer::wheelEvent(QWheelEvent* event) {
-	  QPoint numPixels = event->pixelDelta();
+	QPoint numPixels = event->pixelDelta();
     QPoint numDegrees = event->angleDelta() / 8;
 
 	if (!numDegrees.isNull()) {
