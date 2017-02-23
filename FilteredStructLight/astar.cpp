@@ -422,12 +422,13 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 
 		SearchCount++;
 
-		//astarsearch.EnsureMemoryFreed();
+		astarsearch.EnsureMemoryFreed();
 	}
 
 	return path;
 }
 
 AStar::AStar(Grid* grid) : grid_(grid) {
-	astarsearch_ = new AStarSearch<MapSearchNode>(100000);
+	//astarsearch_ = new AStarSearch<MapSearchNode>(100000);
+	astarsearch_ = nullptr;
 }
