@@ -875,7 +875,7 @@ void SwarmUtils::create_robots(SwarmParams& swarm_params, std::unordered_map<int
 			swarm_params.sensor_range_, swarm_params.discovery_range_, 
 			separation_distance, robot_positions[i], swarm_params.square_radius_, swarm_params.bounce_function_power_,
 			swarm_params.bounce_function_multiplier_, swarm_params.max_time_taken_,
-			false, render, shader);
+			false, render, shader, swarm_params.display_local_map_, swarm_params.local_map_robot_id_);
 
 
 		robot->set_death_time(death_map_[i]);

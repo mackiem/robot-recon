@@ -285,9 +285,11 @@ void Recon3DPoints::update_3d_points(const glm::ivec3& position) {
 
 
 GridOverlay::GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree, 
-	int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader, int no_of_robots_in_a_cluster) : 
+	int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader,
+	int no_of_robots_in_a_cluster, bool display_local_map) :
 	VisObject(locations), occupany_grid_(octree), grid_width_(grid_width), grid_height_(grid_height), grid_length_(grid_length), 
-	robot_color_map_(robot_color_map), shader_(shader), simult_sampling_grid_(mm::Quadtree<SamplingTime>(grid_width_, grid_height_, 1, SamplingTime())), no_of_robots_in_a_cluster_(no_of_robots_in_a_cluster)  {
+	robot_color_map_(robot_color_map), shader_(shader), simult_sampling_grid_(mm::Quadtree<SamplingTime>(grid_width_, grid_height_, 1, SamplingTime())),
+	no_of_robots_in_a_cluster_(no_of_robots_in_a_cluster), display_local_map_(display_local_map)  {
 	
 	cv::Vec4f dark_green(60.f, 179.f, 113.f, 255.f);
 
@@ -359,8 +361,10 @@ void GridOverlay::create_mesh(bool initialize) {
 				glm::ivec3 current_position(x, 0, z);
 				cv::Vec4f color = unexplored_color;
 				
-				if (occupany_grid_->is_interior(current_position)) {
-					color = interior_color;
+				if (!display_local_map_) {
+					if (occupany_grid_->is_interior(current_position)) {
+						color = interior_color;
+					}
 				}
 				//int explored_robot = occupany_grid_->explored_by(current_position);
 
@@ -922,6 +926,8 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 
 	//SwarmUtils::create_grids(&occupancy_grid_, &recon_grid_, &collision_grid_);
 	swarm_params_ = swarm_params;
+	swarm_params_.display_local_map_ = false;
+	swarm_params_.local_map_robot_id_ = 0;
 
 	occupancy_grid_->create_perimeter_list();
 	occupancy_grid_->create_empty_space_list();
@@ -939,6 +945,8 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 
 	VisibilityQuadrant::visbility_quadrant(swarm_params_.sensor_range_ * 2);
 
+	//bool display_local_map;
+	//int local_map_robot_id_ = 0;
 
 	// graphics setup
 	change_to_top_down_view();
@@ -950,7 +958,8 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 		create_lights();
 
 		overlay_ = new GridOverlay(uniform_locations_,
-			occupancy_grid_, swarm_params.grid_width_, swarm_params.grid_height_, swarm_params.grid_length_, robot_color_map_, &m_shader, swarm_params_.robots_in_a_cluster_);
+			occupancy_grid_, swarm_params.grid_width_, swarm_params.grid_height_, swarm_params.grid_length_, 
+				robot_color_map_, &m_shader, swarm_params_.robots_in_a_cluster_, swarm_params_.display_local_map_);
 		//update_perimiter_positions_in_overlay();
 
 		reset_vis_objects_.push_back(overlay_);
@@ -1695,6 +1704,10 @@ void SwarmViewer::upload_robots_to_gpu() {
 
 		robot->set_colors_buffer(bufferdata.colors);
 		robot->change_color(robot_color_map_[i]);
+		if (swarm_params_.display_local_map_ && swarm_params_.local_map_robot_id_ == i) {
+			cv::Vec4f red(1.f, 0.1f, 0.2f, 1.f);
+			robot->change_color(red);
+		}
 	}
 	
 }

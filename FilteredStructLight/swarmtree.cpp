@@ -1026,11 +1026,13 @@ void SwarmOccupancyTree::init_coverage_map(std::unordered_map<glm::ivec3, int, I
 	
 }
 
-void SwarmOccupancyTree::mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position) {
+bool SwarmOccupancyTree::mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position) {
 	auto result = position_list.find(grid_position);
 	if (result != position_list.end()) {
 		position_list.erase(result);
+		return true;
 	}
+	return false;
 }
 
 SwarmOccupancyTree::~SwarmOccupancyTree() {
@@ -1038,8 +1040,8 @@ SwarmOccupancyTree::~SwarmOccupancyTree() {
 	delete sampling_tracker_;
 }
 
-void SwarmOccupancyTree::mark_explored_in_interior_list(const glm::ivec3& grid_position) {
-	mark_explored_in_list(explore_interior_list_, grid_position);
+bool SwarmOccupancyTree::mark_explored_in_interior_list(const glm::ivec3& grid_position) {
+	return mark_explored_in_list(explore_interior_list_, grid_position);
 }
 
 void SwarmOccupancyTree::mark_explored_in_perimeter_list(const glm::ivec3& grid_position) {
@@ -1197,7 +1199,9 @@ bool SwarmOccupancyTree::find_closest_position_from_list_visibility_non_aware(co
 		}
 	}
 
-	if (valid_perimeter_locs == 0) return false;
+	if (valid_perimeter_locs == 0) {
+		return false;
+	}
 
 	std::stable_sort(perimeter_vector_.begin(), perimeter_vector_.begin() + valid_perimeter_locs);
 

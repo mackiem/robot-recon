@@ -22,12 +22,15 @@ class VisibilityQuadrant {
 	
 public:
 	static void cleanup();
+	static std::string DEFAULT_FILENAME;
 	static VisibilityQuadrant* visbility_quadrant(int sensor_range);
 	static int INVISIBLE;
 	static int VISIBLE;
 	bool is_sensor_cell_visible(const glm::ivec3& robot_position, const glm::ivec3& interior_position,
 		const glm::ivec3& point_to_test);
 	void create_visibility_quadrant();
+	void write_to_file(const std::string filename) const;
+	void read_from_file(const std::string filename);
 	~VisibilityQuadrant();
 	
 };
@@ -114,6 +117,11 @@ private:
 	std::vector<glm::ivec3> vis_astar_cells_;
 	std::vector<glm::vec3> vis_poo_cells_;
 	bool global_explore_;
+	AStar* astar_;
+	bool display_local_map_;
+	int display_id_;
+	glm::ivec3 vis_goal_cell;
+	glm::ivec3 prev_vis_goal_cell;
 
 	//int no_of_bits_;
 	//int no_of_char_arrays_;
@@ -142,7 +150,8 @@ private:
 
 	void update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position);
 	void get_other_robots_memory_wise();
-
+	bool is_colliding_with_robots(const std::vector<int>& robot_ids) const;
+	void update_overlay_cells(const bool is_interior, const glm::ivec3& grid_position);
 public:
 	//ExperimentalRobot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree,
 	//	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
@@ -157,7 +166,7 @@ public:
 		double cluster_constant, double explore_constant, double sensor_range,
 		int discovery_range, double separation_distance, glm::vec3 position,
 		double square_radius, double bounce_function_power, double bounce_function_multiplier, int max_time,
-		bool collide_with_robots, bool render, QGLShaderProgram* shader);
+		bool collide_with_robots, bool render, QGLShaderProgram* shader, bool display_local_map, int display_id);
 	void populate_occlusion_map();
 	void populate_clustering_map();
 	void init_sensor_range();

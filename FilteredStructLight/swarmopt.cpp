@@ -26,17 +26,23 @@ double max_multi_sampling_g;
 SwarmViewer* SwarmOptimizer::swarm_viewer_g;
 double SwarmOptimizer::separation_constant_;
 
-double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 30.0;
-double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 10.0;
-double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = 50.0;
-double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 10.0;
+//double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 30.0;
+//double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 10.0;
+//double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = 50.0;
+//double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 10.0;
 //double ParallelMCMCOptimizer::MAX_BOUNCE_MULTIPLIER_VALUE = 50.0;
+
+double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 1.0;
+double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = MAX_SEPARATION_VALUE;
+double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = MAX_SEPARATION_VALUE;
+double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = MAX_SEPARATION_VALUE;
+double ParallelMCMCOptimizer::MAX_BOUNCE_MULTIPLIER_VALUE = MAX_SEPARATION_VALUE;
 
 double ParallelMCMCOptimizer::MIN_SEPARATION_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_ALIGNMENT_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_CLUSTER_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_EXPLORE_VALUE = 0.0;
-//double ParallelMCMCOptimizer::MIN_BOUNCE_MULTIPLIER_VALUE = 10.0;
+double ParallelMCMCOptimizer::MIN_BOUNCE_MULTIPLIER_VALUE = 0.0;
 
 //int
 //SwarmOptimizer::swarm_sim_opt_error_(int *m_ptr, int *n_ptr, double *params, double *error, int *)
@@ -664,7 +670,8 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 	std::random_device rd;
 	std::mt19937 mt(rd());
 	//std::uniform_int_distribution<> uniform_int_distribution(0, 5);
-	std::uniform_int_distribution<> uniform_int_distribution(0, 3);
+	//std::uniform_int_distribution<> uniform_int_distribution(0, 3);
+	std::uniform_int_distribution<> uniform_int_distribution(0, 4);
 	
 	int param_index = uniform_int_distribution(mt);
 
@@ -700,11 +707,11 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 			temperatures_[temperature], MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
 		break;
 	}
-	//case 4: {
-	//	next_mcmc_params.swarm_params.bounce_function_multiplier_ = perturb_value(next_mcmc_params.swarm_params.bounce_function_multiplier_,
-	//		temperatures_[temperature], 0.0, 100.0);
-	//	break;
-	//}
+	case 4: {
+		next_mcmc_params.swarm_params.bounce_function_multiplier_ = perturb_value(next_mcmc_params.swarm_params.bounce_function_multiplier_,
+			temperatures_[temperature], MIN_BOUNCE_MULTIPLIER_VALUE, MAX_BOUNCE_MULTIPLIER_VALUE);
+		break;
+	}
 	//case 5: {
 	//	next_mcmc_params.swarm_params.separation_range_max_ = perturb_value(next_mcmc_params.swarm_params.separation_range_max_,
 	//		temperatures_[temperature], 0.0, 5.0);
@@ -916,11 +923,17 @@ void ParallelMCMCOptimizer::run_optimizer() {
 	// as thread finishes work, start new thread with perturb, store points in a priority queue
 	// if thread performance is bad, start with new init point
 
-	temperatures_.push_back(0.25f);
+	//temperatures_.push_back(0.25f);
+	//temperatures_.push_back(0.5f);
+	//temperatures_.push_back(1.f);
+	//temperatures_.push_back(2.f);
+	//temperatures_.push_back(3.f);
+
+	temperatures_.push_back(0.1f);
+	temperatures_.push_back(0.2f);
+	temperatures_.push_back(0.3f);
+	temperatures_.push_back(0.4f);
 	temperatures_.push_back(0.5f);
-	temperatures_.push_back(1.f);
-	temperatures_.push_back(2.f);
-	temperatures_.push_back(3.f);
 
 
 	//no_of_threads_per_temperature = 10;
@@ -1138,7 +1151,7 @@ void ParallelMCMCOptimizer::restart_work(int group_id, int thread_id, int iterat
 		end_time_ = std::chrono::steady_clock::now();
 		//print_results(swarm_params_.config_name_.toStdString());
 		//print_progression_results(swarm_params_.config_name_.toStdString());
-		//print_progression_results_2(swarm_params_.config_name_.toStdString());
+		print_progression_results_2(swarm_params_.config_name_.toStdString());
 		print_best_results_progression(swarm_params_.config_name_.toStdString());
 		write_out_best_results();
 		//std::cout << "Work done!\n No. of active threads : " << thread_pool_.activeThreadCount() << "\n";

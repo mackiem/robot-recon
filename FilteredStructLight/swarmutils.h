@@ -92,6 +92,8 @@ struct SwarmParams {
 	QString model_matrix_filename_;
 	int robots_in_a_cluster_;
 	double coverage_needed_;
+	bool display_local_map_;
+	int local_map_robot_id_;
 };
 
 

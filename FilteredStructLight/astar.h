@@ -35,6 +35,7 @@ class AStar
 {
 	Grid* grid_;
 public:
+	AStarSearch<MapSearchNode>* astarsearch_;
 	std::deque<glm::ivec3> search(glm::vec3& source, glm::vec3& target);
 	explicit AStar(Grid* grid);
 	~AStar();

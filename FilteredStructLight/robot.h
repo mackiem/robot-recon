@@ -37,8 +37,10 @@ struct GridOverlay : public VisObject {
 	QGLShaderProgram* shader_;
 	std::map<int, cv::Vec4f> robot_color_map_;
 	std::vector<cv::Vec4f> fill_color_;
+	bool display_local_map_;
 	GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree,  
-		int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, QGLShaderProgram* shader, int no_of_robots_in_a_cluster);
+		int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, 
+			QGLShaderProgram* shader, int no_of_robots_in_a_cluster, bool display_local_map);
 	int no_of_robots_in_a_cluster_;
 	mm::Quadtree<SamplingTime> simult_sampling_grid_;
 	void update_grid_position(const glm::ivec3& position, const cv::Vec4f& color);

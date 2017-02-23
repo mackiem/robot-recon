@@ -277,10 +277,10 @@ public:
 		const glm::ivec3& robot_grid_position,
 		glm::ivec3& explore_position, float range_min, float range_max);
 
-	void mark_explored_in_interior_list(const glm::ivec3& grid_position);
+	bool mark_explored_in_interior_list(const glm::ivec3& grid_position);
 	void mark_explored_in_perimeter_list(const glm::ivec3& grid_position);
 	void mark_explored_in_empty_space_list(const glm::ivec3& grid_position);
-	void mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position);
+	bool mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position);
 
 	SimSampMap calculate_simultaneous_sampling_per_grid_cell();
 	

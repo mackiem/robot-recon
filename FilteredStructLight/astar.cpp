@@ -9,6 +9,7 @@
 #include <iostream>
 #include <stdio.h>
 #include <math.h>
+#include "swarmutils.h"
 
 #define DEBUG_LISTS 0
 #define DEBUG_LIST_LENGTHS_ONLY 0
@@ -51,6 +52,9 @@ using namespace std;
 
 AStar::~AStar()
 {
+	if (astarsearch_) {
+		delete astarsearch_;
+	}
 }
 
 // map helper functions
@@ -91,10 +95,10 @@ bool MapSearchNode::IsSameState(MapSearchNode &rhs)
 
 void MapSearchNode::PrintNodeInfo()
 {
-	//char str[100];
-	//sprintf(str, "Node position : (%d,%d)\n", x, y);
+	char str[100];
+	sprintf(str, "Node position : (%d,%d)\n", x, y);
 
-	//std::cout << str;
+	std::cout << str;
 }
 
 // Here's the heuristic function that estimates the distance from a Node
@@ -196,29 +200,31 @@ bool MapSearchNode::GetSuccessors(AStarSearch<MapSearchNode> *astarsearch, MapSe
 					&& !((parent_x == next_x) && (parent_y == next_y))
 					)
 				{
-					if (nx == 0 || ny == 0) {
 						NewNode = MapSearchNode(grid_, next_x, next_y);
 						astarsearch->AddSuccessor(NewNode);
-					} else {
-						// if diagonal we have to do additional checks, as check the locations next to it is occupied
-						int next_to_loc[2];
-						//grid_->get(x, next_y, next_to_loc[0]);
-						//grid_->get(next_x, y, next_to_loc[1]);
+					//if (nx == 0 || ny == 0) {
+					//	NewNode = MapSearchNode(grid_, next_x, next_y);
+					//	astarsearch->AddSuccessor(NewNode);
+					//} else {
+					//	// if diagonal we have to do additional checks, as check the locations next to it is occupied
+					//	int next_to_loc[2];
+					//	//grid_->get(x, next_y, next_to_loc[0]);
+					//	//grid_->get(next_x, y, next_to_loc[1]);
 
-						if (grid_->is_out_of_bounds(x, next_y)
-							|| grid_->is_out_of_bounds(next_x, y)) {
-							continue;
-						}
+					//	if (grid_->is_out_of_bounds(x, next_y)
+					//		|| grid_->is_out_of_bounds(next_x, y)) {
+					//		continue;
+					//	}
 
-						next_to_loc[0] = grid_->at(x, next_y);
-						next_to_loc[1] = grid_->at(next_x, y);
+					//	next_to_loc[0] = grid_->at(x, next_y);
+					//	next_to_loc[1] = grid_->at(next_x, y);
 
-						if (next_to_loc[0] < SwarmOccupancyTree::INTERIOR_MARK
-							&& next_to_loc[1] < SwarmOccupancyTree::INTERIOR_MARK) {
-							NewNode = MapSearchNode(grid_, next_x, next_y);
-							astarsearch->AddSuccessor(NewNode);
-						}
-					}
+					//	if (next_to_loc[0] < SwarmOccupancyTree::INTERIOR_MARK
+					//		&& next_to_loc[1] < SwarmOccupancyTree::INTERIOR_MARK) {
+					//		NewNode = MapSearchNode(grid_, next_x, next_y);
+					//		astarsearch->AddSuccessor(NewNode);
+					//	}
+					//}
 				}
 			}
 
@@ -259,11 +265,22 @@ float MapSearchNode::GetCost(MapSearchNode &successor)
 	}
 
 	int loc = grid_->at(x, y);
+	if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
+		return loc;
+	}
+
+	// check for diagonal and return perimeter
+	if (std::abs(successor.x - x) + std::abs(successor.y - y) == 2) {
+		return SwarmOccupancyTree::PERIMETER;
+	}
+
 	return (float)loc;
 }
 
 
 // Main
+
+#define DISPLAY_SOLUTION 0
 
 std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 {
@@ -279,7 +296,8 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 	// Create an instance of the search class...
 	std::deque< glm::ivec3 > path;
 
-	AStarSearch<MapSearchNode> astarsearch;
+	//AStarSearch<MapSearchNode> astarsearch_;
+	//AStarSearch<MapSearchNode> astarsearch(10000);
 
 	unsigned int SearchCount = 0;
 
@@ -303,6 +321,7 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 
 		// Set Start and goal states
 
+		AStarSearch<MapSearchNode> astarsearch(10000);
 		astarsearch.SetStartAndGoalStates(nodeStart, nodeEnd);
 
 		unsigned int SearchState;
@@ -360,10 +379,10 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 
 #if DISPLAY_SOLUTION
 			cout << "Displaying solution\n";
-#endif
-			int steps = 0;
-
 			node->PrintNodeInfo();
+#endif
+
+			int steps = 0;
 			for (;;)
 			{
 				node = astarsearch.GetSolutionNext();
@@ -374,7 +393,9 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 				}
 
 				path.push_back(glm::vec3(node->x, 0, node->y));
+#if DISPLAY_SOLUTION
 				node->PrintNodeInfo();
+#endif
 				steps++;
 
 			};
@@ -388,6 +409,10 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 		}
 		else if (SearchState == AStarSearch<MapSearchNode>::SEARCH_STATE_FAILED)
 		{
+			SwarmUtils::print_vector("source", glm::ivec3(nodeStart.x, 0, nodeStart.y));
+			SwarmUtils::print_vector("target", glm::ivec3(nodeEnd.x, 0, nodeEnd.y));
+			std::cout << "source :  " << ((grid_->at(nodeStart.x, nodeStart.y) == SwarmOccupancyTree::INTERIOR_MARK) ? "Interior" : "Not Interior") << "\n";
+			std::cout << "target:  " << ((grid_->at(nodeEnd.x, nodeEnd.y) == SwarmOccupancyTree::INTERIOR_MARK) ? "Interior" : "Not Interior") << "\n";
 			std::cout << "Search terminated. Did not find goal state\n";
 
 		}
@@ -397,12 +422,12 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 
 		SearchCount++;
 
-		astarsearch.EnsureMemoryFreed();
+		//astarsearch.EnsureMemoryFreed();
 	}
 
 	return path;
 }
 
-AStar::AStar(Grid* grid) : grid_(grid){
-
+AStar::AStar(Grid* grid) : grid_(grid) {
+	astarsearch_ = new AStarSearch<MapSearchNode>(100000);
 }
