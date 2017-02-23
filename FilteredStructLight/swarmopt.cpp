@@ -628,10 +628,10 @@ SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int th
 	MCMCParams next_params;
 	next_params.swarm_params = swarm_params_;
 	//next_params.swarm_params.coverage_needed_ = swarm_params_.coverage_needed_;
-	next_params.swarm_params.separation_constant_ = init_value(MIN_SEPARATION_VALUE, MAX_SEPARATION_VALUE);
-	next_params.swarm_params.alignment_constant_ = init_value(MIN_ALIGNMENT_VALUE, MAX_ALIGNMENT_VALUE);
-	next_params.swarm_params.cluster_constant_ = init_value(MIN_CLUSTER_VALUE, MAX_CLUSTER_VALUE);
-	next_params.swarm_params.explore_constant_ = init_value(MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
+	//next_params.swarm_params.separation_constant_ = init_value(MIN_SEPARATION_VALUE, MAX_SEPARATION_VALUE);
+	//next_params.swarm_params.alignment_constant_ = init_value(MIN_ALIGNMENT_VALUE, MAX_ALIGNMENT_VALUE);
+	//next_params.swarm_params.cluster_constant_ = init_value(MIN_CLUSTER_VALUE, MAX_CLUSTER_VALUE);
+	//next_params.swarm_params.explore_constant_ = init_value(MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
 	//next_params.swarm_params.bounce_function_multiplier_ = init_value(0.0, 100.0);
 	//next_params.swarm_params.separation_range_max_ = init_value(0.0, 5.0);
 
@@ -671,7 +671,7 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 	std::mt19937 mt(rd());
 	//std::uniform_int_distribution<> uniform_int_distribution(0, 5);
 	//std::uniform_int_distribution<> uniform_int_distribution(0, 3);
-	std::uniform_int_distribution<> uniform_int_distribution(0, 4);
+	std::uniform_int_distribution<> uniform_int_distribution(0, 2);
 	
 	int param_index = uniform_int_distribution(mt);
 
@@ -688,8 +688,8 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 
 	switch (param_index) {
 	case 0: {
-		next_mcmc_params.swarm_params.separation_constant_ = perturb_value(next_mcmc_params.swarm_params.separation_constant_, 
-			temperatures_[temperature], MIN_SEPARATION_VALUE, MAX_SEPARATION_VALUE);
+		next_mcmc_params.swarm_params.explore_constant_ = perturb_value(next_mcmc_params.swarm_params.explore_constant_,
+			temperatures_[temperature], MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
 		break;
 	}
 	case 1: {
@@ -703,8 +703,8 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 		break;
 	}
 	case 3: {
-		next_mcmc_params.swarm_params.explore_constant_ = perturb_value(next_mcmc_params.swarm_params.explore_constant_,
-			temperatures_[temperature], MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
+		next_mcmc_params.swarm_params.separation_constant_ = perturb_value(next_mcmc_params.swarm_params.separation_constant_, 
+			temperatures_[temperature], MIN_SEPARATION_VALUE, MAX_SEPARATION_VALUE);
 		break;
 	}
 	case 4: {
@@ -929,11 +929,11 @@ void ParallelMCMCOptimizer::run_optimizer() {
 	//temperatures_.push_back(2.f);
 	//temperatures_.push_back(3.f);
 
-	temperatures_.push_back(0.1f);
-	temperatures_.push_back(0.2f);
-	temperatures_.push_back(0.3f);
-	temperatures_.push_back(0.4f);
-	temperatures_.push_back(0.5f);
+	temperatures_.push_back(1e-6);
+	temperatures_.push_back(1e-5);
+	temperatures_.push_back(1e-3);
+	temperatures_.push_back(1e-2);
+	temperatures_.push_back(1e-1);
 
 
 	//no_of_threads_per_temperature = 10;

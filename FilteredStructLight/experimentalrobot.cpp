@@ -1220,8 +1220,8 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 
 		auto move_to_position = occupancy_grid_->map_to_position(next_explore_cell);
 		float max_distance = diagonal_grid_length_ * occupancy_grid_->get_grid_square_length();
-		//float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
-		float normalizing_constant = std::pow(glm::length(move_to_position - position_), 2);
+		float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
+		//float normalizing_constant = std::pow(glm::length(move_to_position - position_), 2);
 		//float normalizing_constant = 1.f/ std::pow(glm::length(move_to_position - position_), 2);
 		explore_velocity = normalizing_constant * (move_to_position - position_) * explore_constant_;
 
@@ -1638,10 +1638,10 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 								no_of_iter++;
 								if (!occupancy_grid_->is_out_of_bounds(cell_position)
 									&& not_locally_visited(cell_position)) {
-										float distance = glm::length(glm::vec3(other_robot_grid_position - cell_position));
-										if (distance < (sensor_range_)) {
+										//float distance = glm::length(glm::vec3(other_robot_grid_position - cell_position));
+										//if (distance < (sensor_range_)) {
 											mark_locally_covered(cell_position, false);
-										}
+										//}
 										//if (distance < (sensor_range_ - 2)) {
 										//	mark_locally_covered(cell_position, false);
 										//}
