@@ -55,7 +55,7 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, i
 	
 	measurement_time_step_ = 100;
 	random_direction_ = glm::vec3(1.f, 0.f, 0.f);
-	max_velocity_ = 1.f;
+	max_velocity_ = 4.f;
 	robot_radius_ = 11.85f;
 	previous_no_of_explored_cells_ = -1;
 	death_time_ = -1;
@@ -110,13 +110,26 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, i
 	global_explore_ = false;
 
 	if (global_explore_) {
-		astar_ =  new AStar(occupancy_grid_);
+		astar_ =  AStar(occupancy_grid_);
 	} else {
-		astar_ = new AStar(&local_map_);
+		astar_ = AStar(&local_map_);
 	}
 
 	previous_local_explore_cell = glm::vec3(-1, 0, -1);
 	previous_explore_cell = glm::vec3(-1, 0, -1);
+
+
+	// mark interior interiors as already explored
+	for (int y = 0; y < occupancy_grid_->get_grid_height(); ++y) {
+		for (int x = 0; x < occupancy_grid_->get_grid_width(); ++x) {
+			glm::ivec3 pos(x, 0, y);
+			if (occupancy_grid_->is_interior_interior(pos)) {
+				int val = SwarmOccupancyTree::INTERIOR_MARK;
+				local_map_.set(pos.x, pos.z, val);
+			}
+		}
+	}
+
 }
 
 void ExperimentalRobot::populate_occlusion_map() {
@@ -611,9 +624,9 @@ void ExperimentalRobot::set_figure_mode(bool figure_mode) {
 
 ExperimentalRobot::~ExperimentalRobot()
 {
-	if (astar_) {
-		delete astar_;
-	}
+	//if (astar_) {
+	//	delete astar_;
+	//}
 }
 
 glm::vec3 ExperimentalRobot::calculate_separation_velocity() {
@@ -971,6 +984,9 @@ bool ExperimentalRobot::local_perimeter_search_for_astar(glm::ivec3& explore_cel
 					|| std::abs(z) == sensor_level) {
 
 					glm::ivec3 cell_position = current_robot_grid_position + glm::ivec3(x, 0, z);
+					//if (occupancy_grid_->is_interior_interior(cell_position)) {
+					//	mark_locally_covered(cell_position, true);
+					//}
 
 					if (!occupancy_grid_->is_out_of_bounds(cell_position)
 						//&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
@@ -1075,23 +1091,52 @@ bool ExperimentalRobot::get_next_goal(glm::ivec3& position) {
 	return false;
 }
 
-void ExperimentalRobot::calculate_astar_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell) {
 
-	auto current_pos = occupancy_grid_->map_to_position(current_cell);
-	auto goal_pos = occupancy_grid_->map_to_position(goal_cell);
-	path_ = astar_->search(current_pos, goal_pos);
+void ExperimentalRobot::calculate_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell) {
 
-	if (path_.size() == 0) {
-		//why ?
-		//if (!global_explore_) {
-		//	std::cout << grid->at(current_pos)
-		//}
+	assert(path_.size() == 0);
+
+
+	// find apath store
+	int no_of_grid_cells = 0;
+	SwarmUtils::bresenham_line(current_cell, goal_cell, path_, no_of_grid_cells);
+
+	bool interior_found = false;
+	for (auto& cell : path_) {
+		//if (is_interior_in_local_map(cell) && (cell != path_.back())) {
+		if (is_interior_in_local_map(cell)) {
+			interior_found = true;
+			break;
+		}
+	}
+
+	if (interior_found) {
+		path_.clear();
+		auto current_pos = occupancy_grid_->map_to_position(current_cell);
+		auto goal_pos = occupancy_grid_->map_to_position(goal_cell);
+		path_ = astar_.search(current_pos, goal_pos);
+
+		if (path_.size() == 0) {
+			// cannot reach has to be an interior interior (unable to reach)
+			mark_locally_covered(goal_cell, true);
+			//why ?
+			//if (!global_explore_) {
+			//	std::cout << grid->at(current_pos)
+			//}
+		}
 	}
 
 	if (render_) {
+
 		for (auto& path_cell : path_) {
 			explored_mutex_.lock();
-			//vis_astar_cells_.push_back(path_cell);
+			if (display_local_map_ && id_ == display_id_) {
+				//vis_astar_cells_.push_back(path_cell);
+			}
+			else if (!display_local_map_) {
+				vis_astar_cells_.push_back(path_cell);
+			}
+
 			explored_mutex_.unlock();
 		}
 	}
@@ -1116,37 +1161,37 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 	glm::ivec3 goal_cell;
 
 	if (global_explore_) {
-		goal_cell = previous_local_explore_cell;
-		explored_cells = occupancy_grid_->no_of_unexplored_cells();
+		//goal_cell = previous_local_explore_cell;
+		//explored_cells = occupancy_grid_->no_of_unexplored_cells();
 
-		//if ((previous_no_of_explored_cells_ == explored_cells) && (previous_cell == current_cell)) {
-			something_to_explore = get_next_goal(next_explore_cell);
+		////if ((previous_no_of_explored_cells_ == explored_cells) && (previous_cell == current_cell)) {
+		//	something_to_explore = get_next_goal(next_explore_cell);
+		////}
+		//
+		//if (!something_to_explore) {
+		//	something_to_explore = occupancy_grid_->next_cell_to_explore_visibility_non_aware(current_cell, goal_cell, 
+		//		//explore_range_.min_, explore_range_.max_);
+		//		0, max_render_cell_size_);
+		//	if (!something_to_explore) {
+		//		std::cout << "Undefined state in global find...";
+		//	}
+		//	calculate_astar_path(occupancy_grid_, current_cell, goal_cell, next_explore_cell);
+		//	if (render_) {
+		//		if (!display_local_map_) {
+		//			explored_mutex_.lock();
+		//			//vis_goal_cells_.push_back(goal_cell);
+		//			vis_goal_cell = goal_cell;
+		//			explored_mutex_.unlock();
+		//		} else if (id_ == display_id_) {
+		//			explored_mutex_.lock();
+		//			//vis_goal_cells_.push_back(goal_cell);
+		//			explored_mutex_.unlock();
+		//		}
+		//			
+		//	}
 		//}
-		
-		if (!something_to_explore) {
-			something_to_explore = occupancy_grid_->next_cell_to_explore_visibility_non_aware(current_cell, goal_cell, 
-				//explore_range_.min_, explore_range_.max_);
-				0, max_render_cell_size_);
-			if (!something_to_explore) {
-				std::cout << "Undefined state in global find...";
-			}
-			calculate_astar_path(occupancy_grid_, current_cell, goal_cell, next_explore_cell);
-			if (render_) {
-				if (!display_local_map_) {
-					explored_mutex_.lock();
-					//vis_goal_cells_.push_back(goal_cell);
-					vis_goal_cell = goal_cell;
-					explored_mutex_.unlock();
-				} else if (id_ == display_id_) {
-					explored_mutex_.lock();
-					//vis_goal_cells_.push_back(goal_cell);
-					explored_mutex_.unlock();
-				}
-					
-			}
-		}
 
-		previous_no_of_explored_cells_ = explored_cells;
+		//previous_no_of_explored_cells_ = explored_cells;
 
 
 	} else {
@@ -1164,7 +1209,7 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 		if (previous_local_explore_cell.x > 0 && not_locally_visited(previous_local_explore_cell) && path_.size() == 0) {
 			goal_cell = previous_local_explore_cell;
 
-			calculate_astar_path(&local_map_, current_cell, goal_cell, next_explore_cell);
+			calculate_path(&local_map_, current_cell, goal_cell, next_explore_cell);
 			
 			something_to_explore = true;
 		}
@@ -1172,22 +1217,21 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 		if (!something_to_explore) {
 
 			something_to_explore = get_next_goal(next_explore_cell);
-
 			if (!something_to_explore) {
 				same_cell_count_ = 0;
+				while (path_.size() == 0) {
+					something_to_explore = local_explore_search(goal_cell);
+					//local_explore_state_ = EXPLORE;
 
-				//something_to_explore = local_explore_search(goal_cell);
-				//local_explore_state_ = EXPLORE;
+					if (!something_to_explore) {
+						// go left
+						something_to_explore = local_perimeter_search_for_astar(goal_cell);
+						local_explore_state_ = PERIMETER;
+					}
 
-				if (!something_to_explore) {
-					// go left
-					something_to_explore = local_perimeter_search_for_astar(goal_cell);
-					local_explore_state_ = PERIMETER;
-				}
-
-				if (something_to_explore) {
-					// find apath store
-					calculate_astar_path(&local_map_, current_cell, goal_cell, next_explore_cell);
+					if (something_to_explore) {
+						calculate_path(&local_map_, current_cell, goal_cell, next_explore_cell);
+					}
 				}
 
 				if (!something_to_explore) {
@@ -1220,10 +1264,14 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 
 		auto move_to_position = occupancy_grid_->map_to_position(next_explore_cell);
 		float max_distance = diagonal_grid_length_ * occupancy_grid_->get_grid_square_length();
-		float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
+		//float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
+		float normalizing_constant = 1.f;
 		//float normalizing_constant = std::pow(glm::length(move_to_position - position_), 2);
 		//float normalizing_constant = 1.f/ std::pow(glm::length(move_to_position - position_), 2);
-		explore_velocity = normalizing_constant * (move_to_position - position_) * explore_constant_;
+
+		glm::vec3 desired_explore_velocity = normalizing_constant * (move_to_position - position_) * explore_constant_;
+
+		explore_velocity = desired_explore_velocity - velocity_;
 
 	}
 
@@ -1572,14 +1620,22 @@ void ExperimentalRobot::update_overlay_cells(const bool is_interior, const glm::
 			explored_mutex_.unlock();
 		}
 		else {
-			explored_mutex_.lock();
-			if (explored_cell_count_ < max_render_cell_size_ - 1) {
-				vis_explored_cells_[explored_cell_count_++] = (grid_position);
+			// additional check because even interior can be marked as non-interior;
+			if (display_local_map_ || !occupancy_grid_->is_interior(grid_position)) {
+				explored_mutex_.lock();
+				if (explored_cell_count_ < max_render_cell_size_ - 1) {
+					vis_explored_cells_[explored_cell_count_++] = (grid_position);
+				}
+				explored_mutex_.unlock();
 			}
-			explored_mutex_.unlock();
 		}
 	}
 
+}
+
+bool ExperimentalRobot::is_interior_in_local_map(const glm::ivec3& grid_position) const {
+	return (local_map_.at(grid_position.x, grid_position.z) == SwarmOccupancyTree::INTERIOR_MARK);
+	
 }
 
 void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position, bool is_interior) {
@@ -1590,21 +1646,23 @@ void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position, bo
 	//		local_no_of_unexplored_cells_--;
 	//	}
 	//}
-	if (local_map_.at(grid_position.x, grid_position.z) == 0) {
-		int val = is_interior ? SwarmOccupancyTree::INTERIOR_MARK : 1;
-		local_map_.set(grid_position.x, grid_position.z, val);
-		if (render_) {
-			if (display_local_map_ && id_ == display_id_) {
-				update_overlay_cells(is_interior, grid_position);
-			} else if (!display_local_map_) {
-				update_overlay_cells(is_interior, grid_position);
-			}
-		}
+	bool updated = false;
+	int map_val = local_map_.at(grid_position.x, grid_position.z);
+
+	if (map_val == 0) {
+		int new_val = is_interior ? SwarmOccupancyTree::INTERIOR_MARK : 1;
+		local_map_.set(grid_position.x, grid_position.z, new_val);
 		local_no_of_unexplored_cells_--;
-		path_.clear();
-	} else if (local_map_.at(grid_position.x, grid_position.z) < SwarmOccupancyTree::INTERIOR_MARK
-		&& is_interior) {
-		local_map_.set(grid_position.x, grid_position.z, SwarmOccupancyTree::INTERIOR_MARK);
+		updated = true;
+	} else if (is_interior && map_val < SwarmOccupancyTree::INTERIOR_MARK) {
+		// this is marked because another robot was in that area
+		// we need to set as interior
+		int new_val = SwarmOccupancyTree::INTERIOR_MARK;
+		local_map_.set(grid_position.x, grid_position.z, new_val);
+		updated = true;
+	}
+
+	if (updated) {
 		if (render_) {
 			if (display_local_map_ && id_ == display_id_) {
 				update_overlay_cells(is_interior, grid_position);
@@ -1612,8 +1670,23 @@ void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position, bo
 				update_overlay_cells(is_interior, grid_position);
 			}
 		}
-		path_.clear();
+		if (is_interior) {
+			path_.clear();
+		}
 	}
+	
+	//else if (local_map_.at(grid_position.x, grid_position.z) < SwarmOccupancyTree::INTERIOR_MARK
+	//	&& is_interior) {
+	//	local_map_.set(grid_position.x, grid_position.z, SwarmOccupancyTree::INTERIOR_MARK);
+	//	if (render_) {
+	//		if (display_local_map_ && id_ == display_id_) {
+	//			update_overlay_cells(is_interior, grid_position);
+	//		} else if (!display_local_map_) {
+	//			update_overlay_cells(is_interior, grid_position);
+	//		}
+	//	}
+	//	path_.clear();
+	//}
 }
 
 void ExperimentalRobot::mark_othere_robots_ranges() {
@@ -1640,7 +1713,7 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 									&& not_locally_visited(cell_position)) {
 										//float distance = glm::length(glm::vec3(other_robot_grid_position - cell_position));
 										//if (distance < (sensor_range_)) {
-											mark_locally_covered(cell_position, false);
+									mark_locally_covered(cell_position, false);
 										//}
 										//if (distance < (sensor_range_ - 2)) {
 										//	mark_locally_covered(cell_position, false);
@@ -1992,6 +2065,13 @@ void ExperimentalRobot::update(int timestamp) {
 			}
 		}
 	}
+		
+	if (path_.size() > 0) {
+		if (glm::distance(glm::vec3(path_.front()), glm::vec3(grid_position)) < 2.f) {
+			// we are there 
+			path_.pop_front();
+		}
+	}
 
 	if (interior_updated_) {
 		for (int i = 0; i < current_adjacent_cells_; ++i) {
@@ -2017,13 +2097,13 @@ void ExperimentalRobot::update(int timestamp) {
 					mark_locally_covered(sensored_cell, is_interior_cell);
 				}
 
-				if (path_.size() > 0) {
-					if (sensored_cell == path_.front() && 
-						glm::distance(glm::vec3(sensored_cell), glm::vec3(grid_position)) < 2.f) {
-						// we are there 
-						path_.pop_front();
-					}
-				}
+				//if (path_.size() > 0) {
+				//	if (sensored_cell == path_.front() && 
+				//		glm::distance(glm::vec3(sensored_cell), glm::vec3(grid_position)) < 2.f) {
+				//		// we are there 
+				//		path_.pop_front();
+				//	}
+				//}
 			//}
 #endif
 			if (!occupancy_grid_->is_interior(sensored_cell)) {

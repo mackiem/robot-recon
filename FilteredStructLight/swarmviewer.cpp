@@ -105,19 +105,33 @@ void RobotWorker::finish_work() {
 		emit update_sim_results(results);
 		sampling_updated_ = true;
 		abort();
+		std::cout << "Done!\n";
 	}
 }
 	
 
 void RobotWorker::do_work() {
 	int visualization_count = 0;
+	long timestamp = 0;
+	auto last_time = std::chrono::steady_clock::now();
+
+	float speed = 120; // Hz
+
 	while (!aborted_) {
 		if (step_count_ == 0) {
 			paused_ = true;
 		}
 		if (!paused_) {
 			if (slow_down_) {
-				QThread::currentThread()->msleep(10);
+				//each time step, call again
+				auto current_time = std::chrono::steady_clock::now();
+				auto ms_count = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - last_time).count();
+				if (ms_count < 1000.f / speed) {
+					continue;
+				}
+
+				last_time = current_time;
+				//QThread::currentThread()->msleep(10);
 			}
 			step_count_--;
 			if (time_step_count_ > max_time_taken_) {
@@ -926,7 +940,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 
 	//SwarmUtils::create_grids(&occupancy_grid_, &recon_grid_, &collision_grid_);
 	swarm_params_ = swarm_params;
-	swarm_params_.display_local_map_ = false;
+	swarm_params_.display_local_map_ = true;
 	swarm_params_.local_map_robot_id_ = 0;
 
 	occupancy_grid_->create_perimeter_list();

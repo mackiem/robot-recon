@@ -117,7 +117,7 @@ private:
 	std::vector<glm::ivec3> vis_astar_cells_;
 	std::vector<glm::vec3> vis_poo_cells_;
 	bool global_explore_;
-	AStar* astar_;
+	AStar astar_;
 	bool display_local_map_;
 	int display_id_;
 	glm::ivec3 vis_goal_cell;
@@ -204,12 +204,13 @@ public:
 	bool local_explore_search(glm::ivec3& explore_cell_position);
 	glm::vec3 calculate_local_explore_velocity();
 	
+	bool is_interior_in_local_map(const glm::ivec3& grid_position) const;
 	void mark_locally_covered(const glm::ivec3& grid_position, bool is_interior);
 	void mark_othere_robots_ranges();
 	glm::vec3 calculate_obstacle_avoidance_velocity();
 	bool  local_perimeter_search(glm::ivec3& explore_cell_position);
 	bool local_perimeter_search_for_astar(glm::ivec3& explore_cell_position);
-	void calculate_astar_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell);
+	void calculate_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell);
 
 	bool get_next_goal(glm::ivec3& position);
 	glm::vec3 calculate_astar_explore_velocity();

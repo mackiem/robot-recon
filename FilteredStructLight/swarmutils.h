@@ -225,5 +225,7 @@ public:
 	                                            SwarmOccupancyTree** occupancy_grid,
 	                                            Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
 	static void create_grids(SwarmOccupancyTree** occupancy_grid, Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
+
+	static void bresenham_line(const glm::ivec3& source, const glm::ivec3& target, std::deque<glm::ivec3>& path, int& no_of_grid_cells);
 };
 

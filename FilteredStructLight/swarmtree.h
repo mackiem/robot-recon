@@ -184,7 +184,6 @@ private:
 		int cluster_id;
 	};
 
-	bool is_interior_interior(const glm::ivec3& position);
 
 	std::vector<Sampling>* sampling_tracker_;
 
@@ -196,6 +195,7 @@ private:
 	std::vector<PerimeterPos> perimeter_vector_;
 public:
 
+	bool is_interior_interior(const glm::ivec3& position);
 	bool is_perimeter(const glm::ivec3& grid_position) const;
 
 	bool going_through_interior_test(const glm::ivec3& robot_position, const glm::ivec3& point_to_test) const;

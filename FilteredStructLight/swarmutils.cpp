@@ -799,6 +799,63 @@ bool SwarmUtils::load_interior_model_from_matrix(SwarmParams& swarm_params, Swar
 void SwarmUtils::create_grids(SwarmOccupancyTree** occupancy_grid, Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid) {
 }
 
+void SwarmUtils::bresenham_line(const glm::ivec3& source, const glm::ivec3& target, std::deque<glm::ivec3>& path, int& no_of_grid_cells) {
+	float x1 = source.x;
+	float y1 = source.z;
+
+	float x2 = target.x;
+	float y2 = target.z;
+
+	// Bresenham's line algorithm
+	const bool steep = (fabs(y2 - y1) > fabs(x2 - x1));
+	if (steep)
+	{
+		std::swap(x1, y1);
+		std::swap(x2, y2);
+	}
+
+	if (x1 > x2)
+	{
+		std::swap(x1, x2);
+		std::swap(y1, y2);
+	}
+
+	const float dx = x2 - x1;
+	const float dy = fabs(y2 - y1);
+
+	float error = dx / 2.0f;
+	const int ystep = (y1 < y2) ? 1 : -1;
+	int y = (int)y1;
+
+	const int maxX = (int)x2;
+
+	//path.resize(maxX);
+	no_of_grid_cells = 0;
+	for (int x = (int)x1; x < maxX; x++)
+	{
+		if (steep)
+		{
+			path.push_back(glm::ivec3(y, 0, x));
+			//SetPixel(y, x, color);
+
+		}
+		else
+		{
+			path.push_back(glm::ivec3(x, 0, y));
+			//SetPixel(x, y, color);
+		}
+		no_of_grid_cells++;
+
+		error -= dy;
+		if (error < 0)
+		{
+			y += ystep;
+			error += dx;
+		}
+	}
+}
+
+
 void SwarmUtils::write_matrix_to_file() {
 
 	QStringList model_files_list;
