@@ -1584,9 +1584,9 @@ glm::vec3 ExperimentalRobot::calculate_obstacle_avoidance_velocity() {
 
 	}
 
-	if (current_no_of_robots_ > 0) {
-		bounce_force *= current_no_of_robots_;
-	}
+	//if (current_no_of_robots_ > 0) {
+	//	bounce_force *= current_no_of_robots_;
+	//}
 
 	separation_force_ = bounce_force;
 	return bounce_force;
