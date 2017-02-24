@@ -940,8 +940,6 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 
 	//SwarmUtils::create_grids(&occupancy_grid_, &recon_grid_, &collision_grid_);
 	swarm_params_ = swarm_params;
-	swarm_params_.display_local_map_ = true;
-	swarm_params_.local_map_robot_id_ = 0;
 
 	occupancy_grid_->create_perimeter_list();
 	occupancy_grid_->create_empty_space_list();
