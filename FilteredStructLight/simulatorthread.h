@@ -71,6 +71,7 @@ private:
 	int group_id_;
 	int thread_id_;
 	Swarm3DReconTree* recon_grid_;
+	bool exception_thrown_;
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
 	static const std::string OCCUPANCY_GRID_NAME;

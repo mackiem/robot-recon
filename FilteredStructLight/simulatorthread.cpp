@@ -99,6 +99,14 @@ void SimulatorThread::finish_work() {
 
 	OptimizationResults results;
 	SwarmUtils::calculate_sim_results(occupancy_grid_, recon_grid_, robots_, time_step_count_, swarm_params_, results);
+	if (exception_thrown_) {
+		results.time_taken = swarm_params_.max_time_taken_;
+		results.simul_sampling = 0;
+		results.multi_samping = 0;
+		results.clustering = 0;
+		results.density = 0;
+		results.occlusion = swarm_params_.no_of_robots_;
+	}
 
 	//emit send_sim_results(group_id_, thread_id_, iteration_, separation_constant_, alignment_constant_, cluster_constant_, explore_constant_,
 	//	separation_distance_, simultaneous_sampling, time_step_count_, occlusion, coverage);
@@ -110,6 +118,8 @@ void SimulatorThread::finish_work() {
 
 void SimulatorThread::run() {
 	//finish_work();
+	exception_thrown_ = false;
+
 	while (!aborted_) {
 		if (time_step_count_ > swarm_params_.max_time_taken_) {
 			finish_work();
@@ -125,7 +135,8 @@ void SimulatorThread::run() {
 				robot->update(time_step_count_);
 			}
 		} catch (OutOfGridBoundsException& ex) {
-			time_step_count_ = swarm_params_.max_time_taken_;
+			exception_thrown_ = true;
+			//time_step_count_ = swarm_params_.max_time_taken_;
 			finish_work();
 		}
 		time_step_count_++;

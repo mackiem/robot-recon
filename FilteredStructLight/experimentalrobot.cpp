@@ -1584,9 +1584,9 @@ glm::vec3 ExperimentalRobot::calculate_obstacle_avoidance_velocity() {
 
 	}
 
-	//if (current_no_of_robots_ > 0) {
-	//	bounce_force *= current_no_of_robots_;
-	//}
+	if (current_no_of_robots_ > 0) {
+		bounce_force *= current_no_of_robots_;
+	}
 
 	separation_force_ = bounce_force;
 	return bounce_force;
@@ -1691,6 +1691,10 @@ void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position, bo
 	//}
 }
 
+//ExperimentalRobot::get_local_map() const {
+//	
+//}
+
 void ExperimentalRobot::mark_othere_robots_ranges() {
 	// mark other robots 
 	//for (auto& robot_id : robot_ids_) {
@@ -1716,6 +1720,10 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 										//float distance = glm::length(glm::vec3(other_robot_grid_position - cell_position));
 										//if (distance < (sensor_range_)) {
 									mark_locally_covered(cell_position, false);
+
+									// new info sharing
+									bool is_interior = static_cast<ExperimentalRobot*>(robots_[robot_id])->is_interior_in_local_map(cell_position);
+									mark_locally_covered(cell_position, is_interior);
 										//}
 										//if (distance < (sensor_range_ - 2)) {
 										//	mark_locally_covered(cell_position, false);
