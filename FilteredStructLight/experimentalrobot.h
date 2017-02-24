@@ -1,7 +1,8 @@
 #pragma once
 #include "robot.h"
-#include <type_traits>
 #include "astar.h"
+
+class SwarmParams;
 
 class VisibilityQuadrant {
 
@@ -118,8 +119,8 @@ private:
 	std::vector<glm::vec3> vis_poo_cells_;
 	bool global_explore_;
 	AStar astar_;
-	bool display_local_map_;
-	int display_id_;
+	//bool display_local_map_;
+	//int display_id_;
 	glm::ivec3 vis_goal_cell;
 	glm::ivec3 prev_vis_goal_cell;
 
@@ -152,6 +153,7 @@ private:
 	void get_other_robots_memory_wise();
 	bool is_colliding_with_robots(const std::vector<int>& robot_ids) const;
 	void update_overlay_cells(const bool is_interior, const glm::ivec3& grid_position);
+	SwarmParams swarm_params_;
 public:
 	//ExperimentalRobot(UniformLocations& locations, unsigned int id, SwarmOccupancyTree* octree, SwarmCollisionTree* collision_tree, Swarm3DReconTree* recon_tree,
 	//	double explore_constant, double separation_constant, double alignment_constant, double cluster_constant, double perimeter_constant, double work_constant,
@@ -166,7 +168,7 @@ public:
 		double cluster_constant, double explore_constant, double sensor_range,
 		int discovery_range, double separation_distance, glm::vec3 position,
 		double square_radius, double bounce_function_power, double bounce_function_multiplier, int max_time,
-		bool collide_with_robots, bool render, QGLShaderProgram* shader, bool display_local_map, int display_id);
+		bool collide_with_robots, bool render, QGLShaderProgram* shader, SwarmParams swarm_params);
 	void populate_occlusion_map();
 	void populate_clustering_map();
 	void init_sensor_range();

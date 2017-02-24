@@ -43,14 +43,15 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, i
 	double cluster_constant, double explore_constant, double sensor_range,
 	int discovery_range, double separation_distance, glm::vec3 position,
 	double square_radius, double bounce_function_power, double bounce_function_multiplier, int max_time,
-	bool collide_with_robots, bool render, QGLShaderProgram* shader, bool display_local_map, int display_id)
+	bool collide_with_robots, bool render, QGLShaderProgram* shader, SwarmParams swarm_params)
 
 	: Robot(locations, id, octree, collision_tree,  separation_constant,
 	alignment_constant, cluster_constant, explore_constant,sensor_range, discovery_range, separation_distance, position, render, shader),  
 	square_radius_(square_radius), bounce_function_power_(bounce_function_power), 
 	bounce_function_multiplier_(bounce_function_multiplier), recon_tree_(recon_tree), max_time_(max_time), 
 	local_map_(mm::Quadtree<int>(occupancy_grid_->get_grid_width(), occupancy_grid_->get_grid_height(), occupancy_grid_->get_grid_square_length(), 0)),
-	no_of_robots_(no_of_robots), astar_(nullptr), display_local_map_(display_local_map), display_id_(display_id)
+	no_of_robots_(no_of_robots), astar_(nullptr), swarm_params_(swarm_params)
+//display_local_map_(display_local_map), display_id_(display_id)
 {
 	
 	measurement_time_step_ = 100;
@@ -537,7 +538,7 @@ void ExperimentalRobot::update_visualization_structs() {
 	// undo prev color
 	if (glm::length(glm::vec3(prev_vis_goal_cell)) > 1e-6) {
 		cv::Vec4f color;
-		if (display_local_map_) {
+		if (swarm_params_.display_local_map_) {
 			if (not_locally_visited(prev_vis_goal_cell)) {
 				cv::Vec4f unexplored_color(.4f, .4f, .4f, 1.f);
 				color = unexplored_color;
@@ -1127,17 +1128,18 @@ void ExperimentalRobot::calculate_path(Grid* grid, const glm::ivec3& current_cel
 	}
 
 	if (render_) {
+		if (swarm_params_.display_astar_path_) {
+			for (auto& path_cell : path_) {
+				explored_mutex_.lock();
+				if (swarm_params_.display_local_map_ && id_ == swarm_params_.local_map_robot_id_) {
+					vis_astar_cells_.push_back(path_cell);
+				}
+				else if (!swarm_params_.display_local_map_) {
+					vis_astar_cells_.push_back(path_cell);
+				}
 
-		for (auto& path_cell : path_) {
-			explored_mutex_.lock();
-			if (display_local_map_ && id_ == display_id_) {
-				//vis_astar_cells_.push_back(path_cell);
+				explored_mutex_.unlock();
 			}
-			else if (!display_local_map_) {
-				vis_astar_cells_.push_back(path_cell);
-			}
-
-			explored_mutex_.unlock();
 		}
 	}
 
@@ -1240,14 +1242,14 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 				}
 
 				if (render_) {
-					if (!display_local_map_) {
+					if (!swarm_params_.display_local_map_) {
 						explored_mutex_.lock();
 						vis_goal_cell = goal_cell;
 						//glClearColor(0.1f, 0.1f, 0.1f, 1.f);
 						//vis_goal_cells_.push_back(goal_cell);
 						explored_mutex_.unlock();
 					}
-					else if (id_ == display_id_) {
+					else if (id_ == swarm_params_.local_map_robot_id_) {
 						explored_mutex_.lock();
 						//vis_goal_cells_.push_back(goal_cell);
 						vis_goal_cell = goal_cell;
@@ -1621,7 +1623,7 @@ void ExperimentalRobot::update_overlay_cells(const bool is_interior, const glm::
 		}
 		else {
 			// additional check because even interior can be marked as non-interior;
-			if (display_local_map_ || !occupancy_grid_->is_interior(grid_position)) {
+			if (swarm_params_.display_local_map_ || !occupancy_grid_->is_interior(grid_position)) {
 				explored_mutex_.lock();
 				if (explored_cell_count_ < max_render_cell_size_ - 1) {
 					vis_explored_cells_[explored_cell_count_++] = (grid_position);
@@ -1664,9 +1666,9 @@ void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position, bo
 
 	if (updated) {
 		if (render_) {
-			if (display_local_map_ && id_ == display_id_) {
+			if (swarm_params_.display_local_map_ && id_ == swarm_params_.local_map_robot_id_) {
 				update_overlay_cells(is_interior, grid_position);
-			} else if (!display_local_map_) {
+			} else if (!swarm_params_.display_local_map_) {
 				update_overlay_cells(is_interior, grid_position);
 			}
 		}
@@ -2112,7 +2114,7 @@ void ExperimentalRobot::update(int timestamp) {
 				// We need to go one extra grid to cover interior, so make sure it's always less than 1
 				if (distance < (sensor_range_ - 2)) {
 					if (render_) {
-						if (!display_local_map_) {
+						if (!swarm_params_.display_local_map_) {
 							update_overlay_cells(false, grid_position);
 						}
 					}
@@ -2120,7 +2122,7 @@ void ExperimentalRobot::update(int timestamp) {
 				}
 			} else {
 				if (render_) {
-					if (!display_local_map_) {
+					if (!swarm_params_.display_local_map_) {
 						update_overlay_cells(false, grid_position);
 					}
 				}

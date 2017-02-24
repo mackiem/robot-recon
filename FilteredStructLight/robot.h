@@ -8,6 +8,65 @@
 #include "swarmtree.h"
 #include <memory>
 
+
+struct SwarmParams {
+
+	int no_of_robots_;
+	double explore_constant_;
+	double separation_constant_;
+	double alignment_constant_;
+	double cluster_constant_;
+	double perimeter_constant_;
+	double goto_work_constant_;
+	double separation_range_min_;
+	double separation_range_max_;
+	double alignment_range_min_;
+	double alignment_range_max_;
+	double cluster_range_min_;
+	double cluster_range_max_;
+	double perimeter_range_min_;
+	double perimeter_range_max_;
+	double explore_range_min_;
+	double explore_range_max_;
+	double obstacle_avoidance_near_range_min_;
+	double obstacle_avoidance_near_range_max_;
+	double obstacle_avoidance_far_range_min_;
+	double obstacle_avoidance_far_range_max_;
+	int formation;
+	double magic_k_spin_box_;
+	int neighborhood_count_;
+	int grid_resolution_;
+	int grid_length_;
+	double scale_spinbox_;
+	int x_spin_box_;
+	int y_spin_box_;
+	int z_spin_box_;
+	bool show_interior_;
+	QString model_filename_;
+	bool show_forces_;
+	bool collide_with_other_robots_;
+	double square_radius_;
+	double bounce_function_power_;
+	double bounce_function_multiplier_;
+	double sensor_range_;
+	double discovery_range_;
+	//int grid_resolution_per_side_;
+	int grid_width_;
+	int grid_height_;
+
+	int no_of_clusters_;
+	int max_time_taken_;
+	double death_percentage_;
+	int death_time_taken_;
+	QString config_name_;
+	QString model_matrix_filename_;
+	int robots_in_a_cluster_;
+	double coverage_needed_;
+	bool display_local_map_;
+	int local_map_robot_id_;
+	bool display_astar_path_;
+};
+
 struct Recon3DPoints : public VisObject {
 	unsigned int grid_resolution_per_side_;
 	float grid_length_;

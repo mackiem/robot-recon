@@ -151,6 +151,13 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 
 	swarm_params.coverage_needed_ = coverage_needed_->value();
 
+	// vis options
+	swarm_params.display_local_map_ = display_local_map_mode_->isChecked();
+	swarm_params.local_map_robot_id_ = 0;
+	swarm_params.display_astar_path_ = display_astar_path_mode_->isChecked();
+
+
+
 	return swarm_params;
 }
 
@@ -1231,8 +1238,10 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 	QLabel* bounce_function_power_label = new QLabel("Bounce Func. Power");
 	bounce_function_power_ = new QDoubleSpinBox(misc_group_box);
 
+	int precision = 17;
 	QLabel* bounce_function_multiplier_label = new QLabel("Bounce Func. Multiplier");
 	bounce_function_multiplier_ = new QDoubleSpinBox(misc_group_box);
+	bounce_function_multiplier_->setDecimals(precision);
 
 	QHBoxLayout* death_percentage_layout = new QHBoxLayout();
 	death_percentage_layout->addWidget(death_percentage_label);
@@ -1631,7 +1640,7 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	QLabel* max_time_taken_label = new QLabel("Max Time Taken");
 	max_time_taken_ = new QSpinBox(group_box);
 	max_time_taken_->setMinimum(1);
-	max_time_taken_->setMaximum(100000);
+	max_time_taken_->setMaximum(10000000);
 
 	max_time_layout->addWidget(max_time_taken_label);
 	max_time_layout->addWidget(max_time_taken_);
@@ -1664,10 +1673,22 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	collide_with_other_robots_ = new QCheckBox("Collide with other robots?", group_box);
 	group_box_layout->addWidget(collide_with_other_robots_);
 
-	figure_mode_ = new QCheckBox("Figure Mode", group_box);
-	group_box_layout->addWidget(figure_mode_);
-	connect(figure_mode_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_figure_mode);
-	figure_mode_->setCheckState(Qt::CheckState::Unchecked);
+	trail_mode_ = new QCheckBox("Trail Mode", group_box);
+	group_box_layout->addWidget(trail_mode_);
+	connect(trail_mode_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_figure_mode);
+	trail_mode_->setCheckState(Qt::CheckState::Unchecked);
+
+	display_local_map_mode_ = new QCheckBox("Local Map", group_box);
+	group_box_layout->addWidget(display_local_map_mode_);
+	display_local_map_mode_->setCheckState(Qt::CheckState::Unchecked);
+
+	display_astar_path_mode_ = new QCheckBox("Path", group_box);
+	group_box_layout->addWidget(display_astar_path_mode_);
+	display_astar_path_mode_->setCheckState(Qt::CheckState::Unchecked);
+
+
+
+
 
 	//collide with interior
 
