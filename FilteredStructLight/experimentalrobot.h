@@ -155,6 +155,8 @@ private:
 	void update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position);
 	void get_other_robots_memory_wise();
 	bool is_colliding_with_robots(const std::vector<int>& robot_ids) const;
+	bool is_path_not_empty() const;
+	void increment_path_step();
 	void update_overlay_cells(const bool is_interior, const glm::ivec3& grid_position);
 	SwarmParams swarm_params_;
 public:
@@ -210,6 +212,7 @@ public:
 	glm::vec3 calculate_local_explore_velocity();
 	
 	bool is_interior_in_local_map(const glm::ivec3& grid_position) const;
+	void clear_explore_path();
 	void mark_locally_covered(const glm::ivec3& grid_position, bool is_interior);
 	void mark_othere_robots_ranges();
 	glm::vec3 calculate_obstacle_avoidance_velocity();

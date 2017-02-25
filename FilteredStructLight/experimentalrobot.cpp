@@ -1000,6 +1000,8 @@ bool ExperimentalRobot::local_perimeter_search_for_astar(glm::ivec3& explore_cel
 	for (int sensor_level = 1; sensor_level <= diagonal_grid_length_; ++sensor_level) {
 		//int no_of_iter = 0;
 		//int out_of_bounds = 0;
+		bool surrounded_by_robots = true;
+
 		for (int z = -sensor_level; z <= sensor_level; ++z) {
 			for (int x = -sensor_level; x <= sensor_level; ++x) {
 				if (std::abs(x) == sensor_level
@@ -1009,6 +1011,10 @@ bool ExperimentalRobot::local_perimeter_search_for_astar(glm::ivec3& explore_cel
 					//if (occupancy_grid_->is_interior_interior(cell_position)) {
 					//	mark_locally_covered(cell_position, true);
 					//}
+
+					if (!is_other_robot_present(cell_position)) {
+						surrounded_by_robots = false;
+					}
 
 					if (!occupancy_grid_->is_out_of_bounds(cell_position)
 						//&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
@@ -1022,6 +1028,9 @@ bool ExperimentalRobot::local_perimeter_search_for_astar(glm::ivec3& explore_cel
 					}
 				}
 			}
+		}
+		if (surrounded_by_robots) {
+			return false;
 		}
 		//if (no_of_iter > 0 && no_of_iter == out_of_bounds) {
 		//	// we are outside the defined world, time to quit
@@ -1683,6 +1692,10 @@ bool ExperimentalRobot::is_interior_in_local_map(const glm::ivec3& grid_position
 	
 }
 
+void ExperimentalRobot::clear_explore_path() {
+	current_path_step_ = total_no_of_path_steps_;
+}
+
 void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position, bool is_interior) {
 	//int map_position = grid_position.x * occupancy_grid_->get_grid_resolution_per_side() + grid_position.z;
 	//if (is_interior) {
@@ -1716,8 +1729,8 @@ void ExperimentalRobot::mark_locally_covered(const glm::ivec3& grid_position, bo
 			}
 		}
 		if (is_interior) {
-			current_path_step_ = total_no_of_path_steps_;
 			//path_.clear();
+			clear_explore_path();
 		}
 	}
 	
@@ -1766,8 +1779,8 @@ void ExperimentalRobot::mark_othere_robots_ranges() {
 									mark_locally_covered(cell_position, false);
 
 									// new info sharing
-									bool is_interior = static_cast<ExperimentalRobot*>(robots_[robot_id])->is_interior_in_local_map(cell_position);
-									mark_locally_covered(cell_position, is_interior);
+									//bool is_interior = static_cast<ExperimentalRobot*>(robots_[robot_id])->is_interior_in_local_map(cell_position);
+									//mark_locally_covered(cell_position, is_interior);
 										//}
 										//if (distance < (sensor_range_ - 2)) {
 										//	mark_locally_covered(cell_position, false);
@@ -1978,6 +1991,14 @@ bool ExperimentalRobot::is_colliding_with_robots(const std::vector<int>& robot_i
 	return false;
 }
 
+bool ExperimentalRobot::is_path_not_empty() const {
+	return current_path_step_ < total_no_of_path_steps_;
+}
+
+void ExperimentalRobot::increment_path_step() {
+	current_path_step_++;
+}
+
 #define LOCAL
 
 void ExperimentalRobot::update(int timestamp) {
@@ -2119,11 +2140,17 @@ void ExperimentalRobot::update(int timestamp) {
 			}
 		}
 	}
+
+	if (is_path_not_empty()) {
+		if (is_other_robot_present(path_[current_path_step_])) {
+			clear_explore_path();
+		}
+	}
 		
-	if (current_path_step_ < total_no_of_path_steps_) {
+	if (is_path_not_empty()) {
 		if (glm::distance(glm::vec3(path_[current_path_step_]), glm::vec3(grid_position)) < 2.f) {
 			// we are there 
-			current_path_step_++;
+			increment_path_step();
 		}
 	}
 
