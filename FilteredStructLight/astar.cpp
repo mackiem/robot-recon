@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "swarmutils.h"
+#include "experimentalrobot.h"
 
 #define DEBUG_LISTS 0
 #define DEBUG_LIST_LENGTHS_ONLY 0
@@ -139,7 +140,8 @@ bool MapSearchNode::GetSuccessors(AStarSearch<MapSearchNode> *astarsearch, MapSe
 	}
 
 
-	MapSearchNode NewNode(grid_);
+	//MapSearchNode NewNode(grid_);
+	//NewNode.robot_ = robot_;
 
 	// push each possible move except allowing the search to go backwards
 
@@ -195,12 +197,31 @@ bool MapSearchNode::GetSuccessors(AStarSearch<MapSearchNode> *astarsearch, MapSe
 					continue;
 				}
 
+				if (robot_->is_other_robot_present(glm::ivec3(next_x, 0, next_y))) {
+					continue;
+				}
+
+				//bool robot_exists = false;
+				//for (int i = 0; i < current_no_of_robots_; ++i) {
+				//	auto& robot_id = (*adjacent_robots_)[i];
+				//	glm::ivec3 other_robot_grid_position = (*robots_)[robot_id]->get_grid_position();
+				//	if (other_robot_grid_position == ) {
+				//		robot_exists = true;
+				//		break;
+				//	}
+				//}
+
+				//if (robot_exists) {
+				//	continue;
+				//}
+
 				int loc = grid_->at(next_x, next_y);
 				if ((loc < SwarmOccupancyTree::INTERIOR_MARK)
 					&& !((parent_x == next_x) && (parent_y == next_y))
 					)
 				{
-						NewNode = MapSearchNode(grid_, next_x, next_y);
+						MapSearchNode NewNode = MapSearchNode(grid_, next_x, next_y);
+						NewNode.robot_ = robot_;
 						astarsearch->AddSuccessor(NewNode);
 					//if (nx == 0 || ny == 0) {
 					//	NewNode = MapSearchNode(grid_, next_x, next_y);
@@ -270,9 +291,9 @@ float MapSearchNode::GetCost(MapSearchNode &successor)
 	}
 
 	// check for diagonal and return perimeter
-	if (std::abs(successor.x - x) + std::abs(successor.y - y) == 2) {
-		return SwarmOccupancyTree::PERIMETER;
-	}
+	//if (std::abs(successor.x - x) + std::abs(successor.y - y) == 2) {
+	//	return SwarmOccupancyTree::PERIMETER;
+	//}
 
 	return (float)loc;
 }
@@ -282,7 +303,8 @@ float MapSearchNode::GetCost(MapSearchNode &successor)
 
 #define DISPLAY_SOLUTION 0
 
-std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
+void AStar::search(glm::vec3& source, glm::vec3& target, std::vector<Robot*>* robots, std::vector<int>* adjacent_robots, int current_no_of_robots, ExperimentalRobot* robot, std::vector<glm::ivec3>&path,
+	int& current_no_of_path_steps) const
 {
 
 	//std::cout << "STL A* Search implementation\n(C)2001 Justin Heyes-Jones\n";
@@ -294,7 +316,7 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 	// most difficult. 9 indicates that we cannot pass.
 
 	// Create an instance of the search class...
-	std::deque< glm::ivec3 > path;
+	//std::deque< glm::ivec3 > path;
 
 	//AStarSearch<MapSearchNode> astarsearch_;
 	//AStarSearch<MapSearchNode> astarsearch(10000);
@@ -310,19 +332,30 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 		MapSearchNode nodeStart(grid_);
 		//grid_->convert_coords(source.x, source.z, nodeStart.x, nodeStart.y);
 		grid_->map_to_grid(source.x, source.z, nodeStart.x, nodeStart.y);
+		nodeStart.adjacent_robots_ = adjacent_robots;
+		nodeStart.current_no_of_robots_ = current_no_of_robots;
+		nodeStart.robots_ = robots;
+		nodeStart.robot_ = robot;
 		//nodeStart.x = source.x;
 		//nodeStart.y = source.z;
 
 		// Define the goal state
 		MapSearchNode nodeEnd(grid_);
 		grid_->map_to_grid(target.x, target.z, nodeEnd.x, nodeEnd.y);
+		nodeEnd.adjacent_robots_ = adjacent_robots;
+		nodeEnd.current_no_of_robots_ = current_no_of_robots;
+		nodeEnd.robots_ = robots;
+		nodeEnd.robot_ = robot;
+		//nodeStart.x = source.x;
 		//nodeEnd.x = target.x;
 		//nodeEnd.y = target.z;
 
 		// Set Start and goal states
 
-		AStarSearch<MapSearchNode> astarsearch(10000);
+		AStarSearch<MapSearchNode> astarsearch(100000);
 		astarsearch.SetStartAndGoalStates(nodeStart, nodeEnd);
+
+		current_no_of_path_steps = 0;
 
 		unsigned int SearchState;
 		unsigned int SearchSteps = 0;
@@ -392,7 +425,8 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 					break;
 				}
 
-				path.push_back(glm::vec3(node->x, 0, node->y));
+				//path.push_back(glm::vec3(node->x, 0, node->y));
+				path[current_no_of_path_steps++] = (glm::ivec3(node->x, 0, node->y));
 #if DISPLAY_SOLUTION
 				node->PrintNodeInfo();
 #endif
@@ -425,7 +459,7 @@ std::deque<glm::ivec3> AStar::search(glm::vec3& source, glm::vec3& target)
 		astarsearch.EnsureMemoryFreed();
 	}
 
-	return path;
+	//return path;
 }
 
 AStar::AStar(Grid* grid) : grid_(grid) {

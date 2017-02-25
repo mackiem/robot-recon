@@ -169,6 +169,7 @@ public:
 	                                            Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
 	static void create_grids(SwarmOccupancyTree** occupancy_grid, Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid);
 
-	static void bresenham_line(const glm::ivec3& source, const glm::ivec3& target, std::deque<glm::ivec3>& path, int& no_of_grid_cells);
+	static bool bresenham_line(const glm::ivec3& source, const glm::ivec3& target, std::vector<glm::ivec3>& path, int& no_of_path_steps, LocalMap& local_map);
+	static bool is_interior_in_local_map(const LocalMap& local_map, const glm::ivec3& grid_position);
 };
 

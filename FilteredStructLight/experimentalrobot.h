@@ -36,6 +36,7 @@ public:
 	
 };
 
+
 class ExperimentalRobot : public Robot
 {
 private:
@@ -96,7 +97,7 @@ private:
 	int same_cell_count_;
 
 	//render
-	int max_render_cell_size_;
+	int max_no_of_cells_;
 	int explored_cell_count_;
 	int interior_explored_cell_count_;
 
@@ -108,7 +109,8 @@ private:
 	std::vector<int> adjacent_robots_;
 	int current_no_of_robots_;
 
-	std::deque<glm::ivec3> path_;
+	std::vector<glm::ivec3> path_;
+	int total_no_of_path_steps_;
 
 
 	// visualization structs;
@@ -123,6 +125,7 @@ private:
 	//int display_id_;
 	glm::ivec3 vis_goal_cell;
 	glm::ivec3 prev_vis_goal_cell;
+	int current_path_step_;
 
 	//int no_of_bits_;
 	//int no_of_char_arrays_;
@@ -216,5 +219,6 @@ public:
 
 	bool get_next_goal(glm::ivec3& position);
 	glm::vec3 calculate_astar_explore_velocity();
+	bool is_other_robot_present(const glm::ivec3& check_grid_position) const;
 };
 

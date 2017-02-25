@@ -322,3 +322,4 @@ public:
 	virtual ~Swarm3DReconTree() override;
 };
 
+typedef mm::Quadtree<int> LocalMap;

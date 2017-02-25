@@ -26,6 +26,10 @@ glm::vec3 Robot::get_position() {
 	return position_;
 }
 
+glm::ivec3 Robot::get_grid_position() const {
+	return occupancy_grid_->map_to_grid(position_);
+}
+
 glm::vec3 Robot::get_velocity() {
 	return velocity_;
 }

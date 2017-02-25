@@ -797,9 +797,14 @@ bool SwarmUtils::load_interior_model_from_matrix(SwarmParams& swarm_params, Swar
 }
 
 void SwarmUtils::create_grids(SwarmOccupancyTree** occupancy_grid, Swarm3DReconTree** recon_grid, SwarmCollisionTree** collision_grid) {
+
 }
 
-void SwarmUtils::bresenham_line(const glm::ivec3& source, const glm::ivec3& target, std::deque<glm::ivec3>& path, int& no_of_grid_cells) {
+bool SwarmUtils::is_interior_in_local_map(const LocalMap& local_map, const glm::ivec3& grid_position) {
+	return (local_map.at(grid_position.x, grid_position.z) == SwarmOccupancyTree::INTERIOR_MARK);
+}
+
+bool SwarmUtils::bresenham_line(const glm::ivec3& source, const glm::ivec3& target, std::vector<glm::ivec3>& path, int& no_of_path_steps, LocalMap& local_map) {
 	float x1 = source.x;
 	float y1 = source.z;
 
@@ -830,21 +835,27 @@ void SwarmUtils::bresenham_line(const glm::ivec3& source, const glm::ivec3& targ
 	const int maxX = (int)x2;
 
 	//path.resize(maxX);
-	no_of_grid_cells = 0;
+	no_of_path_steps = 0;
 	for (int x = (int)x1; x < maxX; x++)
 	{
+		glm::ivec3 pos;
 		if (steep)
 		{
-			path.push_back(glm::ivec3(y, 0, x));
+			pos = glm::ivec3(y, 0, x);
 			//SetPixel(y, x, color);
 
 		}
 		else
 		{
-			path.push_back(glm::ivec3(x, 0, y));
+			//path.push_back(glm::ivec3(x, 0, y));
+			pos = glm::ivec3(x, 0, y);
 			//SetPixel(x, y, color);
 		}
-		no_of_grid_cells++;
+
+		if (is_interior_in_local_map(local_map, pos) && target != pos) {
+			return false;
+		}
+		path[no_of_path_steps++] = pos;
 
 		error -= dy;
 		if (error < 0)
@@ -853,6 +864,20 @@ void SwarmUtils::bresenham_line(const glm::ivec3& source, const glm::ivec3& targ
 			error += dx;
 		}
 	}
+	// i
+	if (no_of_path_steps > 0) {
+		// check if path in reverse order
+		if (source != path[0]) {
+			// reverse
+			for (int i = 0; i < no_of_path_steps/2; ++i) {
+				std::swap(path[i], path[no_of_path_steps - 1 - i]);
+			}
+		}
+
+		
+	}
+
+	return true;
 }
 
 

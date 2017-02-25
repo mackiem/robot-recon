@@ -260,6 +260,7 @@ public:
 	int get_cluster_id();
 	unsigned int get_id();
 	glm::vec3 get_position();
+	glm::ivec3 Robot::get_grid_position() const;
 	glm::vec3 get_velocity();
 	void set_recon_3d_points(Recon3DPoints* recon_points);
 	static int MAX_DEPTH;
