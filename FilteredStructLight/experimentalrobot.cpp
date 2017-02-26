@@ -4,6 +4,9 @@
 #include <glm/detail/type_mat.hpp>
 #include "astar.h"
 #include <fstream>
+#include <glm/detail/type_mat.hpp>
+#include <glm/detail/type_mat.hpp>
+#include "jps.h"
 
 #define PI 3.14159265359	
 
@@ -1019,6 +1022,7 @@ bool ExperimentalRobot::is_other_robot_present(const glm::ivec3& check_grid_posi
 	return robot_exists;
 }
 
+
 bool ExperimentalRobot::local_perimeter_search_for_astar(glm::ivec3& explore_cell_position) {
 
 	glm::ivec3 current_robot_grid_position = occupancy_grid_->map_to_grid(position_);
@@ -1156,43 +1160,66 @@ bool ExperimentalRobot::get_next_goal(glm::ivec3& position) {
 
 void ExperimentalRobot::calculate_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell) {
 
-
-
 	// find apath store
 	//int no_of_grid_cells = 0;
 	total_no_of_path_steps_ = 0;
 	current_path_step_ = 0;
+	bool obstacle_found = true;
 
-	bool obstacle_found = !SwarmUtils::bresenham_line(current_cell, goal_cell, path_, total_no_of_path_steps_, local_map_);
-	local_explore_state_ = EXPLORE;
-	if (!obstacle_found) {
-		assert(glm::distance(glm::vec3(current_cell), glm::vec3(path_[current_path_step_])) < 1.5f );
-		//assert(goal_cell == path_[total_no_of_path_steps_ - 1]);
-		for (int k = 0; k < total_no_of_path_steps_; ++k) {
-			auto& cell = path_[k];
-			if (is_other_robot_present(cell)) {
-				obstacle_found = true;
-				break;
-			}
-		}
-	}
+	//bool obstacle_found = !SwarmUtils::bresenham_line(current_cell, goal_cell, path_, total_no_of_path_steps_, local_map_);
+	//local_explore_state_ = EXPLORE;
+	//if (!obstacle_found) {
+	//	assert(glm::distance(glm::vec3(current_cell), glm::vec3(path_[current_path_step_])) < 1.5f );
+	//	//assert(goal_cell == path_[total_no_of_path_steps_ - 1]);
+	//	for (int k = 0; k < total_no_of_path_steps_; ++k) {
+	//		auto& cell = path_[k];
+	//		if (is_other_robot_present(cell)) {
+	//			obstacle_found = true;
+	//			break;
+	//		}
+	//	}
+	//}
 
 	if (obstacle_found) {
 		local_explore_state_ = PERIMETER;
 		total_no_of_path_steps_ = 0;
-		auto current_pos = occupancy_grid_->map_to_position(current_cell);
-		auto goal_pos = occupancy_grid_->map_to_position(goal_cell);
-		astar_.search(current_pos, goal_pos, &robots_, &adjacent_robots_, current_no_of_robots_, this, path_, total_no_of_path_steps_);
+		goal_cell_ = goal_cell;
 
-		if (total_no_of_path_steps_ == 0) {
-			// cannot reach has to be an interior interior (unable to reach)
-			mark_locally_covered(goal_cell, true);
-			//why ?
-			//if (!global_explore_) {
-			//	std::cout << grid->at(current_pos)
-			//}
+		unsigned step = 0; // set this to 1 if you want a detailed single-step path
+		// (e.g. if you plan to further mangle the path yourself),
+		// or any other higher value to output every Nth position.
+		JPS::PathVector path; // The resulting path will go here.
+		// Single-call interface:
+		obstacle_found = !JPS::findPath(path, *this, current_cell.x, current_cell.z, goal_cell.x, goal_cell.z, 1);
+
+		if (!obstacle_found) {
+			for (auto& cell : path) {
+				path_[total_no_of_path_steps_++] = glm::ivec3(cell.x, 0, cell.y);
+			}
+		} else {
+			mark_locally_covered(goal_cell, false);
+			
 		}
 	}
+
+	//if (obstacle_found) {
+	//	local_explore_state_ = PERIMETER;
+	//	total_no_of_path_steps_ = 0;
+	//	auto current_pos = occupancy_grid_->map_to_position(current_cell);
+	//	auto goal_pos = occupancy_grid_->map_to_position(goal_cell);
+	//	astar_.search(current_pos, goal_pos, &robots_, &adjacent_robots_, current_no_of_robots_, this, path_, total_no_of_path_steps_);
+
+	//	if (total_no_of_path_steps_ == 0) {
+	//		// cannot reach has to be an interior interior (unable to reach)
+	//		mark_locally_covered(goal_cell, true);
+	//		//why ?
+	//		//if (!global_explore_) {
+	//		//	std::cout << grid->at(current_pos)
+	//		//}
+	//	}
+	//}
+
+
 
 	if (render_) {
 		if (swarm_params_.display_astar_path_) {
@@ -1215,6 +1242,58 @@ void ExperimentalRobot::calculate_path(Grid* grid, const glm::ivec3& current_cel
 		explore_cell = path_[current_path_step_];
 	}
 	
+}
+
+bool ExperimentalRobot::operator()(unsigned x, unsigned y) const {
+
+	if (local_map_.is_out_of_bounds(x, y)) {
+		return false;
+	}
+	int loc = local_map_.at(x, y);
+	if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
+		return false;
+	}
+
+	// if it's goal and it's not an interior, we can walk here
+	if (goal_cell_.x == x && goal_cell_.z == y) {
+		return true;
+	}
+	// if diagonal to target goal, return false
+	if (std::abs(goal_cell_.x - (int)x)  == 1 && std::abs(goal_cell_.z - (int)y) == 1) {
+		return false;
+	}
+
+	// efficient, return true, if non-diagonal to target goal
+	if (std::abs(goal_cell_.x - (int)x) + std::abs(goal_cell_.z - (int)y) == 1) {
+		return true;
+	}
+
+	if (is_other_robot_present(glm::ivec3(x, 0, y))) {
+		return false;
+	}
+
+	// if not near, target goal, check if perimeter cell, and return false
+
+	for (int nx = -1; nx <= 1; ++nx) {
+		for (int ny = -1; ny <= 1; ++ny) {
+			if (!(nx == 0 && ny == 0)) {
+				//char loc;
+				int next_x = x + nx;
+				int next_y = y + ny;
+
+				if (local_map_.is_out_of_bounds(next_x, next_y)) {
+					continue;
+				}
+				loc = local_map_.at(next_x, next_y);
+				if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
+					return false;
+				}
+			}
+		}
+	}
+
+
+	return true;
 }
 
 
@@ -1920,7 +1999,7 @@ void ExperimentalRobot::update_adjacent_and_interior(const glm::vec3& previous_p
 	interior_updated_ = true;
 }
 
-void ExperimentalRobot::update_adjacent_and_interior_memory_save(const glm::vec3& previous_position, const glm::vec3& current_position) {
+void ExperimentalRobot::update_adjacent_and_interior_memory_save(const glm::ivec3& previous_position, const glm::ivec3& current_position) {
 	//if (current_position == previous_position && adjacent_cells_.size() > 0) {
 	if (current_position == previous_position && current_adjacent_cells_ > 0) {
 		interior_updated_ = false;

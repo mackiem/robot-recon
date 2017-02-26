@@ -324,4 +324,16 @@ public:
 	virtual ~Swarm3DReconTree() override;
 };
 
+//class LocalMap : public mm::Quadtree<int> {
+//	LocalMap(unsigned width, unsigned height, float grid_square_length, int empty_value)
+//		: Quadtree<int>(width, height, grid_square_length, empty_value)
+//
+//	}
+//
+//
+//	
+//};
+
+
+
 typedef mm::Quadtree<int> LocalMap;

@@ -127,6 +127,7 @@ private:
 	glm::ivec3 prev_vis_goal_cell;
 	int current_path_step_;
 	float normalizing_multiplier_constant_;
+	glm::ivec3 goal_cell_;
 
 	//int no_of_bits_;
 	//int no_of_char_arrays_;
@@ -153,6 +154,7 @@ private:
 	glm::ivec3 flip_to_SW(const glm::ivec3& pt, ExperimentalRobot::QUADRANT quadrant) const;
 	void increment_sensor_range(glm::ivec3 increment);
 
+	void update_adjacent_and_interior_memory_save(const glm::ivec3& previous_position, const glm::ivec3& current_position);
 	void update_adjacent_and_interior(const glm::vec3& previous_position, const glm::vec3& current_position);
 	void get_other_robots_memory_wise();
 	bool is_colliding_with_robots(const std::vector<int>& robot_ids) const;
@@ -184,7 +186,6 @@ public:
 	void change_color(cv::Vec4f& color);
 	void set_colors_buffer(std::vector<cv::Vec4f>& colors);
 
-	void update_adjacent_and_interior_memory_save(const glm::vec3& previous_position, const glm::vec3& current_position);
 
 	void set_death_time(int death_time);
 	void set_cluster_id(int cluster_id);
@@ -224,5 +225,8 @@ public:
 	bool get_next_goal(glm::ivec3& position);
 	glm::vec3 calculate_astar_explore_velocity();
 	bool is_other_robot_present(const glm::ivec3& check_grid_position) const;
+
+
+	inline bool operator()(unsigned x, unsigned y) const;
 };
 
