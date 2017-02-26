@@ -6,7 +6,7 @@
 #define _CRTDBG_MAP_ALLOC
 #include <stdlib.h>
 #include <crtdbg.h>
-//#include <vld.h>
+#include <vld.h>
 
 //#ifdef _DEBUG
 //#ifndef DBG_NEW

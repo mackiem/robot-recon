@@ -149,11 +149,13 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 	swarm_params.death_percentage_ = death_percentage_->value();
 	swarm_params.death_time_taken_ = death_time_taken_->value();
 
+	swarm_params.desired_sampling = desired_sampling_->value();
+
 	swarm_params.coverage_needed_ = coverage_needed_->value();
 
 	// vis options
 	swarm_params.display_local_map_ = display_local_map_mode_->isChecked();
-	swarm_params.local_map_robot_id_ = 0;
+	swarm_params.local_map_robot_id_ = local_map_robot_id_spinbox_->value();
 	swarm_params.display_astar_path_ = display_astar_path_mode_->isChecked();
 
 
@@ -293,6 +295,8 @@ void FilteredStructLight::set_swarm_params_to_ui(const SwarmParams& swarm_params
 	coverage_needed_->setValue(swarm_params.coverage_needed_);
 	emit coverage_needed_->valueChanged(coverage_needed_->value());
 
+	desired_sampling_->setValue(swarm_params.desired_sampling);
+	emit desired_sampling_->valueChanged(desired_sampling_->value());
 }
 
 void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
@@ -1117,15 +1121,11 @@ void FilteredStructLight::add_robot_options(QGroupBox* group_box) {
 
 	group_box_layout->addWidget(constants_group_box);
 
-	show_forces_ = new QCheckBox("Show forces", group_box); 
-	group_box_layout->addWidget(show_forces_);
 
 	group_box_layout->addWidget(range_group_box);
 
 	group_box->setLayout(group_box_layout);
 
-
-	connect(show_forces_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_forces);
 
 
 
@@ -1241,6 +1241,7 @@ void FilteredStructLight::add_misc_options(QGroupBox* group_box) {
 	int precision = 17;
 	QLabel* bounce_function_multiplier_label = new QLabel("Bounce Func. Multiplier");
 	bounce_function_multiplier_ = new QDoubleSpinBox(misc_group_box);
+	bounce_function_multiplier_->setRange(0, 100000);
 	bounce_function_multiplier_->setDecimals(precision);
 
 	QHBoxLayout* death_percentage_layout = new QHBoxLayout();
@@ -1655,8 +1656,18 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 
 	coverage_needed_layout->addWidget(coverage_needed_label);
 	coverage_needed_layout->addWidget(coverage_needed_);
-
 	group_box_layout->addLayout(coverage_needed_layout);
+
+	QHBoxLayout* desired_sampling_layout = new QHBoxLayout();
+	QLabel* desired_sampling_label = new QLabel("Desired Sampling (#)");
+	desired_sampling_ = new QDoubleSpinBox(group_box);
+	desired_sampling_->setMinimum(0.0);
+	desired_sampling_->setMaximum(1000.0);
+
+	desired_sampling_layout->addWidget(desired_sampling_label);
+	desired_sampling_layout->addWidget(desired_sampling_);
+
+	group_box_layout->addLayout(desired_sampling_layout);
 
 
 	// should render
@@ -1678,14 +1689,28 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	connect(trail_mode_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_figure_mode);
 	trail_mode_->setCheckState(Qt::CheckState::Unchecked);
 
+	QHBoxLayout* local_map_layout = new QHBoxLayout();
 	display_local_map_mode_ = new QCheckBox("Local Map", group_box);
-	group_box_layout->addWidget(display_local_map_mode_);
+	local_map_layout->addWidget(display_local_map_mode_);
 	display_local_map_mode_->setCheckState(Qt::CheckState::Unchecked);
+	
+	local_map_robot_id_spinbox_ = new QSpinBox(group_box);
+	local_map_robot_id_spinbox_->setRange(0, 2000);
+	//scale_spinbox_->setValue(10);
+	QLabel* local_map_robot_id_label = new QLabel("Robot", group_box);
+	local_map_layout->addWidget(local_map_robot_id_label);
+	local_map_layout->addWidget(local_map_robot_id_spinbox_);
+
+	group_box_layout->addLayout(local_map_layout);
+
 
 	display_astar_path_mode_ = new QCheckBox("Path", group_box);
 	group_box_layout->addWidget(display_astar_path_mode_);
 	display_astar_path_mode_->setCheckState(Qt::CheckState::Unchecked);
 
+	show_forces_ = new QCheckBox("Show forces", group_box); 
+	group_box_layout->addWidget(show_forces_);
+	connect(show_forces_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_forces);
 
 
 

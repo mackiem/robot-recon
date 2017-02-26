@@ -129,7 +129,7 @@ class SwarmUtils
 	static const char* DEATH_PERCENTAGE;
 	static const char* DEATH_TIME_TAKEN;
 	static const char* COVERAGE_FACTOR;
-
+	static const char* DESIRED_SAMPLING;
 	// delete later
 	static const std::string DEFAULT_INTERIOR_MODEL_FILENAME;
 	static const int DEFAULT_NO_OF_ROBOTS;
@@ -171,5 +171,6 @@ public:
 
 	static bool bresenham_line(const glm::ivec3& source, const glm::ivec3& target, std::vector<glm::ivec3>& path, int& no_of_path_steps, LocalMap& local_map);
 	static bool is_interior_in_local_map(const LocalMap& local_map, const glm::ivec3& grid_position);
+	static bool is_adjacent_cells_interior(const LocalMap& local_map, const glm::ivec3& grid_position, bool d8 = true);
 };
 

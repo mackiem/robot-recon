@@ -257,6 +257,8 @@ private:
 	QCheckBox* trail_mode_;
 	QCheckBox* display_local_map_mode_;
 	QCheckBox* display_astar_path_mode_;
+	QSpinBox* local_map_robot_id_spinbox_;
+	QDoubleSpinBox* desired_sampling_;
 	void load_recon_settings();
 
 	void shutdown_cam_thread();

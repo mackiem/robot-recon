@@ -124,9 +124,9 @@ void Robot::init() {
 
 	if (render_) {
 		init_force_visualization(0, explore_force_, blue);
-		init_force_visualization(1, separation_force_, yellow);
+		init_force_visualization(1, separation_force_, green);
 		init_force_visualization(2, resultant_force_, black);
-		init_force_visualization(3, perimeter_force_, green);
+		init_force_visualization(3, perimeter_force_, yellow);
 		init_force_visualization(4, cluster_force_, cyan);
 		init_force_visualization(5, alignment_force_, orange);
 	}

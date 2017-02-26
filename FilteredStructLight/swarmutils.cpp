@@ -75,6 +75,7 @@ const char* SwarmUtils::NO_OF_CLUSTERS = "no_of_clusters_";
 const char* SwarmUtils::DEATH_PERCENTAGE = "death_percentage_";
 const char* SwarmUtils::DEATH_TIME_TAKEN = "death_time_taken";
 const char* SwarmUtils::COVERAGE_FACTOR = "coverage_factor";
+const char* SwarmUtils::DESIRED_SAMPLING = "desired_sampling";
 
 
 const std::string SwarmUtils::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/l-shape-floor-plan.obj";
@@ -208,6 +209,7 @@ SwarmParams SwarmUtils::load_swarm_params(const QString& filename) {
 	swarm_params.death_percentage_ = (settings.value(DEATH_PERCENTAGE, "0.0").toDouble());
 
 	swarm_params.coverage_needed_ = settings.value(COVERAGE_FACTOR, "1.0").toDouble();
+	swarm_params.desired_sampling = settings.value(DESIRED_SAMPLING, "1.0").toDouble();
 	return swarm_params;
 }
 
@@ -282,6 +284,8 @@ void SwarmUtils::save_swarm_params(const SwarmParams& params, const QString& fil
 	settings.setValue(NO_OF_CLUSTERS, params.no_of_clusters_);
 	settings.setValue(DEATH_TIME_TAKEN, params.death_time_taken_);
 	settings.setValue(COVERAGE_FACTOR, params.coverage_needed_);
+
+	settings.setValue(DESIRED_SAMPLING, params.desired_sampling);
 }
 
 void SwarmUtils::print_vector(const std::string& name, const glm::vec3& vector) {
@@ -804,6 +808,36 @@ bool SwarmUtils::is_interior_in_local_map(const LocalMap& local_map, const glm::
 	return (local_map.at(grid_position.x, grid_position.z) == SwarmOccupancyTree::INTERIOR_MARK);
 }
 
+bool SwarmUtils::is_adjacent_cells_interior(const LocalMap& local_map, const glm::ivec3& grid_position, bool d8) {
+	// check perimeter
+	for (int nx = -1; nx <= 1; ++nx) {
+		for (int ny = -1; ny <= 1; ++ny) {
+			if (!(nx == 0 && ny == 0)) {
+
+				//char loc;
+				int next_x = grid_position.x + nx;
+				int next_y = grid_position.z + ny;
+
+				if (!d8) {
+					if (std::abs(grid_position.x - next_x) + std::abs(grid_position.z - next_y) == 2) {
+						continue;
+					}
+				}
+
+				if (local_map.is_out_of_bounds(next_x, next_y)) {
+					continue;
+				}
+				int loc = local_map.at(next_x, next_y);
+				if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+	
+}
+
 bool SwarmUtils::bresenham_line(const glm::ivec3& source, const glm::ivec3& target, std::vector<glm::ivec3>& path, int& no_of_path_steps, LocalMap& local_map) {
 	float x1 = source.x;
 	float y1 = source.z;
@@ -852,7 +886,12 @@ bool SwarmUtils::bresenham_line(const glm::ivec3& source, const glm::ivec3& targ
 			//SetPixel(x, y, color);
 		}
 
-		if (is_interior_in_local_map(local_map, pos) && target != pos) {
+		if (target != pos
+			&& (
+				is_interior_in_local_map(local_map, pos)
+				|| is_adjacent_cells_interior(local_map, pos, false)
+				)
+			) {
 			return false;
 		}
 		path[no_of_path_steps++] = pos;
@@ -1108,7 +1147,7 @@ void SwarmUtils::calculate_sim_results(SwarmOccupancyTree* occupancy_grid_, Swar
 	std::vector<Robot*> robots_, int time_step_count_, SwarmParams& swarm_params, OptimizationResults& results) {
 
 		results.occlusion = SwarmUtils::calculate_occulusion_factor(robots_);
-		results.multi_samping = recon_grid_->calculate_multi_sampling_factor();
+		results.multi_samping = occupancy_grid_->calculate_multi_sampling_factor();
 		//results.density = recon_grid_->calculate_density();
 		results.density = occupancy_grid_->calculate_coverage();
 		results.time_taken = time_step_count_;
@@ -1118,12 +1157,16 @@ void SwarmUtils::calculate_sim_results(SwarmOccupancyTree* occupancy_grid_, Swar
 
 double SwarmUtils::calculate_score(SwarmParams swarm_params_, OptimizationResults results, OptimizationResults coeffs, int case_no, OptimizationResults& scores) {
 	double score = 0.0;
-	double desired_multisampling = 2.0;
 	double robots_in_a_cluster = (double)(swarm_params_.no_of_robots_) / swarm_params_.no_of_clusters_;
 
 	scores.time_taken = coeffs.time_taken * std::pow((double)(results.time_taken) / (double)(swarm_params_.max_time_taken_ + 100), 2);
-	scores.simul_sampling =  coeffs.simul_sampling * std::pow((results.simul_sampling - robots_in_a_cluster) / (double)(swarm_params_.no_of_robots_), 2.0);
-	scores.multi_samping = coeffs.multi_samping * std::exp(-std::pow(desired_multisampling - (results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_)), 2) / desired_multisampling);
+
+	//scores.simul_sampling =  coeffs.simul_sampling * std::pow((results.simul_sampling - robots_in_a_cluster) / (double)(swarm_params_.no_of_robots_), 2.0);
+	scores.simul_sampling =  coeffs.simul_sampling * std::pow((results.simul_sampling - swarm_params_.desired_sampling) / (double)(swarm_params_.no_of_robots_), 2.0);
+
+	scores.multi_samping = coeffs.multi_samping * std::pow((results.multi_samping - swarm_params_.desired_sampling) / (double)(swarm_params_.no_of_robots_), 2.0);
+	
+	//scores.multi_samping = coeffs.multi_samping * std::exp(-std::pow(swarm_params_.desired_sampling - (results.multi_samping / static_cast<double>(swarm_params_.no_of_robots_)), 2) / desired_multisampling);
 	//scores.simul_sampling = 25 * results.simul_sampling / static_cast<double>(swarm_params_.no_of_robots_);
 	scores.density = coeffs.density * std::pow(1.0 - results.density, 2);
 	scores.occlusion = coeffs.occlusion * std::pow ((results.occlusion), 2);

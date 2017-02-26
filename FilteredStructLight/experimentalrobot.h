@@ -126,6 +126,7 @@ private:
 	glm::ivec3 vis_goal_cell;
 	glm::ivec3 prev_vis_goal_cell;
 	int current_path_step_;
+	float normalizing_multiplier_constant_;
 
 	//int no_of_bits_;
 	//int no_of_char_arrays_;

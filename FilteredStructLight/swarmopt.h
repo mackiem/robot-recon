@@ -101,7 +101,7 @@ public:
 	double init_value(double min, double max);
 	double perturb_value(double current_value, double temperature, double min, double max);
 	SimulatorThread* init_mcmc_thread(int temperature, int thread_id, int iteration, const MCMCParams& next_params);
-	SimulatorThread* init_mcmc_thread(int temperature, int thread_id, int iteration);
+	SimulatorThread* init_mcmc_thread(int temperature, int thread_id, int iteration, bool keep_original);
 	SimulatorThread* get_next_mcmc(int temperature, int thread_id, int iteration);
 	void refill_queue_with_single_next_mcmc_thread(int temperature, int thread_id, int iteration);
 	void print_results(std::string swarm_config_filename);

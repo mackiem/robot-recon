@@ -303,7 +303,7 @@ GridOverlay::GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree
 	int no_of_robots_in_a_cluster, bool display_local_map) :
 	VisObject(locations), occupany_grid_(octree), grid_width_(grid_width), grid_height_(grid_height), grid_length_(grid_length), 
 	robot_color_map_(robot_color_map), shader_(shader), simult_sampling_grid_(mm::Quadtree<SamplingTime>(grid_width_, grid_height_, 1, SamplingTime())),
-	no_of_robots_in_a_cluster_(no_of_robots_in_a_cluster), display_local_map_(display_local_map)  {
+	desired_sampling_(no_of_robots_in_a_cluster), display_local_map_(display_local_map)  {
 	
 	cv::Vec4f dark_green(60.f, 179.f, 113.f, 255.f);
 
@@ -480,7 +480,7 @@ void GridOverlay::update_simultaneous_sampling_heatmap(const SimSampMap simultan
 		auto& sampling = sampling_per_grid_cell.second;
 
 		//int expected_cluster_value = std::max(no_of_robots_in_a_cluster_, 2);
-		auto color = calculate_heatmap_color_grid_cell(0.0, no_of_robots_in_a_cluster_, sampling); 
+		auto color = calculate_heatmap_color_grid_cell(0.0, desired_sampling_, sampling); 
 		std::vector<cv::Vec4f> fill_color(6);
 		std::fill(fill_color.begin(), fill_color.end(), color);
 
@@ -971,7 +971,7 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 
 		overlay_ = new GridOverlay(uniform_locations_,
 			occupancy_grid_, swarm_params.grid_width_, swarm_params.grid_height_, swarm_params.grid_length_, 
-				robot_color_map_, &m_shader, swarm_params_.robots_in_a_cluster_, swarm_params_.display_local_map_);
+				robot_color_map_, &m_shader, swarm_params_.desired_sampling, swarm_params_.display_local_map_);
 		//update_perimiter_positions_in_overlay();
 
 		reset_vis_objects_.push_back(overlay_);

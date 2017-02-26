@@ -32,17 +32,17 @@ double SwarmOptimizer::separation_constant_;
 //double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 10.0;
 //double ParallelMCMCOptimizer::MAX_BOUNCE_MULTIPLIER_VALUE = 50.0;
 
-double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 10.0;
-double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 1.0;
-double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = MAX_ALIGNMENT_VALUE;
-double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = MAX_ALIGNMENT_VALUE;
-double ParallelMCMCOptimizer::MAX_BOUNCE_MULTIPLIER_VALUE = MAX_ALIGNMENT_VALUE;
-
 double ParallelMCMCOptimizer::MIN_SEPARATION_VALUE = 1.0;
 double ParallelMCMCOptimizer::MIN_ALIGNMENT_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_CLUSTER_VALUE = 0.0;
 double ParallelMCMCOptimizer::MIN_EXPLORE_VALUE = 0.0;
-double ParallelMCMCOptimizer::MIN_BOUNCE_MULTIPLIER_VALUE = 0.0;
+double ParallelMCMCOptimizer::MIN_BOUNCE_MULTIPLIER_VALUE = 1.5;
+
+double ParallelMCMCOptimizer::MAX_SEPARATION_VALUE = 5.0;
+double ParallelMCMCOptimizer::MAX_ALIGNMENT_VALUE = 5.0;
+double ParallelMCMCOptimizer::MAX_CLUSTER_VALUE = 5.0;
+double ParallelMCMCOptimizer::MAX_EXPLORE_VALUE = 1.0;
+double ParallelMCMCOptimizer::MAX_BOUNCE_MULTIPLIER_VALUE = 0.2;
 
 //int
 //SwarmOptimizer::swarm_sim_opt_error_(int *m_ptr, int *n_ptr, double *params, double *error, int *)
@@ -618,7 +618,7 @@ SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int th
 }
 
 
-SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int thread_id, int iteration) {
+SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int thread_id, int iteration, bool keep_original) {
 
 	//seperation_constant = perturb_value(current_params.separation_constant, temperature, 0.0, 10.0);
 	//alignment_constant = perturb_value(current_params.alignment_constant, temperature, 0.0, 10.0);
@@ -627,14 +627,20 @@ SimulatorThread* ParallelMCMCOptimizer::init_mcmc_thread(int temperature, int th
 
 	MCMCParams next_params;
 	next_params.swarm_params = swarm_params_;
-	//next_params.swarm_params.coverage_needed_ = swarm_params_.coverage_needed_;
-	//next_params.swarm_params.separation_constant_ = init_value(MIN_SEPARATION_VALUE, MAX_SEPARATION_VALUE);
-	//next_params.swarm_params.alignment_constant_ = init_value(MIN_ALIGNMENT_VALUE, MAX_ALIGNMENT_VALUE);
-	//next_params.swarm_params.cluster_constant_ = init_value(MIN_CLUSTER_VALUE, MAX_CLUSTER_VALUE);
-	//next_params.swarm_params.explore_constant_ = init_value(MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
-	//next_params.swarm_params.bounce_function_multiplier_ = init_value(0.0, 100.0);
-	//next_params.swarm_params.separation_range_max_ = init_value(0.0, 5.0);
 
+	// let's randomly keep 20%, and re-initialize the rest
+
+	if (!keep_original) {
+
+		//next_params.swarm_params.coverage_needed_ = swarm_params_.coverage_needed_;
+		next_params.swarm_params.separation_constant_ = init_value(MIN_SEPARATION_VALUE, MAX_SEPARATION_VALUE);
+		next_params.swarm_params.alignment_constant_ = init_value(MIN_ALIGNMENT_VALUE, MAX_ALIGNMENT_VALUE);
+		next_params.swarm_params.cluster_constant_ = init_value(MIN_CLUSTER_VALUE, MAX_CLUSTER_VALUE);
+		next_params.swarm_params.explore_constant_ = init_value(MIN_EXPLORE_VALUE, MAX_EXPLORE_VALUE);
+		//next_params.swarm_params.bounce_function_multiplier_ = init_value(0.0, 100.0);
+		//next_params.swarm_params.separation_range_max_ = init_value(0.0, 5.0);
+
+	}
 
 	auto simulator_thread = init_mcmc_thread(temperature, thread_id, iteration, next_params);
 
@@ -671,7 +677,7 @@ SimulatorThread* ParallelMCMCOptimizer::get_next_mcmc(int temperature, int threa
 	std::mt19937 mt(rd());
 	//std::uniform_int_distribution<> uniform_int_distribution(0, 5);
 	//std::uniform_int_distribution<> uniform_int_distribution(0, 3);
-	std::uniform_int_distribution<> uniform_int_distribution(0, 2);
+	std::uniform_int_distribution<> uniform_int_distribution(0, 3);
 	
 	int param_index = uniform_int_distribution(mt);
 
@@ -929,11 +935,11 @@ void ParallelMCMCOptimizer::run_optimizer() {
 	//temperatures_.push_back(2.f);
 	//temperatures_.push_back(3.f);
 
-	temperatures_.push_back(1e-6);
-	temperatures_.push_back(1e-5);
-	temperatures_.push_back(1e-3);
 	temperatures_.push_back(1e-2);
 	temperatures_.push_back(1e-1);
+	temperatures_.push_back(1);
+	temperatures_.push_back(2);
+	temperatures_.push_back(5);
 
 
 	//no_of_threads_per_temperature = 10;
@@ -943,10 +949,17 @@ void ParallelMCMCOptimizer::run_optimizer() {
 	//cull_threshold_ = 0.2;
 
 
+	std::random_device rd;
+	std::mt19937 eng(rd());
+	std::uniform_real_distribution<float> dist(0.f, 1.f);
+	float percentage_to_seed_with_original = 0.2f;
+
 	// init threads, data structs
 	for (int temperature = 0; temperature < temperatures_.size(); ++temperature) {
 		for (int thread_id = 0; thread_id < optimization_params_.no_of_threads; ++thread_id) {
-			auto simulator_thread = init_mcmc_thread(temperature, thread_id, 1);
+			bool keep_original = (dist(eng) < percentage_to_seed_with_original);
+			auto simulator_thread = init_mcmc_thread(temperature, thread_id, 1, keep_original);
+
 			simulator_threads_work_queue_.push_back(simulator_thread);
 
 			MCMCParams params;

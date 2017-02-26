@@ -7,6 +7,7 @@
 //#include "octree.h"
 #include "swarmtree.h"
 #include <memory>
+#include <qspinbox.h>
 
 
 struct SwarmParams {
@@ -65,6 +66,7 @@ struct SwarmParams {
 	bool display_local_map_;
 	int local_map_robot_id_;
 	bool display_astar_path_;
+	double desired_sampling;
 };
 
 struct Recon3DPoints : public VisObject {
@@ -100,7 +102,7 @@ struct GridOverlay : public VisObject {
 	GridOverlay(UniformLocations& locations, SwarmOccupancyTree* octree,  
 		int grid_width, int grid_height, float grid_length, std::map<int, cv::Vec4f> robot_color_map, 
 			QGLShaderProgram* shader, int no_of_robots_in_a_cluster, bool display_local_map);
-	int no_of_robots_in_a_cluster_;
+	int desired_sampling_;
 	mm::Quadtree<SamplingTime> simult_sampling_grid_;
 	void update_grid_position(const glm::ivec3& position, const cv::Vec4f& color);
 	void update_grid_position(const glm::ivec3& position);

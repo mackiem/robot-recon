@@ -137,6 +137,7 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, i
 	total_no_of_path_steps_ = 0;
 	current_path_step_ = 0;
 
+	normalizing_multiplier_constant_ = 1000.f;
 }
 
 void ExperimentalRobot::populate_occlusion_map() {
@@ -386,6 +387,9 @@ void VisibilityQuadrant::read_from_file(const std::string filename) {
 VisibilityQuadrant::~VisibilityQuadrant() {
 	//delete local_map_;
 	cleanup_internal();
+	if (instance_) {
+		delete instance_;
+	}
 }
 
 ExperimentalRobot::QUADRANT ExperimentalRobot::get_quadrant(const glm::ivec3& pt) const {
@@ -502,7 +506,7 @@ void ExperimentalRobot::update_visualization_structs() {
 		//if (!figure_mode_) {
 			update_force_visualization(0, 1000.f * explore_force_);
 			update_force_visualization(1, 1000.f * separation_force_);
-			update_force_visualization(3, 1000.f * out_of_bounds_force_);
+			update_force_visualization(3, 1000.f * perimeter_force_);
 			update_force_visualization(4, 1000.f * cluster_force_);
 			update_force_visualization(5, 1000.f * alignment_force_);
 			update_force_visualization(2, 1000.f * resultant_force_);
@@ -649,12 +653,19 @@ glm::vec3 ExperimentalRobot::calculate_separation_velocity() {
 				auto move_away_vector = (robots_[robot_id]->get_position() - position_);
 				//c -= glm::vec3(move_away_vector.x * move_away_vector.x, move_away_vector.y * move_away_vector.y,
 				//	move_away_vector.z * move_away_vector.z);
+
+				float vec_len = glm::length(move_away_vector);
+				if (vec_len < 1.f) {
+					vec_len = 1.f;
+				}
+
 				auto inverse_normalized_dist = (max_distance - distance_apart) / max_distance;
 				float normalize_constant = std::pow(inverse_normalized_dist, 2);
-				c -= normalize_constant * move_away_vector * separation_constant_;
+				c -= normalize_constant * 1.f / vec_len * move_away_vector * separation_constant_;
 			}
 		}
 	}
+	c *= normalizing_multiplier_constant_;
 	separation_force_ = c;
 	return c;
 }
@@ -679,8 +690,16 @@ glm::vec3 ExperimentalRobot::calculate_alignment_velocity() {
 	} else {
 		v = velocity_;
 	}
+
 	//return (v - velocity_) / 8.f;
-	glm::vec3 alignment_velocity = (v - velocity_) * alignment_constant_;
+	float vec_len = glm::length(v - velocity_);
+	glm::vec3 alignment_velocity;
+
+	if (vec_len > 1e-6) {
+		float normalizing_constant = std::pow(vec_len / max_velocity_, 2.f);
+		alignment_velocity = normalizing_constant * 1.f/vec_len * (v - velocity_) * alignment_constant_;
+	}
+	alignment_velocity *= normalizing_multiplier_constant_;
 	alignment_force_ = alignment_velocity;
 	return alignment_velocity;
 }
@@ -780,10 +799,20 @@ glm::vec3 ExperimentalRobot::calculate_clustering_velocity() {
 		clustered_neighbors_per_timestamp_map_[current_timestamp_] = count ;
 	}
 
+	glm::vec3 move_towards_vector = pc - position_;
+	float vec_len = glm::length(move_towards_vector);
 
-	float normalizing_constant = std::pow(glm::length(pc - position_) / (sensor_range_ * 1.414 * occupancy_grid_->get_grid_square_length()), 2);
-	//glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) / 10.f;
-	glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) * cluster_constant_;
+	glm::vec3 cluster_velocity;
+	if (vec_len > 1e-6) {
+		float max_cluster_len = (sensor_range_ * 1.414 * occupancy_grid_->get_grid_square_length());
+		//max_cluster_len = 1.f;
+
+		float normalizing_constant = std::pow(vec_len/ max_cluster_len, 2);
+		//glm::vec3 cluster_velocity = normalizing_constant * (pc - position_) / 10.f;
+
+		cluster_velocity = normalizing_constant * 1.f/ vec_len * move_towards_vector * cluster_constant_;
+	}
+	cluster_velocity *= normalizing_multiplier_constant_;
 	cluster_force_ = cluster_velocity;
 	return cluster_velocity;
 }
@@ -1307,15 +1336,27 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 		previous_local_explore_cell = next_explore_cell;
 
 		auto move_to_position = occupancy_grid_->map_to_position(next_explore_cell);
-		float max_distance = diagonal_grid_length_ * occupancy_grid_->get_grid_square_length();
-		//float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
-		float normalizing_constant = 1.f;
-		//float normalizing_constant = std::pow(glm::length(move_to_position - position_), 2);
-		//float normalizing_constant = 1.f/ std::pow(glm::length(move_to_position - position_), 2);
 
-		glm::vec3 desired_explore_velocity = normalizing_constant * (move_to_position - position_) * explore_constant_;
 
-		explore_velocity = desired_explore_velocity - velocity_;
+		glm::vec3 move_to_vector = move_to_position - position_;
+
+		float vec_len = glm::length(move_to_vector);
+
+		if (vec_len > 1e-6) {
+
+			float max_distance = diagonal_grid_length_ * occupancy_grid_->get_grid_square_length();
+			max_distance = 1.f;
+
+			//float normalizing_constant = std::pow(glm::length(move_to_position - position_) / max_distance, 2);
+			//float normalizing_constant = 1.f;
+
+			float normalizing_constant = std::pow(vec_len / max_distance, 2);
+			//float normalizing_constant = 1.f/ std::pow(glm::length(move_to_position - position_), 2);
+
+			glm::vec3 desired_explore_velocity = normalizing_constant * 1.f/ vec_len * (move_to_position - position_) * explore_constant_;
+
+			explore_velocity = desired_explore_velocity - velocity_;
+		}
 
 	}
 
@@ -1640,7 +1681,8 @@ glm::vec3 ExperimentalRobot::calculate_obstacle_avoidance_velocity() {
 		//bounce_force *= current_no_of_robots_;
 	}
 
-	separation_force_ = bounce_force;
+	bounce_force *= normalizing_multiplier_constant_;
+	perimeter_force_ = bounce_force;
 	return bounce_force;
 	
 }
@@ -2142,8 +2184,14 @@ void ExperimentalRobot::update(int timestamp) {
 	}
 
 	if (is_path_not_empty()) {
-		if (is_other_robot_present(path_[current_path_step_])) {
-			clear_explore_path();
+		for (int k = 0; k < total_no_of_path_steps_; ++k) {
+			auto& cell = path_[k];
+			if (is_other_robot_present(cell)) {
+				if (is_other_robot_present(path_[current_path_step_])) {
+					clear_explore_path();
+					break;
+				}
+			}
 		}
 	}
 		

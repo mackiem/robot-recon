@@ -291,9 +291,9 @@ float MapSearchNode::GetCost(MapSearchNode &successor)
 	}
 
 	// check for diagonal and return perimeter
-	//if (std::abs(successor.x - x) + std::abs(successor.y - y) == 2) {
-	//	return SwarmOccupancyTree::PERIMETER;
-	//}
+	if (std::abs(successor.x - x) + std::abs(successor.y - y) == 2) {
+		return SwarmOccupancyTree::PERIMETER;
+	}
 
 	return (float)loc;
 }

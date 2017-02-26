@@ -245,6 +245,7 @@ public:
 	void remove_inner_interiors();
 	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id, int cluster_id);
 	double calculate_simultaneous_sampling_factor();
+	double calculate_multi_sampling_factor();
 	void calculate_simultaneous_sampling_per_cluster();
 	double calculate_coverage();
 	static int INTERIOR_MARK;
@@ -283,6 +284,7 @@ public:
 	bool mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position);
 
 	SimSampMap calculate_simultaneous_sampling_per_grid_cell();
+	SimSampMap calculate_multi_sampling_per_grid_cell();
 	
 	virtual ~SwarmOccupancyTree();
 };
