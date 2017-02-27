@@ -2181,7 +2181,7 @@ void ExperimentalRobot::update(int timestamp) {
 		for (int k = 0; k < current_interior_cells_; ++k) {
 			auto& interior = interior_cells_[k];
 		//for (auto& interior : interior_cells_) {
-			occupancy_grid_->mark_perimeter_covered_by_robot(occupancy_grid_->map_to_grid(interior), timestamp, id_, timestamp);
+			occupancy_grid_->update_interior_stats(occupancy_grid_->map_to_grid(interior), timestamp, id_, timestamp);
 		}
 	}
 
