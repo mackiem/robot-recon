@@ -153,6 +153,8 @@ SwarmOccupancyTree::SwarmOccupancyTree(int grid_cube_length, int grid_width, int
 	heap_pool_.resize(pool_size_);
 
 	perimeter_vector_.resize(grid_width * grid_height);
+
+	grid_stats_.resize(grid_width * grid_height);
 }
 
  std::set<glm::ivec3, IVec3Comparator> SwarmOccupancyTree::get_unexplored_perimeter_list() {
@@ -751,12 +753,23 @@ void SwarmOccupancyTree::remove_inner_interiors() {
 }
 
 
-void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id, int cluster_id) {
+void SwarmOccupancyTree::update_interior_stats(glm::ivec3 grid_cell, int timestep, int robot_id, int cluster_id) {
 	//auto entry = sampling_tracker_->find(grid_cell);
 	//if (entry != sampling_tracker_->end()) {
 		//entry->second[timestep][robot_id] = 1;
 	//}
 	//(*sampling_tracker_)[grid_cell][timestep][robot_id] = 1;
+	auto& stat = grid_stats_[grid_cell.x * grid_height_ + grid_cell.z];
+	if (stat.last_timestamp != timestep) {
+		// new timestamp
+		stat.last_timestamp = timestep;
+		stat.current_simul_samples = 0;
+	}
+
+	stat.current_simul_samples++;
+	stat.max_simul_samples = std::max(stat.max_simul_samples, stat.current_simul_samples);
+
+	/*
 	Sampling sample;
 	sample.grid_cell = grid_cell;
 	sample.timestamp = timestep;
@@ -777,6 +790,7 @@ void SwarmOccupancyTree::mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, i
 			update_multisampling_ = false;
 		}
 	}
+	*/
 }
 
 SimSampMap SwarmOccupancyTree::calculate_simultaneous_sampling_per_grid_cell() {
@@ -831,6 +845,7 @@ double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
 	//	sampling_factor /= interior_list_.size();
 	//}
 
+	/*
 	double sampling_factor = 0.0;
 
 	auto simultaneous_sampling_map = calculate_simultaneous_sampling_per_grid_cell();
@@ -845,6 +860,21 @@ double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
 	}
 
 	return sampling_factor;
+	*/
+
+	double avg_sim_sampling = 0.0;
+	for (int x = 0; x < grid_width_; ++x) {
+		for (int z = 0; z < grid_height_; ++z) {
+			glm::ivec3 grid_cell(x, 0, z);
+			auto& stat = grid_stats_[grid_cell.x * grid_height_ + grid_cell.z];
+			avg_sim_sampling += stat.max_simul_samples;
+		}
+	}
+	if (interior_list_.size() > 0) {
+		avg_sim_sampling /= interior_list_.size();
+	}
+	return avg_sim_sampling;
+
 }
 
 double SwarmOccupancyTree::calculate_multi_sampling_factor() {

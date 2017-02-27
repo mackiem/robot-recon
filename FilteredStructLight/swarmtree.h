@@ -81,6 +81,19 @@ struct Vec3Comparator {
 	}
 };
 
+struct GridStats {
+		int robot_id;
+		long last_timestamp;
+		int current_simul_samples;
+		int max_simul_samples;
+		GridStats() {
+			current_simul_samples = 0;
+			max_simul_samples = 0;
+			last_timestamp = -1;
+			robot_id = -1;
+		}
+};
+
 typedef std::unordered_map<glm::ivec3, double, IVec3Hasher, IVec3Equals> SimSampMap;
 
 class ThreadSafeSimSampMap {
@@ -176,6 +189,7 @@ private:
 	float* leak_;
 	bool update_multisampling_;
 	long last_multisample_timestep_;
+	std::vector<GridStats> grid_stats_;
 
 	struct Sampling {
 		glm::ivec3 grid_cell;
@@ -243,7 +257,7 @@ public:
 		int max_depth) const;
 	void mark_interior_line(glm::vec3 a, glm::vec3 b);
 	void remove_inner_interiors();
-	void mark_perimeter_covered_by_robot(glm::ivec3 grid_cell, int timestep, int robot_id, int cluster_id);
+	void update_interior_stats(glm::ivec3 grid_cell, int timestep, int robot_id, int cluster_id);
 	double calculate_simultaneous_sampling_factor();
 	double calculate_multi_sampling_factor();
 	void calculate_simultaneous_sampling_per_cluster();
