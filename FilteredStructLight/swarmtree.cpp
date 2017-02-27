@@ -795,16 +795,25 @@ void SwarmOccupancyTree::update_interior_stats(glm::ivec3 grid_cell, int timeste
 
 SimSampMap SwarmOccupancyTree::calculate_simultaneous_sampling_per_grid_cell() {
 
-	calculate_simultaneous_sampling_per_cluster();
+	//calculate_simultaneous_sampling_per_cluster();
 
 	SimSampMap simultaneous_sampling_map;
 
-	for (auto& sample_per_timestep : no_of_simul_samples_per_timestep_per_gridcell) {
-		auto grid_cell = sample_per_timestep.first;
-		auto no_of_total_samples_per_grid_cell = sample_per_timestep.second;
-		// we have to know the actual timesteps this was sampled
-		auto no_of_timesteps_grid_cell_was_sampled =  no_of_sampled_timesteps_per_gridcell[grid_cell];
-		simultaneous_sampling_map[grid_cell] = (double) no_of_total_samples_per_grid_cell / no_of_timesteps_grid_cell_was_sampled;
+	//for (auto& sample_per_timestep : no_of_simul_samples_per_timestep_per_gridcell) {
+	//	auto grid_cell = sample_per_timestep.first;
+	//	auto no_of_total_samples_per_grid_cell = sample_per_timestep.second;
+	//	// we have to know the actual timesteps this was sampled
+	//	auto no_of_timesteps_grid_cell_was_sampled =  no_of_sampled_timesteps_per_gridcell[grid_cell];
+	//	simultaneous_sampling_map[grid_cell] = (double) no_of_total_samples_per_grid_cell / no_of_timesteps_grid_cell_was_sampled;
+	//}
+	for (int x = 0; x < grid_width_; ++x) {
+		for (int z = 0; z < grid_height_; ++z) {
+			glm::ivec3 grid_cell(x, 0, z);
+			if (is_interior(grid_cell) && !is_interior_interior(grid_cell)) {
+				auto& stat = grid_stats_[grid_cell.x * grid_height_ + grid_cell.z];
+				simultaneous_sampling_map[grid_cell] = (double)stat.max_simul_samples;
+			}
+		}
 	}
 
 	return simultaneous_sampling_map;
@@ -862,14 +871,13 @@ double SwarmOccupancyTree::calculate_simultaneous_sampling_factor() {
 	return sampling_factor;
 	*/
 
+	SimSampMap map = calculate_simultaneous_sampling_per_grid_cell();
 	double avg_sim_sampling = 0.0;
-	for (int x = 0; x < grid_width_; ++x) {
-		for (int z = 0; z < grid_height_; ++z) {
-			glm::ivec3 grid_cell(x, 0, z);
-			auto& stat = grid_stats_[grid_cell.x * grid_height_ + grid_cell.z];
-			avg_sim_sampling += stat.max_simul_samples;
-		}
+
+	for (auto& entry : map) {
+		avg_sim_sampling += entry.second;
 	}
+	
 	if (interior_list_.size() > 0) {
 		avg_sim_sampling /= interior_list_.size();
 	}
