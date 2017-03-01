@@ -297,6 +297,8 @@ public:
 	void mark_explored_in_empty_space_list(const glm::ivec3& grid_position);
 	bool mark_explored_in_list(std::set<glm::ivec3, IVec3Comparator>& position_list, const glm::ivec3& grid_position);
 
+	bool SwarmOccupancyTree::is_unexplored_perimeter(const glm::ivec3& grid_position) const;
+
 	SimSampMap calculate_simultaneous_sampling_per_grid_cell();
 	SimSampMap calculate_multi_sampling_per_grid_cell();
 	

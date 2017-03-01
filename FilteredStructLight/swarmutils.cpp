@@ -1077,7 +1077,7 @@ void SwarmUtils::print_result(const MCMCParams& params, std::ostream& stream) {
 	stream << params.group_id << ","
 		<< params.thread_id << ","
 		<< params.iteration << ","
-		<< params.swarm_params.model_filename_.toStdString() << ","
+		<< params.swarm_params.model_matrix_filename_.toStdString() << ","
 		<< params.swarm_params.no_of_robots_ << ","
 		<< params.swarm_params.no_of_clusters_ << ","
 		<< params.swarm_params.separation_constant_ << ","

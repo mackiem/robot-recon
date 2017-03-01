@@ -1124,6 +1124,12 @@ bool SwarmOccupancyTree::mark_explored_in_list(std::set<glm::ivec3, IVec3Compara
 	return false;
 }
 
+bool SwarmOccupancyTree::is_unexplored_perimeter(const glm::ivec3& grid_position) const {
+	auto result = explore_perimeter_list_.find(grid_position);
+	return (result != explore_perimeter_list_.end());
+	
+}
+
 SwarmOccupancyTree::~SwarmOccupancyTree() {
 	//sampling_tracker_->clear();
 	delete sampling_tracker_;

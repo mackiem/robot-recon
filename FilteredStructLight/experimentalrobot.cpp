@@ -111,7 +111,7 @@ ExperimentalRobot::ExperimentalRobot(UniformLocations& locations, unsigned id, i
 	current_no_of_robots_ = 0;
 
 	global_explore_ = true;
-	global_explore_ = false;
+	//global_explore_ = false;
 
 	if (global_explore_) {
 		astar_ =  AStar(occupancy_grid_);
@@ -1073,6 +1073,56 @@ bool ExperimentalRobot::local_perimeter_search_for_astar(glm::ivec3& explore_cel
 	return false;
 }
 
+bool ExperimentalRobot::global_perimeter_search_for_astar(glm::ivec3& explore_cell_position) {
+
+	glm::ivec3 current_robot_grid_position = occupancy_grid_->map_to_grid(position_);
+	bool cell_found = false;
+
+	// we need to start from beginning because in the sensor range there maybe some cells that are cut out by visibility
+	//for (int sensor_level = sensor_range_ + 1; sensor_level <= diagonal_grid_length_; ++sensor_level) {
+	for (int sensor_level = 1; sensor_level <= diagonal_grid_length_; ++sensor_level) {
+		//int no_of_iter = 0;
+		//int out_of_bounds = 0;
+		bool surrounded_by_robots = true;
+
+		for (int z = -sensor_level; z <= sensor_level; ++z) {
+			for (int x = -sensor_level; x <= sensor_level; ++x) {
+				if (std::abs(x) == sensor_level
+					|| std::abs(z) == sensor_level) {
+
+					glm::ivec3 cell_position = current_robot_grid_position + glm::ivec3(x, 0, z);
+					//if (occupancy_grid_->is_interior_interior(cell_position)) {
+					//	mark_locally_covered(cell_position, true);
+					//}
+
+					if (!is_other_robot_present(cell_position)) {
+						surrounded_by_robots = false;
+					}
+
+					if (!occupancy_grid_->is_out_of_bounds(cell_position)
+						//&& !occupancy_grid_->going_through_interior_test(grid_position, cell_position)
+						//&& !occupancy_grid_->is_interior(cell_position)
+						&& occupancy_grid_->is_unexplored_perimeter(cell_position)
+						&& !is_other_robot_present(cell_position)) {
+
+						cell_found = true;
+						explore_cell_position = cell_position;
+						return true;
+					}
+				}
+			}
+		}
+		if (surrounded_by_robots) {
+			return false;
+		}
+		//if (no_of_iter > 0 && no_of_iter == out_of_bounds) {
+		//	// we are outside the defined world, time to quit
+		//	break;
+		//}
+	}
+	return false;
+}
+
 glm::vec3 ExperimentalRobot::calculate_local_explore_velocity() {
 
 	glm::vec3 explore_velocity;
@@ -1157,6 +1207,60 @@ bool ExperimentalRobot::get_next_goal(glm::ivec3& position) {
 	return false;
 }
 
+void ExperimentalRobot::calculate_global_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell) {
+
+	// find apath store
+	//int no_of_grid_cells = 0;
+	total_no_of_path_steps_ = 0;
+	current_path_step_ = 0;
+	bool obstacle_found = true;
+
+	if (obstacle_found) {
+		local_explore_state_ = PERIMETER;
+		total_no_of_path_steps_ = 0;
+		goal_cell_ = goal_cell;
+
+		unsigned step = 0; // set this to 1 if you want a detailed single-step path
+		// (e.g. if you plan to further mangle the path yourself),
+		// or any other higher value to output every Nth position.
+		JPS::PathVector path; // The resulting path will go here.
+		// Single-call interface:
+		obstacle_found = !JPS::findPath(path, *this, current_cell.x, current_cell.z, goal_cell.x, goal_cell.z, 1);
+
+		if (!obstacle_found) {
+			for (auto& cell : path) {
+				path_[total_no_of_path_steps_++] = glm::ivec3(cell.x, 0, cell.y);
+			}
+		} else {
+			// do nothing?
+			
+			//mark_locally_covered(goal_cell, false);
+			
+		}
+	}
+
+	if (render_) {
+		if (swarm_params_.display_astar_path_) {
+			for (int k = 0; k < total_no_of_path_steps_; ++k) {
+				auto& cell = path_[k];
+				explored_mutex_.lock();
+				if (swarm_params_.display_local_map_ && id_ == swarm_params_.local_map_robot_id_) {
+					vis_astar_cells_.push_back(cell);
+				}
+				else if (!swarm_params_.display_local_map_) {
+					vis_astar_cells_.push_back(cell);
+				}
+
+				explored_mutex_.unlock();
+			}
+		}
+	}
+
+	if (total_no_of_path_steps_ > 0) {
+		explore_cell = path_[current_path_step_];
+	}
+	
+}
 
 void ExperimentalRobot::calculate_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell) {
 
@@ -1246,54 +1350,110 @@ void ExperimentalRobot::calculate_path(Grid* grid, const glm::ivec3& current_cel
 
 bool ExperimentalRobot::operator()(unsigned x, unsigned y) const {
 
-	if (local_map_.is_out_of_bounds(x, y)) {
-		return false;
-	}
-	int loc = local_map_.at(x, y);
-	if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
-		return false;
-	}
+	if (global_explore_) {
+		glm::ivec3 grid_pos(x, 0, y);
+		if (occupancy_grid_->is_out_of_bounds(grid_pos)) {
+			return false;
+		}
+		int loc = occupancy_grid_->at(x, y);
+		if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
+			return false;
+		}
 
-	// if it's goal and it's not an interior, we can walk here
-	if (goal_cell_.x == x && goal_cell_.z == y) {
-		return true;
-	}
-	// if diagonal to target goal, return false
-	if (std::abs(goal_cell_.x - (int)x)  == 1 && std::abs(goal_cell_.z - (int)y) == 1) {
-		return false;
-	}
+		// if it's goal and it's not an interior, we can walk here
+		if (goal_cell_.x == x && goal_cell_.z == y) {
+			return true;
+		}
+		// if diagonal to target goal, return false
+		if (std::abs(goal_cell_.x - (int)x) == 1 && std::abs(goal_cell_.z - (int)y) == 1) {
+			return false;
+		}
 
-	// efficient, return true, if non-diagonal to target goal
-	if (std::abs(goal_cell_.x - (int)x) + std::abs(goal_cell_.z - (int)y) == 1) {
-		return true;
-	}
+		// efficient, return true, if non-diagonal to target goal
+		if (std::abs(goal_cell_.x - (int)x) + std::abs(goal_cell_.z - (int)y) == 1) {
+			return true;
+		}
 
-	if (is_other_robot_present(glm::ivec3(x, 0, y))) {
-		return false;
-	}
+		if (is_other_robot_present(glm::ivec3(x, 0, y))) {
+			return false;
+		}
 
-	// if not near, target goal, check if perimeter cell, and return false
+		// if not near, target goal, check if perimeter cell, and return false
 
-	for (int nx = -1; nx <= 1; ++nx) {
-		for (int ny = -1; ny <= 1; ++ny) {
-			if (!(nx == 0 && ny == 0)) {
-				//char loc;
-				int next_x = x + nx;
-				int next_y = y + ny;
+		for (int nx = -1; nx <= 1; ++nx) {
+			for (int ny = -1; ny <= 1; ++ny) {
+				if (!(nx == 0 && ny == 0)) {
+					//char loc;
+					int next_x = x + nx;
+					int next_y = y + ny;
 
-				if (local_map_.is_out_of_bounds(next_x, next_y)) {
-					continue;
-				}
-				loc = local_map_.at(next_x, next_y);
-				if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
-					return false;
+					glm::ivec3 adj_grid_pos(next_x, 0, next_y);
+
+					if (occupancy_grid_->is_out_of_bounds(adj_grid_pos)) {
+						continue;
+					}
+					loc = occupancy_grid_->at(next_x, next_y);
+					if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
+						return false;
+					}
 				}
 			}
 		}
+
+
+		return true;
+
+	} else {
+
+		if (local_map_.is_out_of_bounds(x, y)) {
+			return false;
+		}
+		int loc = local_map_.at(x, y);
+		if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
+			return false;
+		}
+
+		// if it's goal and it's not an interior, we can walk here
+		if (goal_cell_.x == x && goal_cell_.z == y) {
+			return true;
+		}
+		// if diagonal to target goal, return false
+		if (std::abs(goal_cell_.x - (int)x) == 1 && std::abs(goal_cell_.z - (int)y) == 1) {
+			return false;
+		}
+
+		// efficient, return true, if non-diagonal to target goal
+		if (std::abs(goal_cell_.x - (int)x) + std::abs(goal_cell_.z - (int)y) == 1) {
+			return true;
+		}
+
+		if (is_other_robot_present(glm::ivec3(x, 0, y))) {
+			return false;
+		}
+
+		// if not near, target goal, check if perimeter cell, and return false
+
+		for (int nx = -1; nx <= 1; ++nx) {
+			for (int ny = -1; ny <= 1; ++ny) {
+				if (!(nx == 0 && ny == 0)) {
+					//char loc;
+					int next_x = x + nx;
+					int next_y = y + ny;
+
+					if (local_map_.is_out_of_bounds(next_x, next_y)) {
+						continue;
+					}
+					loc = local_map_.at(next_x, next_y);
+					if (loc == SwarmOccupancyTree::INTERIOR_MARK) {
+						return false;
+					}
+				}
+			}
+		}
+
+
+		return true;
 	}
-
-
-	return true;
 }
 
 
@@ -1310,42 +1470,51 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 	glm::ivec3 goal_cell;
 
 	if (global_explore_) {
-		//goal_cell = previous_local_explore_cell;
-		//explored_cells = occupancy_grid_->no_of_unexplored_cells();
-
-		////if ((previous_no_of_explored_cells_ == explored_cells) && (previous_cell == current_cell)) {
-		//	something_to_explore = get_next_goal(next_explore_cell);
-		////}
-		//
-		//if (!something_to_explore) {
-		//	something_to_explore = occupancy_grid_->next_cell_to_explore_visibility_non_aware(current_cell, goal_cell, 
-		//		//explore_range_.min_, explore_range_.max_);
-		//		0, max_render_cell_size_);
-		//	if (!something_to_explore) {
-		//		std::cout << "Undefined state in global find...";
-		//	}
-		//	calculate_astar_path(occupancy_grid_, current_cell, goal_cell, next_explore_cell);
-		//	if (render_) {
-		//		if (!display_local_map_) {
-		//			explored_mutex_.lock();
-		//			//vis_goal_cells_.push_back(goal_cell);
-		//			vis_goal_cell = goal_cell;
-		//			explored_mutex_.unlock();
-		//		} else if (id_ == display_id_) {
-		//			explored_mutex_.lock();
-		//			//vis_goal_cells_.push_back(goal_cell);
-		//			explored_mutex_.unlock();
-		//		}
-		//			
-		//	}
-		//}
-
-		//previous_no_of_explored_cells_ = explored_cells;
-
-
-	} else {
 		explored_cells = local_no_of_unexplored_cells_;
 
+		if (previous_local_explore_cell.x > 0 && not_locally_visited(previous_local_explore_cell) && current_path_step_ == total_no_of_path_steps_) {
+			goal_cell = previous_local_explore_cell;
+			calculate_global_path(&local_map_, current_cell, goal_cell, next_explore_cell);
+			something_to_explore = true;
+		}
+
+		if (!something_to_explore) {
+			something_to_explore = get_next_goal(next_explore_cell);
+			if (!something_to_explore) {
+				same_cell_count_ = 0;
+
+				if (!something_to_explore) {
+					// go left
+					something_to_explore = global_perimeter_search_for_astar(goal_cell);
+				}
+
+				if (something_to_explore) {
+					calculate_global_path(&local_map_, current_cell, goal_cell, next_explore_cell);
+				}
+				if (current_path_step_ == total_no_of_path_steps_) {
+					// no path for now
+					something_to_explore = false;
+				}
+
+				if (render_) {
+					if (!swarm_params_.display_local_map_) {
+						explored_mutex_.lock();
+						vis_goal_cell = goal_cell;
+						explored_mutex_.unlock();
+					}
+					else if (id_ == swarm_params_.local_map_robot_id_) {
+						explored_mutex_.lock();
+						vis_goal_cell = goal_cell;
+						explored_mutex_.unlock();
+					}
+				}
+			}
+		}
+
+	}
+	else {
+
+		explored_cells = local_no_of_unexplored_cells_;
 
 		//if ((previous_no_of_local_explored_cells_ == explored_cells)) {
 		//	same_cell_count_++;
@@ -1385,23 +1554,14 @@ glm::vec3 ExperimentalRobot::calculate_astar_explore_velocity() {
 					something_to_explore = false;
 				}
 
-
-				//if (!something_to_explore) {
-				//	next_explore_cell = occupancy_grid_->map_to_grid(position_) + glm::ivec3(0.f, 0.f, 1.f);
-				//	something_to_explore = true;
-				//}
-
 				if (render_) {
 					if (!swarm_params_.display_local_map_) {
 						explored_mutex_.lock();
 						vis_goal_cell = goal_cell;
-						//glClearColor(0.1f, 0.1f, 0.1f, 1.f);
-						//vis_goal_cells_.push_back(goal_cell);
 						explored_mutex_.unlock();
 					}
 					else if (id_ == swarm_params_.local_map_robot_id_) {
 						explored_mutex_.lock();
-						//vis_goal_cells_.push_back(goal_cell);
 						vis_goal_cell = goal_cell;
 						explored_mutex_.unlock();
 					}
@@ -2200,6 +2360,7 @@ void ExperimentalRobot::update(int timestamp) {
 	velocity_ += separation_velocity;
 	velocity_ += alignment_velocity;
 	velocity_ += clustering_velocity;
+	// for boids, comment this
 	velocity_ += explore_velocity;
 	velocity_ += obstacle_avoidance_velocity;
 
@@ -2281,6 +2442,7 @@ void ExperimentalRobot::update(int timestamp) {
 		}
 	}
 
+	std::set<glm::ivec3, IVec3Comparator> debug_cells;
 	if (interior_updated_) {
 		for (int i = 0; i < current_adjacent_cells_; ++i) {
 		//for (auto sensored_cell : adjacent_cells_) {
@@ -2324,18 +2486,28 @@ void ExperimentalRobot::update(int timestamp) {
 				occupancy_grid_->set(sensored_cell.x, sensored_cell.z, explored);
 
 				// We need to go one extra grid to cover interior, so make sure it's always less than 1
-				if (distance < (sensor_range_ - 2)) {
-					if (render_) {
+				//if (distance < (sensor_range_ - 2)) {
+				if (render_) {
+					if (global_explore_) {
+						update_overlay_cells(false, sensored_cell);
+					}
+					else {
 						if (!swarm_params_.display_local_map_) {
-							update_overlay_cells(false, grid_position);
+							//update_overlay_cells(false, grid_position);
 						}
 					}
-					occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
 				}
+				occupancy_grid_->mark_explored_in_perimeter_list(sensored_cell);
+				//}
 			} else {
 				if (render_) {
-					if (!swarm_params_.display_local_map_) {
-						update_overlay_cells(false, grid_position);
+					if (global_explore_) {
+						update_overlay_cells(true, sensored_cell);
+					}
+					else {
+						if (!swarm_params_.display_local_map_) {
+							//update_overlay_cells(false, grid_position);
+						}
 					}
 				}
 				bool marked = occupancy_grid_->mark_explored_in_interior_list(sensored_cell);

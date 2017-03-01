@@ -1335,6 +1335,8 @@ void SwarmViewer::create_lights() {
 	RenderMesh light_bulb;
 	create_light_model(light_bulb);
 
+		//glm::vec3 light_position(1400.f, 1500.f, 1400.f);
+
 	for (size_t i = 0; i < NO_OF_LIGHTS; ++i) {
 		Light* light = new Light(uniform_locations_);
 

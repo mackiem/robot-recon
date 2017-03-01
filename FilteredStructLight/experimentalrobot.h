@@ -222,6 +222,11 @@ public:
 	bool local_perimeter_search_for_astar(glm::ivec3& explore_cell_position);
 	void calculate_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell);
 
+
+	void calculate_global_path(Grid* grid, const glm::ivec3& current_cell, const glm::ivec3& goal_cell, glm::ivec3& explore_cell);
+
+	bool global_perimeter_search_for_astar(glm::ivec3& explore_cell_position);
+
 	bool get_next_goal(glm::ivec3& position);
 	glm::vec3 calculate_astar_explore_velocity();
 	bool is_other_robot_present(const glm::ivec3& check_grid_position) const;
