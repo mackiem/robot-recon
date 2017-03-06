@@ -158,7 +158,11 @@ SwarmParams FilteredStructLight::get_swarm_params_from_ui() {
 	swarm_params.local_map_robot_id_ = local_map_robot_id_spinbox_->value();
 	swarm_params.display_astar_path_ = display_astar_path_mode_->isChecked();
 
+	// video
+	swarm_params.video_mode_ = record_video_mode_->isChecked();
 
+
+	swarm_params.config_name_ = swarm_config_filename_->text();
 
 	return swarm_params;
 }
@@ -297,6 +301,8 @@ void FilteredStructLight::set_swarm_params_to_ui(const SwarmParams& swarm_params
 
 	desired_sampling_->setValue(swarm_params.desired_sampling);
 	emit desired_sampling_->valueChanged(desired_sampling_->value());
+
+	
 }
 
 void FilteredStructLight::save_swarm_settings(QString swarm_conf_filepath) {
@@ -1712,6 +1718,9 @@ void FilteredStructLight::add_swarm_sim_flow_control_options(QGroupBox* group_bo
 	group_box_layout->addWidget(show_forces_);
 	connect(show_forces_, &QCheckBox::stateChanged, swarm_viewer_, &SwarmViewer::set_show_forces);
 
+	record_video_mode_ = new QCheckBox("Record Video", group_box);
+	group_box_layout->addWidget(record_video_mode_);
+	record_video_mode_->setCheckState(Qt::CheckState::Unchecked);
 
 
 

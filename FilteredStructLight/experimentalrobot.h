@@ -128,6 +128,7 @@ private:
 	int current_path_step_;
 	float normalizing_multiplier_constant_;
 	glm::ivec3 goal_cell_;
+	std::vector<glm::ivec3> prev_vis_astar_cells_;
 
 	//int no_of_bits_;
 	//int no_of_char_arrays_;
@@ -215,7 +216,7 @@ public:
 	
 	bool is_interior_in_local_map(const glm::ivec3& grid_position) const;
 	void clear_explore_path();
-	void mark_locally_covered(const glm::ivec3& grid_position, bool is_interior);
+	void mark_locally_covered(const glm::ivec3& grid_position, bool is_interior, bool other_robot = false, bool local_render = true);
 	void mark_othere_robots_ranges();
 	glm::vec3 calculate_obstacle_avoidance_velocity();
 	bool  local_perimeter_search(glm::ivec3& explore_cell_position);

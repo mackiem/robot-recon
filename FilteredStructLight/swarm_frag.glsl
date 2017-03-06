@@ -1,6 +1,6 @@
 #version 400
 
-#define NO_OF_LIGHTS 2
+#define NO_OF_LIGHTS 6
 
 in vec3 frag_normal;
 in vec4 frag_color;
@@ -57,7 +57,8 @@ void main() {
 		vec3 specular_color = light.color * specular;
 
 		specular_color = vec3(0.f, 0.f, 0.f);
-		final_light_color += attenuation * (diffuse_color + specular_color);
+		//final_light_color += attenuation * (diffuse_color + specular_color);
+		final_light_color += (diffuse_color + specular_color);
     }
 
 	final_color  = vec4(final_light_color + ambient_light, frag_color.a);

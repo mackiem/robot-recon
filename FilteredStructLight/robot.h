@@ -67,6 +67,8 @@ struct SwarmParams {
 	int local_map_robot_id_;
 	bool display_astar_path_;
 	double desired_sampling;
+
+	bool video_mode_;
 };
 
 struct Recon3DPoints : public VisObject {

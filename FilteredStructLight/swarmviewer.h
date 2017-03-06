@@ -28,6 +28,7 @@ class RobotWorker : public QObject {
 	Swarm3DReconTree* recon_grid_;
 	SwarmParams swarm_params_;
 	ThreadSafeSimSampMap* simultaneous_sampling_per_grid_cell_;
+	bool frame_ready_;
 	//QMutex* overlay_lock_;
 
 public:
@@ -56,15 +57,18 @@ public slots:
 	void pause();
 	void resume();
 	void step();
-	void do_work();	
+	void do_work();
+	bool is_frame_ready() const;
+	void reset_frame();
 
-signals:
+	signals:
 	void update_time_step_count(int count);
 	void update_sampling(double sampling);
 	void update_sim_results(OptimizationResults results);
 	//void update_sim_results(double timesteps, double simul_sampling, double multi_sampling, double density, double occlusion);
 	void update_coverage(double density);
 	void update_occlusion(double occlusion);
+	void aborted();
 
 
 };
@@ -167,6 +171,11 @@ private:
 
 	bool figure_mode_;
 
+	// video write out
+	std::string video_dir;
+	int video_sequence_;
+	bool update_finished_;
+	std::vector<unsigned char> video_buffer_;
 protected:
 
 	void load_inital_models() override;
@@ -194,6 +203,8 @@ public:
 	SwarmViewer(const QGLFormat& format, QWidget* parent = 0);
 	virtual ~SwarmViewer();
 	void cleanup();
+	std::string generate_next_frame_filename();
+	void write_frame();
 	void create_light_model(RenderMesh& light_mesh);
 	void create_robot_model(RenderMesh& light_mesh, cv::Vec4f color, VertexBufferData& bufferdata);
 	void upload_robot_model(RenderMesh& robot_mesh, VertexBufferData& bufferdata);
@@ -245,6 +256,9 @@ signals:
 	//void update_sim_results_ui(double timesteps, double simul_sampling, double multi_sampling, double density, double occlusion);
 	void update_sim_results_ui(OptimizationResults results);
 
+	void frame_reset();
+	
+
 public slots:
 
 	void update_time_step_count(int count);
@@ -252,6 +266,7 @@ public slots:
 	//void update_sim_results(double timesteps, double multi_sampling, double density, double occlusion);
 	void update_sim_results(OptimizationResults results);
 
+	void update_finished();
 
 //void update_sim_results(double timesteps, double multi_sampling, double coverage);
 //void set_no_of_robots(int no_of_robots);

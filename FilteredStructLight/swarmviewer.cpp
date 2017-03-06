@@ -14,6 +14,8 @@
 #include <boost/container/container_fwd.hpp>
 #include <glm/detail/type_mat.hpp>
 #include <unordered_map>
+#include <qdir.h>
+#include <iomanip>
 
 
 //const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/house interior.obj";
@@ -23,7 +25,7 @@ const std::string SwarmViewer::DEFAULT_INTERIOR_MODEL_FILENAME = "interior/l-sha
 
 const int SwarmViewer::DEFAULT_NO_OF_ROBOTS = 3;
 
-#define NO_OF_LIGHTS 2
+#define NO_OF_LIGHTS 6
 #define NO_OF_ROBOTS 10
 #define PI 3.14159265
 
@@ -71,6 +73,7 @@ void RobotWorker::set_slow_down(int slow_down) {
 }
 void RobotWorker::abort() {
 	aborted_ = true;
+	emit aborted();
 }
 
 void RobotWorker::set_max_time_taken(int max_time_taken) {
@@ -122,6 +125,14 @@ void RobotWorker::do_work() {
 			paused_ = true;
 		}
 		if (!paused_) {
+			// for figures
+			//if (time_step_count_ == 384) {
+			//	paused_ = true;
+			//}
+			if (swarm_params_.video_mode_ && frame_ready_) {
+				continue;
+			}
+
 			if (slow_down_) {
 				//each time step, call again
 				auto current_time = std::chrono::steady_clock::now();
@@ -150,6 +161,11 @@ void RobotWorker::do_work() {
 			} else {
 				finish_work();
 			}
+
+			if (swarm_params_.video_mode_) {
+				frame_ready_ = true;
+			}
+
 		}
 		if (!paused_) {
 			//std::chrono::milliseconds current_timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -185,6 +201,14 @@ void RobotWorker::do_work() {
 		}
 		QCoreApplication::processEvents();
 	}
+}
+
+bool RobotWorker::is_frame_ready() const {
+	return frame_ready_;
+}
+
+void RobotWorker::reset_frame() {
+	frame_ready_ = false;
 }
 
 void RobotWorker::init() {
@@ -340,9 +364,12 @@ void GridOverlay::create_mesh(bool initialize) {
 
 		cv::Vec4f explored_color(1.f, 1.f, 1.f, 1.f);
 		//cv::Vec4f unexplored_color(.86f, 0.08f, .24f, 1.f);
-		cv::Vec4f unexplored_color(.4f, .4f, .4f, 1.f);
+		//cv::Vec4f unexplored_color(.4f, .4f, .4f, 1.f);
 		//cv::Vec4f unexplored_color(1.f, 1.f, 1.f, 1.f);
-		cv::Vec4f interior_color(84.f, 65.f, 51.f, 255.f);
+		//cv::Vec4f interior_color(84.f, 65.f, 51.f, 255.f);
+		cv::Vec4f interior_color(255.f, 255.f, 255.f, 255.f);
+
+		cv::Vec4f unexplored_color(255.f, 255.f, 255.f, 255.f);
 		interior_color /= 255.f;
 
 		cv::Vec3f normal(0.f, 1.f, 0.f);
@@ -752,7 +779,7 @@ void SwarmViewer::change_to_top_down_view() {
 	}
 
 	float distance = (larger_length / 2.f) / std::tan((fovy_ /2.f));
-	eye_.y = distance;
+	eye_.y = distance + 1200;
 
 	up_ = glm::vec3(1.f, 0.f, 0.f);
 	
@@ -833,6 +860,17 @@ void SwarmViewer::custom_draw_code() {
 		for (auto& light : lights_) {
 			light->update(model_);
 		}
+		if (swarm_params_.video_mode_) {
+			if (robot_worker_ && !update_finished_) {
+				if (robot_worker_->is_frame_ready()) {
+					write_frame();
+					if (figure_mode_) {
+						update_finished_ = true;
+					}
+					robot_worker_->reset_frame();
+				}
+			}
+		}
 	}
 
 }
@@ -864,6 +902,7 @@ void SwarmViewer::shutdown_worker() {
 		robot_update_thread_.quit();
 		robot_update_thread_.wait();
 		delete robot_worker_;
+		robot_worker_ = nullptr;
 	}
 	
 }
@@ -917,6 +956,41 @@ void SwarmViewer::cleanup() {
 	
 }
 
+std::string SwarmViewer::generate_next_frame_filename() {
+
+	std::stringstream ss;
+
+	ss << video_dir << "/" << std::setfill('0') << std::setw(5) << video_sequence_++ << ".png";
+
+	std::string filename = ss.str();
+
+	return filename;
+	
+}
+
+
+void SwarmViewer::write_frame() {
+	//if (!robot_worker_) {
+	//	return;
+	//}
+
+	//if (!robot_worker_->is_frame_ready()) {
+	//	return;
+	//}
+		
+
+	auto filename = generate_next_frame_filename();
+
+	int _width = width();
+	int _height = height();
+	glReadPixels(0, 0, _width, _height, GL_BGRA, GL_UNSIGNED_BYTE, &video_buffer_[0]);
+
+	cv::Mat mat(_height, _width, CV_8UC4, &video_buffer_[0]);
+	cv::imwrite(filename, mat);
+
+	
+}
+
 
 void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	makeCurrent();
@@ -964,6 +1038,25 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	change_to_top_down_view();
 	if (render_) {
 		//upload_interior_model_data_to_gpu(vertex_buffer_data);
+		if (swarm_params_.video_mode_) {
+			video_sequence_ = 0;
+			update_finished_ = false;
+
+			auto timestamp = std::chrono::steady_clock::now().time_since_epoch().count();
+			std::string filename_prefix = "";
+			auto swarm_config_filename = swarm_params_.config_name_.toStdString();
+			auto period_pos = swarm_config_filename.rfind(".");
+			if (period_pos != std::string::npos) {
+				filename_prefix = swarm_config_filename.substr(0, period_pos) + std::string("_");
+			}
+			video_dir = filename_prefix + "_video_" + std::to_string(timestamp);
+			QDir dir(video_dir.c_str());
+			dir.mkpath(".");
+			video_buffer_.resize(width() * height() * 4);
+			glReadBuffer(GL_COLOR_ATTACHMENT0);
+			glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		}
+
 		upload_robots_to_gpu();
 		create_occupancy_grid(swarm_params.grid_width_, swarm_params.grid_height_, swarm_params.grid_length_);
 		robot_color_map_[occupancy_grid_->get_interior_mark()] = cv::Vec4f(1.f, 1.f, 1.f, 1.f);
@@ -1000,6 +1093,11 @@ void SwarmViewer::reset_sim(SwarmParams& swarm_params) {
 	connect(robot_worker_, &RobotWorker::update_sim_results, this, &SwarmViewer::update_sim_results);
 	connect(robot_worker_, &RobotWorker::update_sampling, this, &SwarmViewer::update_sampling);
 	connect(&robot_update_thread_, &QThread::started, robot_worker_, &RobotWorker::do_work);
+	connect(robot_worker_, &RobotWorker::aborted, this, &SwarmViewer::update_finished);
+
+	if (swarm_params_.video_mode_) {
+		connect(this, &SwarmViewer::frame_reset, robot_worker_, &RobotWorker::reset_frame);
+	}
 
 	simultaneous_sampling_per_grid_cell_map_.clear();
 	robot_worker_->set_figure_mode(figure_mode_);
@@ -1231,6 +1329,11 @@ void SwarmViewer::update_sim_results(OptimizationResults results) {
 	//emit update_sim_results_to_optimizer(timesteps, multi_sampling, coverage);
 }
 
+void SwarmViewer::update_finished() {
+	//update_finished_ = true;
+	figure_mode_ = true;
+}
+
 void SwarmViewer::get_sim_results(double& timesteps, double& multi_sampling, double& coverage, double& occlusion) {
 	while (!sim_results_updated_) {
 		QThread::currentThread()->msleep(10);
@@ -1258,6 +1361,8 @@ SwarmViewer::SwarmViewer(const QGLFormat& format, QWidget* parent) : RobotViewer
 	int i = 0;
 
 	figure_mode_ = false;
+
+	update_finished_ = false;
 
 	//max_time_taken_ = 20010.0;
 	//no_of_clusters_ = 4;
@@ -1304,7 +1409,8 @@ void SwarmViewer::create_robot_model(RenderMesh& robot_mesh, cv::Vec4f color, Ve
 
 	RenderEntity robot_model(GL_TRIANGLES, &m_shader);
 	robot_model.upload_data_to_gpu(bufferdata);
-	robot_model.set_initial_model(glm::scale(glm::mat4(1.f), glm::vec3(.1f, .1f, .1f)));
+	float scale = 10.f;
+	robot_model.set_initial_model(glm::scale(glm::mat4(1.f), glm::vec3(scale)));
 
 	//robot_model.set_model(glm::scale(glm::mat4(1.f), glm::vec3(10.f, 10.f, 10.f)));
 	robot_mesh.push_back(robot_model);
@@ -1314,7 +1420,9 @@ void SwarmViewer::upload_robot_model(RenderMesh& robot_mesh, VertexBufferData& b
 
 	RenderEntity robot_model(GL_TRIANGLES, &m_shader);
 	robot_model.upload_data_to_gpu(bufferdata);
-	robot_model.set_initial_model(glm::scale(glm::mat4(1.f), glm::vec3(.1f, .1f, .1f)));
+	float scale = .3f;
+	robot_model.set_initial_model(glm::scale(glm::mat4(1.f), glm::vec3(scale)));
+	//robot_model.set_initial_model(glm::scale(glm::mat4(1.f), glm::vec3(.1f, .1f, .1f)));
 
 	//robot_model.set_model(glm::scale(glm::mat4(1.f), glm::vec3(10.f, 10.f, 10.f)));
 	robot_mesh.push_back(robot_model);
@@ -1335,6 +1443,12 @@ void SwarmViewer::create_lights() {
 	RenderMesh light_bulb;
 	create_light_model(light_bulb);
 
+	const int light_pos = 3;
+	glm::vec3 light_positions[light_pos];
+	light_positions[0] = glm::vec3(1400.f, 1500.f, 1400.f);
+	light_positions[1] = glm::vec3(1400.f, 1500.f, 14800.f);
+	light_positions[2] = glm::vec3(1400.f, 1500.f, 7400.f);
+
 	for (size_t i = 0; i < NO_OF_LIGHTS; ++i) {
 		Light* light = new Light(uniform_locations_);
 
@@ -1352,7 +1466,8 @@ void SwarmViewer::create_lights() {
 		//glm::vec3 light_position(0, 0, -100);
 		//glm::vec3 light_position(position_x(rng), 1500.f, position_z(rng));
 		//glm::vec3 light_color(color(rng), color(rng), color(rng));
-		glm::vec3 light_position(1400.f, 1500.f, 1400.f);
+		//glm::vec3 light_position(1400.f, 1500.f, 1400.f);
+		glm::vec3 light_position = light_positions[i % light_pos];
 		glm::vec3 light_color(.8, .8, .8);
 		SwarmUtils::print_vector("position of light : ", light_position);
 
@@ -1619,11 +1734,19 @@ void SwarmViewer::populate_color_map() {
 	//cv::Vec4f black(0.f, 0.f, 0.f, 1.f); -- dead color
 	cv::Vec4f orange = (cv::Vec4f(255.f, 131.f, 0.f, 255.f)) / 255.f;
 	cv::Vec4f cyan = cv::Vec4f(0.f, 255.f, 204.f, 255.f) / 255.f;
+	//cv::Vec4f cyan = cv::Vec4f(45.f, 204.f, 112.f, 255.f) / 255.f;
 	cv::Vec4f white(1.f, 1.f, 1.f, 1.f);
 	cv::Vec4f magenta(1.f, 0.f, 1.f, 1.f);
 	cv::Vec4f purple(.5f, 0.f, .5f, 1.f);
 
-	robot_colors.push_back(cyan);
+	cv::Vec4f dark_green= cv::Vec4f(39.f, 174.f, 97.f, 255.f) / 255.f;
+
+	cv::Vec4f dark_gray = cv::Vec4f(126, 140, 141, 255) / 255.f;
+	dark_gray /= 3.f;
+	dark_gray[3] = 1.f;
+
+	//robot_colors.push_back(cyan/2.f);
+	robot_colors.push_back(dark_gray);
 	robot_colors.push_back(green);
 	robot_colors.push_back(red);
 	robot_colors.push_back(yellow);
@@ -1677,7 +1800,8 @@ void SwarmViewer::populate_color_map() {
 //		if (dying_robots.find(robot_id) == dying_robots.end()) {
 //			if (death_map_.find(robot_id) == death_map_.end()) {
 //				std::cout << "Unknown robot_id : " << robot_id << "\n";
-//			} else {
+//			} else 
+//{
 //				int death_time = death_time_distribution(eng);
 //				death_map_[robot_id] = death_time;
 //				dead_robots_count++;
@@ -1716,10 +1840,10 @@ void SwarmViewer::upload_robots_to_gpu() {
 
 		robot->set_colors_buffer(bufferdata.colors);
 		robot->change_color(robot_color_map_[i]);
-		if (swarm_params_.display_local_map_ && swarm_params_.local_map_robot_id_ == i) {
-			cv::Vec4f red(1.f, 0.1f, 0.2f, 1.f);
-			robot->change_color(red);
-		}
+		//if (swarm_params_.display_local_map_ && swarm_params_.local_map_robot_id_ == i) {
+		//	cv::Vec4f red(1.f, 0.1f, 0.2f, 1.f);
+		//	robot->change_color(red);
+		//}
 	}
 	
 }
